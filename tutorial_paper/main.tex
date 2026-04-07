@@ -769,11 +769,134 @@ closed form; we draw samples from it using either:
 We now evaluate the SBI workflow across four experimental systems.
 The goal of this section is not only to demonstrate that inference can be
 performed, but to identify what the examples reveal about reliability.
-Across these systems we use posterior shape, posterior-predictive fit, and
-cross-model comparison to study three recurring issues:
+We therefore begin with three controlled benchmark analyses drawn from the
+saved tutorial notebooks and then turn to four empirical systems.
+Across both settings we use posterior shape, held-out recovery, and
+posterior-predictive fit to study three recurring issues:
 how strongly the posterior depends on the prior, how stable inference is
-across estimators, and how visible model misspecification becomes once one
-checks simulated trajectories against data.
+across repeated neural fits, and how visible model misspecification becomes
+once one checks simulated trajectories against data.
+
+\subsection{Controlled reliability benchmarks}
+\label{sec:reliability_benchmarks}
+
+Before turning to the empirical datasets, we summarise the three benchmark
+results that motivate the rest of the paper.
+These analyses come directly from the saved ensemble-study and
+misspecification-study outputs in the project folder, and they establish the
+three main findings claimed in the Introduction.
+
+\subsubsection{Prior support shifts the posterior even under a matched simulator}
+
+We first revisit the Chuong batch-culture simulator while varying only the
+training prior.
+The same observation is analysed with a lower prior, an oracle prior, and a
+wider prior, holding the simulator and inference architecture fixed.
+Figure~\ref{fig:prior_sensitivity} shows that the inferred posteriors move
+appreciably as the prior support changes, especially for the mutation-rate
+parameters.
+Across the held-out test set, the oracle prior yields the lowest mean absolute
+error (0.160), whereas the lower and wider priors increase that error to
+0.221 and 0.242, corresponding to 37.5\% and 50.6\% increases relative to the
+oracle setting.
+The main lesson is not that one needs an oracle prior in practice, but that
+posterior sharpness alone is not enough: if the training prior does not
+reflect the scientifically plausible range, the posterior can move
+substantially while still appearing confident.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{fig_prior_sensitivity.png}
+  \caption{\textbf{Prior sensitivity in the Chuong batch-culture benchmark.}
+  The same held-out observation is analysed under three training priors
+  (lower, oracle, and wider), with shaded regions showing the support of each
+  prior and dashed vertical lines indicating the true parameter values.
+  The oracle prior gives the best held-out recovery, but the broader point is
+  methodological: changing prior support alone shifts the inferred posterior,
+  most visibly for the mutation-rate parameters.
+  The figure was generated from the saved posterior objects and test tensors
+  used in \texttt{motivation.ipynb}.}
+  \label{fig:prior_sensitivity}
+\end{figure}
+
+\subsubsection{Bagging modestly stabilises ensemble NPE fits}
+
+The second benchmark asks whether ensembling helps when repeated neural fits
+are already close but not identical.
+Using the phylogeny benchmark stored in the ensemble-study folder, we compare
+a single NPE fit, a vanilla ensemble, and a bagging ensemble on 1,000 held-out
+simulations.
+Figure~\ref{fig:ensemble_comparison} shows that all three methods have very
+similar per-observation error, with mean absolute errors around 0.158.
+The gain from bagging is therefore modest rather than dramatic.
+However, bagging does slightly tighten the posterior width
+(0.752 versus 0.759 for the vanilla ensemble) and improves the average
+held-out log probability (4.90 versus 4.67 for the vanilla ensemble and 4.51
+for a single fit).
+In other words, the ensemble result in this project is best interpreted as a
+stabilisation effect: averaging across partially resampled training sets
+produces somewhat more reliable posteriors without changing the point
+estimates very much.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{fig_ensemble_comparison.png}
+  \caption{\textbf{Ensemble comparison on the phylogeny benchmark.}
+  Empirical CDFs compare a single NPE fit, a vanilla ensemble, and a bagging
+  ensemble across 1,000 held-out simulations.
+  The three approaches have nearly identical error distributions, but the
+  bagging ensemble yields slightly narrower posteriors and the highest
+  held-out log probability.
+  This is the sense in which ensemble methods help in this project:
+  they smooth run-to-run variability and modestly improve reliability, rather
+  than producing a qualitatively different posterior.
+  The plot follows the benchmarking logic used in
+  \texttt{Ensembles/prolonged/ensemble\_studies/motivation.ipynb}.}
+  \label{fig:ensemble_comparison}
+\end{figure}
+
+\subsubsection{Misspecification is visible in both recovery and predictive checks}
+
+Finally, we test what happens when inference is performed with the wrong
+simulator family.
+Figure~\ref{fig:misspecification_metrics} compares a matched WF model against
+two misspecified alternatives, one with an unmodelled DFE component and one
+with an unmodelled bottleneck.
+The bottleneck mismatch is particularly damaging:
+averaged across methods, the frequency of large parameter errors rises from
+0.324 under the matched model to 0.479 under bottleneck misspecification.
+For NPE specifically, that fraction increases from 0.303 to 0.429, and for
+MAMBA-DE it rises from 0.083 to 0.397.
+The DFE mismatch has a milder effect on parameter recovery but still worsens
+posterior-predictive fit, increasing the mean RMSE from 0.054 to 0.061 across
+methods.
+These benchmarks make the central practical point of this paper explicit:
+an apparently sharp posterior is not evidence that the simulator is adequate,
+and model checking has to be treated as part of the inference pipeline rather
+than as an optional afterthought.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{fig_misspecification_metrics.png}
+  \caption{\textbf{Misspecification degrades parameter recovery and
+  posterior-predictive fit.}
+  Bars compare inference under a matched Wright--Fisher simulator, a model
+  with an unmodelled DFE component, and a model with an unmodelled bottleneck.
+  The left panel reports the fraction of held-out test cases with a large
+  parameter error, while the right panel shows posterior-predictive RMSE.
+  Bottleneck misspecification sharply increases large-error rates across most
+  methods, whereas the DFE mismatch more clearly appears in predictive-fit
+  metrics.
+  The figure was generated from the benchmark summaries saved in
+  \texttt{misspec\_studies/test\_sims}.}
+  \label{fig:misspecification_metrics}
+\end{figure}
+
+\subsection{Empirical applications}
+\label{sec:empirical_applications}
+
+With those benchmark findings in hand, we now evaluate the SBI workflow across
+four experimental systems.
 Figure~\ref{fig:four_simulators} provides an overview of the simulator family
 and their empirical fits.
 

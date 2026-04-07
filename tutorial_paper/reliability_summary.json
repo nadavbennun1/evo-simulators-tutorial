@@ -1,0 +1,61 @@
+{
+  "prior": {
+    "representative_index": 253,
+    "true_theta": [
+      -1.2648160457611084,
+      -4.583320617675781,
+      -4.491039276123047
+    ],
+    "stats": {
+      "Lower prior": {
+        "mean_abs_error": 0.2205028086900711,
+        "mean_uncertainty": 1.2125390768051147
+      },
+      "Oracle prior": {
+        "mean_abs_error": 0.16039621829986572,
+        "mean_uncertainty": 0.9812268614768982
+      },
+      "Wider prior": {
+        "mean_abs_error": 0.24153411388397217,
+        "mean_uncertainty": 1.1073671579360962
+      }
+    }
+  },
+  "ensemble": {
+    "Single NPE": {
+      "mean_mae": 0.15777258574962616,
+      "mean_uncertainty": 0.7549667954444885,
+      "mean_confidence": 0.5367650389671326,
+      "mean_log_prob": 4.507568359375,
+      "calibration_ks": 0.0549999475479126
+    },
+    "Vanilla ensemble": {
+      "mean_mae": 0.15790045261383057,
+      "mean_uncertainty": 0.7589715719223022,
+      "mean_confidence": 0.4990600049495697,
+      "mean_log_prob": 4.672163486480713,
+      "calibration_ks": 0.025000035762786865
+    },
+    "Bagging ensemble": {
+      "mean_mae": 0.15921850502490997,
+      "mean_uncertainty": 0.7522746324539185,
+      "mean_confidence": 0.5952849984169006,
+      "mean_log_prob": 4.899603366851807,
+      "calibration_ks": 0.1550000011920929
+    }
+  },
+  "misspecification": {
+    "Matched WF": {
+      "mean_large_either": 0.32357142652784077,
+      "mean_rmse": 0.05437142857142858
+    },
+    "WF + DFE mismatch": {
+      "mean_large_either": 0.3175714303340231,
+      "mean_rmse": 0.06137142857142858
+    },
+    "WF + bottleneck mismatch": {
+      "mean_large_either": 0.4791428531919207,
+      "mean_rmse": 0.05432857142857143
+    }
+  }
+}
