@@ -34,7 +34,7 @@
 \begin{document}
 
 \title{\textbf{Simulation-Based Inference for Experimental Evolution:\\
-A Practical Tutorial}}
+Prior Sensitivity, Ensembles, and Model Misspecification}}
 
 \author{[Author list placeholder]}
 
@@ -42,33 +42,36 @@ A Practical Tutorial}}
 \maketitle
 
 \begin{abstract}
-Experimental evolution produces replicated, stochastic time-series data that
-are rich in biological information but difficult to analyse with classical
-likelihood-based methods.
-This paper is a practical tutorial for researchers who want to use
-simulation-based inference~(SBI) to estimate mutation rates, selection
-coefficients, and related evolutionary parameters from such data.
-Using copy-number-variant~(CNV) and aneuploidy dynamics in
-\emph{Saccharomyces cerevisiae} as running examples, we explain the full
-workflow from simulator design to posterior interpretation.
+Simulation-based inference~(SBI) has become an attractive approach for
+experimental evolution because stochastic population-genetic simulators are
+easy to write while likelihoods are often analytically intractable.
+Yet the practical reliability of SBI in this setting remains underexplored:
+posterior estimates can depend strongly on the prior, neural estimators may
+vary across training runs, and model misspecification can yield confident but
+misleading inferences.
 
-The tutorial has three goals.
-First, it introduces the modelling side of the problem through simple
-stochastic population-genetic simulators, beginning with Wright-Fisher
-models and their chemostat analogue.
-Second, it compares approximate Bayesian computation~(ABC) with neural SBI
-methods such as neural posterior estimation~(NPE), emphasizing when each
-approach is useful in practice.
-Third, it develops the \emph{collective posterior}, a principled way to
-combine evidence across multiple independent experimental replicates.
+Here we study these issues using copy-number-variant~(CNV) and aneuploidy
+dynamics in \emph{Saccharomyces cerevisiae} as testbeds.
+Across a family of Wright-Fisher and chemostat-based simulators, we compare
+approximate Bayesian computation~(ABC) with neural SBI methods, and use both
+synthetic and empirical datasets to identify when inference is stable and
+when it becomes fragile.
+Three findings motivate the paper.
+First, posterior concentration in realistic evolutionary datasets can be
+strongly prior-sensitive, particularly when trajectories are short and noisy.
+Second, ensemble-based inference provides a practical route to more stable
+posterior estimation than a single trained neural posterior.
+Third, applying even a closely related but biologically incorrect simulator
+produces systematic posterior-predictive mismatch, showing that model
+checking is not optional in this domain.
 
-The paper is designed to be read either sequentially as a tutorial or
-selectively as a reference.
-Readers interested mainly in practice can move directly from the problem
-formulation to the applications, while readers interested in methodology can
-focus on the SBI and collective-posterior sections.
-Each major section is paired with accompanying Jupyter notebooks that serve
-as the executable supplement to the paper.
+The paper therefore serves two purposes.
+It introduces a reusable SBI workflow for experimental evolution, and it
+uses that workflow to make a research argument about reliability:
+good inference depends not only on the choice of algorithm, but also on
+prior design, model adequacy, and estimator stability.
+Jupyter notebooks accompanying the manuscript provide the executable
+supplement.
 \end{abstract}
 
 \tableofcontents
@@ -118,70 +121,64 @@ neuroscience, cosmology, and epidemiology
 \citep{cranmer2020frontier,lueckmann2021benchmarking}, and was first applied
 to experimental evolution by \citet{avecilla2022neural}.
 
-This paper is intentionally written as a tutorial rather than as a narrow
-methods note.
-Our aim is not only to present a set of inference results, but to give the
-reader a reusable way of thinking about experimental-evolution data:
-start from a mechanistic simulator, define a prior over biologically
-meaningful parameters, train or run an SBI method, and then interpret the
-resulting posterior across one or many replicates.
+Despite the recent success of SBI in biology, three practical questions
+remain central for experimental evolution.
+How much of the inferred posterior is driven by the data versus the prior?
+How stable is a neural posterior estimator across repeated training runs?
+And how badly does inference fail when the simulator is only slightly wrong?
+These are especially important in evolutionary systems, where datasets are
+often short, replicate counts are modest, and mechanistic misspecification is
+easy to introduce.
 
-\subsection{What This Paper Is}
+\subsection{Research Question and Scope}
 
-At a high level, this paper does three things.
-It explains the inference problem posed by stochastic evolutionary
-trajectories, it introduces a small family of forward simulators that are
-simple enough to understand and fast enough for SBI, and it shows how to
-move from single-replicate inference to principled multi-replicate
-inference.
-The emphasis throughout is practical: we focus on models and workflows that
-a reader can adapt to new experimental systems with modest changes.
+The central goal of this paper is to study the practical reliability of SBI
+for experimental-evolution data.
+We do so in a deliberately mechanistic setting: we work with small,
+interpretable population-genetic simulators, and we ask how inference
+behaves when one varies the prior, the inference estimator, or the simulator
+class itself.
 
-The paper is therefore best viewed as a guide to a workflow, not just as a
-catalogue of results.
-The figures and applications illustrate concrete biological systems, but the
-main object being taught is the pipeline itself.
+This manuscript is therefore not meant as a general review of SBI.
+Instead, it uses a focused collection of evolutionary systems to make a
+research argument about three related issues: prior sensitivity, ensemble
+stabilisation, and model misspecification.
+These questions are methodological, but they also matter biologically,
+because they determine whether inferred mutation rates and selection
+coefficients can be trusted.
 
-\subsection{How To Read This Tutorial}
+\subsection{Main Findings and Paper Roadmap}
 
-There are several reasonable ways to navigate the paper.
-
-\begin{itemize}
-  \item \textbf{Sequential tutorial read.} Read Sections~\ref{sec:problem},
-        \ref{sec:simulators}, \ref{sec:sbi}, \ref{sec:collective}, and
-        \ref{sec:applications} in order.
-        This path is intended for readers who are new to SBI in
-        experimental evolution.
-  \item \textbf{Methods-focused read.} If you already know the biological
-        systems, focus on Sections~\ref{sec:sbi} and \ref{sec:collective},
-        then use Section~\ref{sec:applications} as a worked example library.
-  \item \textbf{Application-first read.} If you want to see what the full
-        workflow looks like before reading the details, skim
-        Section~\ref{sec:applications} first and then return to the earlier
-        sections as needed.
-\end{itemize}
-
-The Jupyter notebooks mirror this structure.
-\texttt{SBI\_tutorial.ipynb} is the end-to-end worked example for the
-Chuong et al.\ system, while \texttt{evolution\_simulators.ipynb} serves as
-a companion atlas of the simulator family used throughout the paper.
-
-The tutorial has four main contributions:
+The paper has three main findings:
 \begin{enumerate}
-  \item We describe and compare ABC and neural SBI methods (NPE, NLE, and
-        NRE) in the context of experimental evolution, providing guidance on
-        when each approach is preferred.
-  \item We present Wright-Fisher and chemostat ODE simulators for four
-        biologically distinct experimental systems, demonstrating how the same
-        inference framework adapts to different model structures
-        (Figure~\ref{fig:four_simulators}).
-  \item We derive and implement the \emph{collective posterior}, a
-        principled formula for aggregating evidence from multiple independent
-        replicates---the regime that is standard in experimental evolution but
-        often ignored by off-the-shelf SBI tools.
-  \item We provide fully reproducible Jupyter notebooks that accompany
-        each section of this paper.
+  \item \textbf{Prior sensitivity matters.}
+        In realistic inference regimes, posterior concentration can depend
+        strongly on prior support and prior shape, particularly for mutation
+        rates and low-frequency founder states.
+  \item \textbf{Ensembles improve stability.}
+        Repeated neural posterior estimators need not agree exactly even when
+        trained on the same simulator family; ensemble-based inference offers
+        a practical way to reduce estimator variance and improve robustness.
+  \item \textbf{Model misspecification is easy to diagnose if one looks for
+        it.}
+        Applying the wrong simulator, even from a closely related
+        experimental system, produces systematic posterior-predictive
+        mismatch and can lead to misleading biological conclusions.
 \end{enumerate}
+
+To support these claims, the paper proceeds in three layers.
+Sections~\ref{sec:problem} and \ref{sec:simulators} define the inference
+problem and the simulator family.
+Section~\ref{sec:sbi} summarises the SBI methods under comparison.
+Section~\ref{sec:applications} then uses synthetic and empirical systems to
+show where the workflow succeeds, where it is prior-sensitive, and where it
+fails under misspecification.
+
+For completeness, we also include a short section on the collective
+posterior for combining evidence across replicates
+(Section~\ref{sec:collective}).
+That topic is part of a separate companion methods paper and is included here
+mainly because multi-replicate experiments are standard in this field.
 
 % =============================================================================
 \section{The Inference Problem in Experimental Evolution}
@@ -634,9 +631,15 @@ synthetic dataset drawn from the four-genotype batch model.
 \end{figure}
 
 % =============================================================================
-\section{The Collective Posterior: Combining Evidence Across Replicates}
+\section{Multi-Replicate Inference: Summary of Companion Work}
 \label{sec:collective}
 % =============================================================================
+
+The material in this section provides context for one important extension of
+the single-replicate SBI workflow developed in this paper.
+Because multi-replicate aggregation is a substantial topic in its own right,
+we treat it here as companion methodology rather than as the main research
+contribution of the present manuscript.
 
 \subsection{The multi-replicate problem}
 \label{sec:multi_rep_problem}
@@ -759,16 +762,20 @@ closed form; we draw samples from it using either:
 \end{enumerate}
 
 % =============================================================================
-\section{Applications}
+\section{Results Across Experimental Systems}
 \label{sec:applications}
 % =============================================================================
 
-We illustrate the complete inference pipeline on four experimental systems.
-In each case we (i) describe the biological system and data, (ii) specify
-the simulator and prior, (iii) train an NPE, (iv) compute individual and
-collective posteriors, and (v) perform a posterior predictive check.
-Figure~\ref{fig:four_simulators} provides an overview of all four systems
-and their model fits.
+We now evaluate the SBI workflow across four experimental systems.
+The goal of this section is not only to demonstrate that inference can be
+performed, but to identify what the examples reveal about reliability.
+Across these systems we use posterior shape, posterior-predictive fit, and
+cross-model comparison to study three recurring issues:
+how strongly the posterior depends on the prior, how stable inference is
+across estimators, and how visible model misspecification becomes once one
+checks simulated trajectories against data.
+Figure~\ref{fig:four_simulators} provides an overview of the simulator family
+and their empirical fits.
 
 \begin{figure}[ht]
   \centering
@@ -1043,7 +1050,7 @@ Full results are presented in Zhou et al.\ (in prep.).
 \label{sec:discussion}
 % =============================================================================
 
-\subsection{Choosing a method and simulator}
+\subsection{Implications for reliable SBI}
 
 The choice between ABC and neural SBI depends primarily on three factors:
 simulation cost, data dimensionality, and the need for amortisation.
@@ -1069,6 +1076,15 @@ selection is a necessary step before inference.
 More complex models (e.g., explicit spatial structure, fluctuating
 environments) can in principle be embedded in the same SBI framework, as
 long as a fast forward simulation is available.
+
+Our broader conclusion is that \emph{reliable} SBI requires more than a good
+neural density estimator.
+It requires defensible prior choices, explicit model checking, and a
+recognition that repeated neural training runs may themselves be a source of
+uncertainty.
+These observations motivate the use of ensemble estimators and
+posterior-predictive checks as routine parts of the inference workflow rather
+than optional add-ons.
 
 \subsection{The collective posterior in practice}
 
