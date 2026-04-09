@@ -59,8 +59,9 @@ when it becomes fragile.
 Three findings motivate the paper.
 First, posterior concentration in realistic evolutionary datasets can be
 strongly prior-sensitive, particularly when trajectories are short and noisy.
-Second, ensemble-based inference provides a practical route to more stable
-posterior estimation than a single trained neural posterior.
+Second, budget-fair ensemble strategies alter the
+accuracy-calibration-cost tradeoff, sometimes recovering part of the benefit
+of longer training but not uniformly outperforming a single fit.
 Third, applying even a closely related but biologically incorrect simulator
 produces systematic posterior-predictive mismatch, showing that model
 checking is not optional in this domain.
@@ -155,10 +156,11 @@ The paper has three main findings:
         In realistic inference regimes, posterior concentration can depend
         strongly on prior support and prior shape, particularly for mutation
         rates and low-frequency founder states.
-  \item \textbf{Ensembles improve stability.}
-        Repeated neural posterior estimators need not agree exactly even when
-        trained on the same simulator family; ensemble-based inference offers
-        a practical way to reduce estimator variance and improve robustness.
+  \item \textbf{Ensemble gains are system-dependent.}
+        Budget-fair ensembles can recover part of the benefit of longer
+        training in some systems, but they are not a free lunch:
+        calibration, posterior width, and wall-clock cost move differently
+        across benchmarks.
   \item \textbf{Model misspecification is easy to diagnose if one looks for
         it.}
         Applying the wrong simulator, even from a closely related
@@ -174,11 +176,12 @@ Section~\ref{sec:applications} then uses synthetic and empirical systems to
 show where the workflow succeeds, where it is prior-sensitive, and where it
 fails under misspecification.
 
-For completeness, we also include a short section on the collective
-posterior for combining evidence across replicates
+For completeness, we also include an appendix-style closing section on the
+collective posterior for combining evidence across replicates
 (Section~\ref{sec:collective}).
-That topic is part of a separate companion methods paper and is included here
-mainly because multi-replicate experiments are standard in this field.
+That topic belongs to a separate companion methods paper and is placed at
+the end so it supports the main reliability story rather than competing with
+it.
 
 % =============================================================================
 \section{The Inference Problem in Experimental Evolution}
@@ -631,137 +634,6 @@ synthetic dataset drawn from the four-genotype batch model.
 \end{figure}
 
 % =============================================================================
-\section{Multi-Replicate Inference: Summary of Companion Work}
-\label{sec:collective}
-% =============================================================================
-
-The material in this section provides context for one important extension of
-the single-replicate SBI workflow developed in this paper.
-Because multi-replicate aggregation is a substantial topic in its own right,
-we treat it here as companion methodology rather than as the main research
-contribution of the present manuscript.
-
-\subsection{The multi-replicate problem}
-\label{sec:multi_rep_problem}
-
-Experimental evolution studies routinely generate $r = 4$--$20$ replicate
-populations evolved under identical conditions.
-Each replicate trajectory $\bx_i$ contains independent information about the
-same underlying parameter vector~$\btheta$.
-Naively, one could infer parameters from each replicate independently and
-then average the resulting posteriors.
-This is incorrect, however, because an average of posteriors is not a
-posterior---it over-counts the prior.
-The correct approach is to \emph{multiply} the likelihoods across replicates,
-which yields a much sharper combined posterior.
-
-\subsection{Derivation of the collective posterior}
-\label{sec:collective_derivation}
-
-Assume the $r$ replicate trajectories are conditionally independent given
-$\btheta$:
-\begin{equation}
-  p(\bx_1,\ldots,\bx_r\mid\btheta) = \prod_{i=1}^{r} p(\bx_i\mid\btheta).
-  \label{eq:likelihood_product}
-\end{equation}
-By Bayes' theorem the joint posterior is
-\begin{equation}
-  p(\btheta\mid\bx_1,\ldots,\bx_r)
-  \propto p(\btheta)\prod_{i=1}^{r} p(\bx_i\mid\btheta).
-  \label{eq:joint_posterior}
-\end{equation}
-NPE gives us an amortised approximation $q_\phi(\btheta\mid\bx_i)$ to each
-individual posterior
-$p_i(\btheta\mid\bx_i) \propto p(\btheta)\,p(\bx_i\mid\btheta)$.
-We can write
-\begin{equation}
-  p(\bx_i\mid\btheta) \;\propto\;
-  \frac{p_i(\btheta\mid\bx_i)}{p(\btheta)},
-  \label{eq:likelihood_from_posterior}
-\end{equation}
-and substituting into (\ref{eq:joint_posterior}):
-\begin{equation}
-  p(\btheta\mid\bx_1,\ldots,\bx_r)
-  \;\propto\; p(\btheta)^{1-r}\,\prod_{i=1}^{r} p_i(\btheta\mid\bx_i).
-  \label{eq:collective_unnorm}
-\end{equation}
-Taking logarithms and replacing each $p_i$ by its learned approximation
-$q_\phi(\cdot\mid\bx_i)$:
-\begin{equation}
-  \boxed{
-  \log p(\btheta\mid\bx_1,\ldots,\bx_r)
-  = \sum_{i=1}^{r} \log q_\phi(\btheta\mid\bx_i)
-    - (r-1)\log p(\btheta) - \log C,
-  }
-  \label{eq:collective_log}
-\end{equation}
-where $C$ is a normalising constant estimated by importance sampling from the
-prior.
-Equation~(\ref{eq:collective_log}) is the \emph{collective posterior}
-\citep{bennun2026collective}.
-
-\paragraph{Why not average posteriors?}
-An average of individual posteriors weights each replicate's evidence equally
-but retains $r$ copies of the prior, effectively over-regularising toward
-$p(\btheta)$ as the number of replicates grows.
-Equation~(\ref{eq:collective_log}) correctly cancels $r-1$ copies of the
-prior, so the collective posterior narrows at the statistically optimal rate
-$\sigma \propto r^{-1/2}$ as the number of replicates increases.
-Figure~\ref{fig:collective_synthetic} demonstrates this on eight synthetic
-replicates.
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{fig_collective_synthetic.png}
-  \caption{\textbf{Individual and collective posteriors for eight synthetic
-  replicates.}
-  Marginal posterior densities for $\log_{10} s$, $\log_{10}\delta$, and
-  $\log_{10}\varphi$ across eight independently simulated replicates from the
-  four-genotype batch model at a fixed ``true'' $\btheta$ (dashed vertical
-  line).
-  Individual NPE posteriors (green) vary due to genetic drift between
-  replicates; the collective posterior (purple) is substantially narrower
-  than any single replicate's posterior, consistent with the expected
-  $r^{-1/2}$ narrowing for $r=8$ replicates.
-  (Generated by \texttt{SBI\_tutorial.ipynb}.)}
-  \label{fig:collective_synthetic}
-\end{figure}
-
-\subsection{Robust collective inference}
-\label{sec:robust_collective}
-
-In practice some replicates may be outliers: their trajectories may be
-dominated by a single large-effect mutation that does not represent the
-target system, by a measurement artefact, or by an atypical founder effect.
-Outlier replicates pull the joint likelihood product away from the consensus,
-inflating uncertainty or biasing estimates.
-\citet{bennun2026collective} address this with a \emph{robust product-of-experts}
-scheme that replaces the sum in (\ref{eq:collective_log}) with a
-trimmed or soft-thresholded aggregation, automatically down-weighting
-replicates whose individual log-posterior differs substantially from the
-consensus.
-We implement the simple version of (\ref{eq:collective_log}) in the tutorial
-notebook; readers requiring robustness should consult \citet{bennun2026collective}
-for the full implementation.
-
-\subsection{Sampling the collective posterior}
-\label{sec:collective_sampling}
-
-The collective posterior (\ref{eq:collective_log}) is not represented in
-closed form; we draw samples from it using either:
-\begin{enumerate}
-  \item \textbf{Rejection sampling.} Draw $\btheta' \sim p(\btheta)$, accept
-        with probability proportional to the unnormalised density.
-        Efficient when $\log C$ is not too negative (i.e., the prior and
-        collective posterior overlap well).
-  \item \textbf{MCMC.} Metropolis-Hastings chains initialised from the
-        top-probability prior samples found during the importance-sampling
-        estimation of $C$.
-        Preferred when the collective posterior is much narrower than the
-        prior.
-\end{enumerate}
-
-% =============================================================================
 \section{Results Across Experimental Systems}
 \label{sec:applications}
 % =============================================================================
@@ -782,113 +654,140 @@ once one checks simulated trajectories against data.
 
 Before turning to the empirical datasets, we summarise the three benchmark
 results that motivate the rest of the paper.
-These analyses come directly from the saved ensemble-study and
-misspecification-study outputs in the project folder, and they establish the
-three main findings claimed in the Introduction.
+These analyses come directly from the saved outputs in
+\texttt{sbi\_paper\_experiments}, and they establish the three main findings
+claimed in the Introduction.
 
 \subsubsection{Prior support shifts the posterior even under a matched simulator}
 
-We first revisit the Chuong batch-culture simulator while varying only the
-training prior.
-The same observation is analysed with a lower prior, an oracle prior, and a
-wider prior, holding the simulator and inference architecture fixed.
-Figure~\ref{fig:prior_sensitivity} shows that the inferred posteriors move
-appreciably as the prior support changes, especially for the mutation-rate
-parameters.
-Across the held-out test set, the oracle prior yields the lowest mean absolute
-error (0.160), whereas the lower and wider priors increase that error to
-0.221 and 0.242, corresponding to 37.5\% and 50.6\% increases relative to the
-oracle setting.
-The main lesson is not that one needs an oracle prior in practice, but that
-posterior sharpness alone is not enough: if the training prior does not
-reflect the scientifically plausible range, the posterior can move
-substantially while still appearing confident.
+We first revisit the dedicated prior-sensitivity experiments in
+\texttt{sbi\_paper\_experiments}, which compare a lower and higher prior on
+three benchmark systems (Avecilla et al., Zhou et al., and Vande Zande et al.) at both
+10,000 and 100,000 simulations.
+Figure~\ref{fig:prior_sensitivity} shows a consistent pattern in the core
+recovery metrics:
+across all six model-budget combinations, the higher prior yields lower NMAE
+and narrower credible intervals.
+For example, in the Avecilla et al.\ benchmark at 100,000 simulations the NMAE falls
+from 0.054 to 0.040 and the normalised interval width from 0.252 to 0.155;
+in Zhou et al.\ it falls from 0.087 to 0.065 with the interval width shrinking from
+0.326 to 0.239; and even in the harder Vande Zande et al.\ setting the higher prior
+improves NMAE from 0.112 to 0.103 while reducing the interval width from
+0.494 to 0.435.
+At the same time, calibration and predictive checks are more mixed.
+The higher prior improves SBCC markedly in some settings, such as Avecilla et al.\ at
+10,000 simulations (0.054 to 0.012) and Vande Zande et al.\ at 10,000 simulations
+(0.103 to 0.029), but in other cases it worsens predictive RMSE or SBCC.
+The point is therefore broader than ``pick the narrow prior'':
+prior design changes both recovery and uncertainty structure, and those
+changes are scientifically consequential.
 
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\linewidth]{fig_prior_sensitivity.png}
-  \caption{\textbf{Prior sensitivity in the Chuong batch-culture benchmark.}
-  The same held-out observation is analysed under three training priors
-  (lower, oracle, and wider), with shaded regions showing the support of each
-  prior and dashed vertical lines indicating the true parameter values.
-  The oracle prior gives the best held-out recovery, but the broader point is
-  methodological: changing prior support alone shifts the inferred posterior,
-  most visibly for the mutation-rate parameters.
-  The figure was generated from the saved posterior objects and test tensors
-  used in \texttt{motivation.ipynb}.}
+  \caption{\textbf{Prior sensitivity across three benchmark systems.}
+  Paired points compare lower and higher priors for the Avecilla et al.,
+  Zhou et al., and Vande Zande et al.\ benchmarks at 10,000 and
+  100,000 simulations.
+  Moving from the lower to the higher prior reduces NMAE and posterior width
+  in all six cases, but the calibration and predictive-fit metrics are more
+  heterogeneous.
+  This is the core methodological result of the prior experiments:
+  prior choice changes the inference answer, not just the aesthetics of the
+  posterior.
+  The plot was generated from the saved summaries in
+  \texttt{sbi\_paper\_experiments/results/prior}.}
   \label{fig:prior_sensitivity}
 \end{figure}
 
-\subsubsection{Bagging modestly stabilises ensemble NPE fits}
+\subsubsection{Budget-fair ensembles change the accuracy-calibration-cost tradeoff}
 
-The second benchmark asks whether ensembling helps when repeated neural fits
-are already close but not identical.
-Using the phylogeny benchmark stored in the ensemble-study folder, we compare
-a single NPE fit, a vanilla ensemble, and a bagging ensemble on 1,000 held-out
-simulations.
-Figure~\ref{fig:ensemble_comparison} shows that all three methods have very
-similar per-observation error, with mean absolute errors around 0.158.
-The gain from bagging is therefore modest rather than dramatic.
-However, bagging does slightly tighten the posterior width
-(0.752 versus 0.759 for the vanilla ensemble) and improves the average
-held-out log probability (4.90 versus 4.67 for the vanilla ensemble and 4.51
-for a single fit).
-In other words, the ensemble result in this project is best interpreted as a
-stabilisation effect: averaging across partially resampled training sets
-produces somewhat more reliable posteriors without changing the point
-estimates very much.
+The ensemble experiments are explicitly budget-fair:
+patience 30 is compared against a prolonged single run with patience 60 and
+against $K=3$ and $K=5$ vanilla ensembles that divide the original budget
+across members.
+Figure~\ref{fig:ensemble_comparison} shows that these experiments do not
+support a blanket claim that ensembles always improve inference.
+Instead, they reveal a system-dependent tradeoff.
+In the Moshe et al.\ benchmark, prolonged training gives the best calibration
+(SBCC 0.014) and best NMAE (0.237), but the ensembles recover most of that
+accuracy at substantially lower wall-clock cost:
+the $K=3$ ensemble reaches NMAE 0.239 in 39 minutes, compared with 103 minutes
+for the prolonged run.
+In the Avecilla et al.\ benchmark, $K=5$ marginally improves NMAE
+(0.0552 versus 0.0557 for a single run) but does so by substantially widening
+the posterior and worsening SBCC (0.124 versus 0.016).
+In Vande Zande et al., the single model remains the best-calibrated and fastest
+option.
+The ensemble finding is therefore methodological rather than purely
+optimistic:
+ensembling changes the bias-calibration-cost tradeoff, and whether that is an
+improvement depends on the scientific objective.
 
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\linewidth]{fig_ensemble_comparison.png}
-  \caption{\textbf{Ensemble comparison on the phylogeny benchmark.}
-  Empirical CDFs compare a single NPE fit, a vanilla ensemble, and a bagging
-  ensemble across 1,000 held-out simulations.
-  The three approaches have nearly identical error distributions, but the
-  bagging ensemble yields slightly narrower posteriors and the highest
-  held-out log probability.
-  This is the sense in which ensemble methods help in this project:
-  they smooth run-to-run variability and modestly improve reliability, rather
-  than producing a qualitatively different posterior.
-  The plot follows the benchmarking logic used in
-  \texttt{Ensembles/prolonged/ensemble\_studies/motivation.ipynb}.}
+  \caption{\textbf{Budget-fair comparison of single, prolonged, and ensemble
+  training.}
+  Bars compare four training strategies across three benchmark systems:
+  a single run at the base budget, a prolonged single run, and vanilla
+  ensembles with $K=3$ and $K=5$.
+  The results are mixed by design.
+  Ensembles can recover much of the benefit of longer training in some
+  systems, especially Moshe et al., but can also worsen calibration or widen
+  the posterior, as in the Avecilla et al.\ and Vande Zande et al.\ benchmarks.
+  The figure was generated from the saved experiment metadata and evaluation
+  summaries in \texttt{sbi\_paper\_experiments/results/ensembles}.}
   \label{fig:ensemble_comparison}
 \end{figure}
 
-\subsubsection{Misspecification is visible in both recovery and predictive checks}
+\subsubsection{Misspecification is clearest in the Avecilla et al.\ versus Chuong et al.\ use case}
 
-Finally, we test what happens when inference is performed with the wrong
-simulator family.
-Figure~\ref{fig:misspecification_metrics} compares a matched WF model against
-two misspecified alternatives, one with an unmodelled DFE component and one
-with an unmodelled bottleneck.
-The bottleneck mismatch is particularly damaging:
-averaged across methods, the frequency of large parameter errors rises from
-0.324 under the matched model to 0.479 under bottleneck misspecification.
-For NPE specifically, that fraction increases from 0.303 to 0.429, and for
-MAMBA-DE it rises from 0.083 to 0.397.
-The DFE mismatch has a milder effect on parameter recovery but still worsens
-posterior-predictive fit, increasing the mean RMSE from 0.054 to 0.061 across
-methods.
-These benchmarks make the central practical point of this paper explicit:
-an apparently sharp posterior is not evidence that the simulator is adequate,
-and model checking has to be treated as part of the inference pipeline rather
-than as an optional afterthought.
+Finally, we restrict misspecification to the intended empirical case:
+the rise phase of the Chuong et al.\ LTR$\Delta$ trajectories is truncated to
+generations 8--66, and that same window is analysed with either the correct
+Chuong et al.\ model or the misspecified Avecilla et al.\ model.
+Figure~\ref{fig:misspecification_metrics} makes this trap visible directly in
+the data.
+Within the shaded fit window, both models can track the rise phase
+reasonably well.
+Once the same posterior samples are rolled forward past generation 66,
+however, the difference becomes obvious: the misspecified Avecilla et al.\
+model systematically overshoots or misses the later plateau dynamics,
+whereas the Chuong et al.\ model remains much closer to the observed
+trajectories.
+The quantitative summaries tell the same story in a more compact form.
+First, the posterior means shift much more strongly for mutation rate than
+for selection, so the wrong model changes the inferred biology rather than
+simply adding extra uncertainty.
+Second, the truncated-window fit itself is deceptively permissive.
+The mean RMSE on generations 8--66 is only 0.048 for the misspecified
+Avecilla et al.\ model versus 0.021 for the correct Chuong et al.\ model, so both can appear
+acceptable if one stops at the observed window.
+Once the same posteriors are rolled forward to the full trajectories through
+generation 116, however, the discrepancy becomes obvious:
+the mean RMSE is 0.211 for the Avecilla et al.\ model and 0.032 for the Chuong et al.\ model.
+This is exactly the kind of misspecification trap experimental evolution is
+vulnerable to:
+a biologically nearby simulator can fit the rise phase while still failing on
+the plateau dynamics that matter mechanistically.
 
 \begin{figure}[ht]
   \centering
   \includegraphics[width=\linewidth]{fig_misspecification_metrics.png}
-  \caption{\textbf{Misspecification degrades parameter recovery and
-  posterior-predictive fit.}
-  Bars compare inference under a matched Wright--Fisher simulator, a model
-  with an unmodelled DFE component, and a model with an unmodelled bottleneck.
-  The left panel reports the fraction of held-out test cases with a large
-  parameter error, while the right panel shows posterior-predictive RMSE.
-  Bottleneck misspecification sharply increases large-error rates across most
-  methods, whereas the DFE mismatch more clearly appears in predictive-fit
-  metrics.
-  The figure was generated from the benchmark summaries saved in
-  \texttt{misspec\_studies/test\_sims}.}
+  \caption{\textbf{Misspecification is only obvious after forward prediction.}
+  Each column shows one Chuong et al.\ LTR$\Delta$ replicate.
+  Black points and lines are the observed data.
+  Colored bands and median lines are posterior predictive trajectories from
+  the misspecified Avecilla et al.\ model (top row) or the correct Chuong et al.\ model
+  (bottom row).
+  The shaded region marks the truncated fit window (generations 8--66), where
+  both models can appear acceptable.
+  Once predictions are rolled forward beyond the dashed boundary at
+  generation~66, the misspecified Avecilla et al.\ model fails much more
+  clearly on the later plateau dynamics.
+  The figure follows the exact Avecilla et al.-versus-Chuong et al.\ analysis in
+  \texttt{sbi\_paper\_experiments/notes/misspecification\_results.ipynb}.}
   \label{fig:misspecification_metrics}
 \end{figure}
 
@@ -1031,50 +930,15 @@ $\log \phi \sim \mathcal{U}(-8, -2)$.
 We train the NPE on 30,000 prior samples with added Gaussian measurement
 noise ($\sigma = 0.02$).
 
-\subsubsection{Collective posterior and posterior predictive check}
+\subsubsection{Optional multi-replicate aggregation}
 
-Figure~\ref{fig:collective_alldelta} shows individual NPE posteriors for
-each of the 8 ALLΔ replicates alongside the collective posterior computed
-via Equation~(\ref{eq:collective_log}).
-The collective posterior is substantially narrower than any individual
-replicate posterior, providing a precise joint estimate of $(s, \delta, \phi)$
-for the ALLΔ genetic background.
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{fig_collective_alldelta.png}
-  \caption{\textbf{Individual and collective posteriors for the ALLΔ
-  experimental lines} \citep{chuong2025template}.
-  Marginal posterior densities for $\log_{10} s$, $\log_{10}\delta$, and
-  $\log_{10}\varphi$ across all 8 ALLΔ replicates.
-  Individual NPE posteriors (green) are broad and vary between replicates
-  owing to evolutionary stochasticity.
-  The collective posterior (purple), computed via
-  Equation~(\ref{eq:collective_log}), integrates evidence from all
-  replicates and yields a substantially tighter estimate.
-  (Generated by \texttt{SBI\_tutorial.ipynb}.)}
-  \label{fig:collective_alldelta}
-\end{figure}
-
-To verify model adequacy, we sample 500 parameter vectors from the
-collective posterior and simulate 500 new trajectories.
-Figure~\ref{fig:ppc_alldelta} shows that these posterior predictive
-trajectories closely envelope the observed ALLΔ data, confirming that the
-four-genotype model is well specified for this system.
-
-\begin{figure}[ht]
-  \centering
-  \includegraphics[width=\linewidth]{fig_ppc_alldelta.png}
-  \caption{\textbf{Posterior predictive check for the ALLΔ lines.}
-  Purple lines show 500 CNV frequency trajectories simulated from samples
-  drawn from the ALLΔ collective posterior; yellow lines with dots show the
-  8 observed ALLΔ replicate trajectories \citep{chuong2025template}.
-  The simulated trajectories accurately envelope the timing and magnitude
-  of the observed CNV sweeps, confirming that the four-genotype batch model
-  is well specified.
-  (Generated by \texttt{SBI\_tutorial.ipynb}.)}
-  \label{fig:ppc_alldelta}
-\end{figure}
+The ALLΔ system is also a natural place to demonstrate how one can combine
+evidence across replicate posteriors once the single-replicate model has been
+validated.
+Because that construction is part of a separate companion methods paper, we
+place the derivation and the ALLΔ collective-posterior example in the
+closing appendix-style section (Section~\ref{sec:collective}) rather than in
+the main results flow here.
 
 \subsection{CNV reversion upon removal of selection (De et al.\ 2025)}
 \label{sec:de}
@@ -1209,28 +1073,6 @@ These observations motivate the use of ensemble estimators and
 posterior-predictive checks as routine parts of the inference workflow rather
 than optional add-ons.
 
-\subsection{The collective posterior in practice}
-
-The collective posterior (\ref{eq:collective_log}) is the statistically
-correct way to combine evidence from independent replicates.
-It achieves the expected $r^{-1/2}$ narrowing
-(Figure~\ref{fig:collective_synthetic}), whereas a naive posterior average
-shows no narrowing as $r\to\infty$.
-In practice, outlier replicates---where an atypical mutation drives the
-trajectory---can bias the product estimator.
-The robust variant of \citet{bennun2026collective} handles this automatically
-and should be preferred when outlier replicates are suspected.
-
-A subtle but important point is that replicates are only truly ``independent''
-if they share no genetic material.
-In many experimental designs, replicate populations are founded from the same
-ancestor, so the initial genotype state is correlated.
-Accounting for this correlation may require a hierarchical model in which
-replicate-specific parameters (e.g., initial frequency $\phi_i$) are drawn
-from a shared hyper-prior rather than treated as independent.
-This extension is straightforward within the NPE framework: one simply trains
-the neural network to condition on the replicate-level observable.
-
 \subsection{Limitations and future directions}
 
 Several limitations of the current framework are worth noting.
@@ -1241,18 +1083,197 @@ basic model.
 Second, observation noise is modelled as additive Gaussian, which is a
 convenient approximation but may not capture the full noise structure of flow
 cytometry data.
-Third, the collective posterior assumes that all replicates share the same
-$\btheta$; in practice, there may be biologically meaningful between-replicate
-parameter variation that a single shared posterior cannot capture.
+Third, multi-replicate aggregation methods such as the collective posterior
+summarised in Section~\ref{sec:collective} assume that all replicates share
+the same $\btheta$; in practice, there may be biologically meaningful
+between-replicate parameter variation that a single shared posterior cannot
+capture.
 
 Future work could address these limitations by (i) developing multi-level
 hierarchical NPE that explicitly models between-replicate variation,
 (ii) incorporating richer noise models trained from calibration experiments,
 and (iii) extending the simulator to include clonal interference or
 spatially structured populations.
-The general framework---forward simulator, NPE training, collective
-posterior---is modular and can accommodate each of these extensions with
+The general framework---forward simulator, NPE training, and optional
+multi-replicate aggregation---is modular and can accommodate each of these extensions with
 minimal changes to the inference code.
+
+% =============================================================================
+\section{Appendix: Multi-Replicate Inference}
+\label{sec:collective}
+% =============================================================================
+
+The material in this closing section summarises one important extension of
+the single-replicate SBI workflow developed in the main paper.
+Because multi-replicate aggregation is a substantial topic in its own right,
+and because it is the focus of separate companion work, we place it here as
+supporting methodology rather than as one of the main findings of the
+present manuscript.
+
+\subsection{The multi-replicate problem}
+\label{sec:multi_rep_problem}
+
+Experimental evolution studies routinely generate $r = 4$--$20$ replicate
+populations evolved under identical conditions.
+Each replicate trajectory $\bx_i$ contains independent information about the
+same underlying parameter vector~$\btheta$.
+Naively, one could infer parameters from each replicate independently and
+then average the resulting posteriors.
+This is incorrect, however, because an average of posteriors is not a
+posterior---it over-counts the prior.
+The correct approach is to \emph{multiply} the likelihoods across replicates,
+which yields a much sharper combined posterior.
+
+\subsection{Derivation of the collective posterior}
+\label{sec:collective_derivation}
+
+Assume the $r$ replicate trajectories are conditionally independent given
+$\btheta$:
+\begin{equation}
+  p(\bx_1,\ldots,\bx_r\mid\btheta) = \prod_{i=1}^{r} p(\bx_i\mid\btheta).
+  \label{eq:likelihood_product}
+\end{equation}
+By Bayes' theorem the joint posterior is
+\begin{equation}
+  p(\btheta\mid\bx_1,\ldots,\bx_r)
+  \propto p(\btheta)\prod_{i=1}^{r} p(\bx_i\mid\btheta).
+  \label{eq:joint_posterior}
+\end{equation}
+NPE gives us an amortised approximation $q_\phi(\btheta\mid\bx_i)$ to each
+individual posterior
+$p_i(\btheta\mid\bx_i) \propto p(\btheta)\,p(\bx_i\mid\btheta)$.
+We can write
+\begin{equation}
+  p(\bx_i\mid\btheta) \;\propto\;
+  \frac{p_i(\btheta\mid\bx_i)}{p(\btheta)},
+  \label{eq:likelihood_from_posterior}
+\end{equation}
+and substituting into (\ref{eq:joint_posterior}):
+\begin{equation}
+  p(\btheta\mid\bx_1,\ldots,\bx_r)
+  \;\propto\; p(\btheta)^{1-r}\,\prod_{i=1}^{r} p_i(\btheta\mid\bx_i).
+  \label{eq:collective_unnorm}
+\end{equation}
+Taking logarithms and replacing each $p_i$ by its learned approximation
+$q_\phi(\cdot\mid\bx_i)$:
+\begin{equation}
+  \boxed{
+  \log p(\btheta\mid\bx_1,\ldots,\bx_r)
+  = \sum_{i=1}^{r} \log q_\phi(\btheta\mid\bx_i)
+    - (r-1)\log p(\btheta) - \log C,
+  }
+  \label{eq:collective_log}
+\end{equation}
+where $C$ is a normalising constant estimated by importance sampling from the
+prior.
+Equation~(\ref{eq:collective_log}) is the \emph{collective posterior}
+\citep{bennun2026collective}.
+
+\paragraph{Why not average posteriors?}
+An average of individual posteriors weights each replicate's evidence equally
+but retains $r$ copies of the prior, effectively over-regularising toward
+$p(\btheta)$ as the number of replicates grows.
+Equation~(\ref{eq:collective_log}) correctly cancels $r-1$ copies of the
+prior, so the collective posterior narrows at the statistically optimal rate
+$\sigma \propto r^{-1/2}$ as the number of replicates increases.
+Figure~\ref{fig:collective_synthetic} demonstrates this on eight synthetic
+replicates.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{fig_collective_synthetic.png}
+  \caption{\textbf{Individual and collective posteriors for eight synthetic
+  replicates.}
+  Marginal posterior densities for $\log_{10} s$, $\log_{10}\delta$, and
+  $\log_{10}\varphi$ across eight independently simulated replicates from the
+  four-genotype batch model at a fixed ``true'' $\btheta$ (dashed vertical
+  line).
+  Individual NPE posteriors (green) vary due to genetic drift between
+  replicates; the collective posterior (purple) is substantially narrower
+  than any single replicate's posterior, consistent with the expected
+  $r^{-1/2}$ narrowing for $r=8$ replicates.
+  (Generated by \texttt{SBI\_tutorial.ipynb}.)}
+  \label{fig:collective_synthetic}
+\end{figure}
+
+\subsection{Robust collective inference}
+\label{sec:robust_collective}
+
+In practice some replicates may be outliers: their trajectories may be
+dominated by a single large-effect mutation that does not represent the
+target system, by a measurement artefact, or by an atypical founder effect.
+Outlier replicates pull the joint likelihood product away from the consensus,
+inflating uncertainty or biasing estimates.
+\citet{bennun2026collective} address this with a \emph{robust product-of-experts}
+scheme that replaces the sum in (\ref{eq:collective_log}) with a
+trimmed or soft-thresholded aggregation, automatically down-weighting
+replicates whose individual log-posterior differs substantially from the
+consensus.
+We implement the simple version of (\ref{eq:collective_log}) in the tutorial
+notebook; readers requiring robustness should consult \citet{bennun2026collective}
+for the full implementation.
+
+\subsection{Sampling the collective posterior}
+\label{sec:collective_sampling}
+
+The collective posterior (\ref{eq:collective_log}) is not represented in
+closed form; we draw samples from it using either:
+\begin{enumerate}
+  \item \textbf{Rejection sampling.} Draw $\btheta' \sim p(\btheta)$, accept
+        with probability proportional to the unnormalised density.
+        Efficient when $\log C$ is not too negative (i.e., the prior and
+        collective posterior overlap well).
+  \item \textbf{MCMC.} Metropolis-Hastings chains initialised from the
+        top-probability prior samples found during the importance-sampling
+        estimation of $C$.
+        Preferred when the collective posterior is much narrower than the
+        prior.
+\end{enumerate}
+
+\subsection{ALLΔ example: collective posterior and posterior predictive check}
+
+Figure~\ref{fig:collective_alldelta} shows individual NPE posteriors for
+each of the 8 ALLΔ replicates alongside the collective posterior computed
+via Equation~(\ref{eq:collective_log}).
+The collective posterior is substantially narrower than any individual
+replicate posterior, providing a precise joint estimate of $(s, \delta, \phi)$
+for the ALLΔ genetic background.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{fig_collective_alldelta.png}
+  \caption{\textbf{Individual and collective posteriors for the ALLΔ
+  experimental lines} \citep{chuong2025template}.
+  Marginal posterior densities for $\log_{10} s$, $\log_{10}\delta$, and
+  $\log_{10}\varphi$ across all 8 ALLΔ replicates.
+  Individual NPE posteriors (green) are broad and vary between replicates
+  owing to evolutionary stochasticity.
+  The collective posterior (purple), computed via
+  Equation~(\ref{eq:collective_log}), integrates evidence from all
+  replicates and yields a substantially tighter estimate.
+  (Generated by \texttt{SBI\_tutorial.ipynb}.)}
+  \label{fig:collective_alldelta}
+\end{figure}
+
+To verify model adequacy, we sample 500 parameter vectors from the
+collective posterior and simulate 500 new trajectories.
+Figure~\ref{fig:ppc_alldelta} shows that these posterior predictive
+trajectories closely envelope the observed ALLΔ data, confirming that the
+four-genotype model is well specified for this system.
+
+\begin{figure}[ht]
+  \centering
+  \includegraphics[width=\linewidth]{fig_ppc_alldelta.png}
+  \caption{\textbf{Posterior predictive check for the ALLΔ lines.}
+  Purple lines show 500 CNV frequency trajectories simulated from samples
+  drawn from the ALLΔ collective posterior; yellow lines with dots show the
+  8 observed ALLΔ replicate trajectories \citep{chuong2025template}.
+  The simulated trajectories accurately envelope the timing and magnitude
+  of the observed CNV sweeps, confirming that the four-genotype batch model
+  is well specified.
+  (Generated by \texttt{SBI\_tutorial.ipynb}.)}
+  \label{fig:ppc_alldelta}
+\end{figure}
 
 % =============================================================================
 \section*{Code Availability}

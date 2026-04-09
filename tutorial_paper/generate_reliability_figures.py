@@ -17,253 +17,370 @@ import torch
 
 PAPER_DIR = Path(__file__).resolve().parent
 ROOT_DIR = PAPER_DIR.parents[1]
-ENSEMBLE_DIR = ROOT_DIR / "Ensembles" / "prolonged" / "ensemble_studies"
-MISSPEC_DIR = ROOT_DIR / "Ensembles" / "prolonged" / "misspec_studies"
+SBI_DIR = ROOT_DIR / "sbi_paper_experiments"
+PRIOR_DIR = SBI_DIR / "results" / "prior"
+ENSEMBLE_DIR = SBI_DIR / "results" / "ensembles"
+MISSPEC_DIR = SBI_DIR / "results" / "misspecification"
+DATA_DIR = ROOT_DIR / "tutorials" / "data"
 
-sys.path.insert(0, str(ENSEMBLE_DIR))
-from utils import load_tensor_from_csv  # noqa: E402
+sys.path.insert(0, str(ROOT_DIR))
+from sbi_paper_experiments.scripts.run_misspecification import (  # noqa: E402
+    SIGMA,
+    avecilla_at_chuong_gens,
+    chuong_truncated,
+)
 
 
 sns.set_theme(style="whitegrid", context="talk")
 torch.set_default_dtype(torch.float32)
 
-
-def ecdf(values: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    x = np.sort(values)
-    y = np.arange(1, len(x) + 1) / len(x)
-    return x, y
-
-
-def load_pickle(path: Path):
-    with path.open("rb") as handle:
-        return pickle.load(handle)
+PRIOR_COLORS = {"low": "#4878CF", "high": "#D65F5F"}
+ENSEMBLE_COLORS = {
+    "single": "#4878CF",
+    "prolonged": "#6ACC65",
+    "K3": "#D65F5F",
+    "K5": "#B47CC7",
+}
+MISSPEC_COLORS = {"avecilla": "#D65F5F", "chuong": "#4878CF"}
 
 
-def maybe_mean_last_dim(tensor: torch.Tensor) -> np.ndarray:
-    tensor = tensor.float()
-    if tensor.ndim > 1:
-        tensor = tensor.mean(1)
-    return tensor.cpu().numpy()
+def load_json(path: Path) -> dict:
+    with path.open() as handle:
+        return json.load(handle)
 
 
-def calibration_ks(tensor: torch.Tensor) -> float:
-    tensor = tensor.float()
-    if tensor.ndim > 1:
-        tensor = tensor.mean(1)
-    xs, _ = torch.sort(tensor)
-    expected = torch.linspace(1 / len(xs), 1, len(xs))
-    return float(torch.max(torch.abs(xs - expected)).item())
-
-
-def evaluate_posterior_fast(posterior, theta_test: torch.Tensor, x_test: torch.Tensor, num_samples: int) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
-    accs = torch.empty(len(theta_test), len(theta_test[0]))
-    conf = torch.empty(len(theta_test), len(theta_test[0]))
-    unc = torch.empty(len(theta_test), len(theta_test[0]))
-    logps = torch.empty(len(theta_test))
-    for i in range(len(theta_test)):
-        posterior = posterior.set_default_x(x_test[i])
-        try:
-            samples = posterior.sample((num_samples,), show_progress_bars=False)
-        except TypeError:
-            samples = posterior.sample((num_samples,))
-        try:
-            theta_lp = posterior.log_prob(theta_test[i].unsqueeze(0))
-            sample_lp = posterior.log_prob(samples)
-        except TypeError:
-            theta_lp = posterior.log_prob(theta_test[i].unsqueeze(0), x=x_test[i])
-            sample_lp = posterior.log_prob(samples, x=x_test[i])
-        accs[i] = samples.mean(0) - theta_test[i]
-        unc[i] = samples.max(0).values - samples.min(0).values
-        conf[i] = (sample_lp > theta_lp).sum() / num_samples
-        logps[i] = theta_lp.mean()
-    return accs, unc, conf, float(logps.mean().item())
+def sample_posterior(posterior, x_obs: torch.Tensor, n_samples: int) -> np.ndarray:
+    kwargs = {"x": x_obs}
+    try:
+        samples = posterior.sample((n_samples,), show_progress_bars=False, **kwargs)
+    except TypeError:
+        samples = posterior.sample((n_samples,), **kwargs)
+    return samples.detach().cpu().numpy()
 
 
 def prior_sensitivity_figure(summary: dict) -> None:
-    base = ENSEMBLE_DIR / "chuong"
-    theta_test = load_tensor_from_csv(base / "theta_test.csv")
-    x_test = load_tensor_from_csv(base / "x_test.csv")
-
-    center = theta_test.mean(0, keepdim=True)
-    idx = int(torch.argmin(((theta_test - center) ** 2).sum(1)).item())
-    theta_true = theta_test[idx]
-    x_obs = x_test[idx]
-
-    posterior_specs = {
-        "Lower prior": {
-            "posterior": load_pickle(base / "posterior_low_40k.pkl"),
-            "range": np.array([[-2.0, -1.0], [-7.0, -3.0], [-7.0, -3.0]]),
-            "color": "#b35806",
-            "accs": base / "accs_npe_low_40k.pt",
-            "unc": base / "unc_npe_low_40k.pt",
-        },
-        "Oracle prior": {
-            "posterior": load_pickle(base / "posterior_oracle_40k.pkl"),
-            "range": np.array([[-1.5, -1.0], [-6.0, -3.0], [-6.0, -3.0]]),
-            "color": "#1b9e77",
-            "accs": base / "accs_npe_oracle_40k.pt",
-            "unc": base / "unc_npe_oracle_40k.pt",
-        },
-        "Wider prior": {
-            "posterior": load_pickle(base / "posterior_high_40k.pkl"),
-            "range": np.array([[-1.5, -0.5], [-6.0, -2.0], [-6.0, -2.0]]),
-            "color": "#7570b3",
-            "accs": base / "accs_npe_high_40k.pt",
-            "unc": base / "unc_npe_high_40k.pt",
-        },
+    model_labels = {
+        "avecilla": "Avecilla et al.",
+        "zhou": "Zhou et al.",
+        "vz": "Vande Zande et al.",
     }
+    nsims = [10_000, 100_000]
+    records = []
+    for model, label in model_labels.items():
+        for nsim in nsims:
+            for prior in ["low", "high"]:
+                path = PRIOR_DIR / f"posterior_{model}_npe_maf_prior{prior}_nsim{nsim}_ep200_summary.json"
+                stats = load_json(path)
+                records.append(
+                    {
+                        "model": model,
+                        "model_label": label,
+                        "nsim": nsim,
+                        "condition": f"{label}\n{nsim // 1000}k",
+                        "prior": prior,
+                        "nmae": stats["nmae"],
+                        "norm_interval_width": stats["norm_interval_width"],
+                        "sbcc_abs_err": stats["sbcc_abs_err"],
+                        "pred_rmse": stats["pred_rmse"],
+                    }
+                )
+    df = pd.DataFrame(records)
+    cond_order = [f"{model_labels[m]}\n{nsim // 1000}k" for m in model_labels for nsim in nsims]
+    metrics = [
+        ("nmae", "NMAE"),
+        ("norm_interval_width", "Norm. interval width"),
+        ("sbcc_abs_err", "SBCC abs. error"),
+        ("pred_rmse", "Predictive RMSE"),
+    ]
 
-    samples = {}
-    for name, spec in posterior_specs.items():
-        samples[name] = spec["posterior"].set_default_x(x_obs).sample((4000,)).cpu().numpy()
+    fig, axes = plt.subplots(1, 4, figsize=(21.2, 5.8), constrained_layout=True)
+    x = np.arange(len(cond_order))
 
-    fig, axes = plt.subplots(1, 3, figsize=(14, 4.2), tight_layout=True)
-    param_labels = [r"$\log_{10}s$", r"$\log_{10}\delta$", r"$\log_{10}\phi$"]
-    xlims = [(-2.05, -0.45), (-7.2, -1.8), (-7.2, -1.8)]
+    for ax, (metric, title) in zip(axes, metrics):
+        for i, condition in enumerate(cond_order):
+            subset = df[df["condition"] == condition]
+            low = subset.loc[subset["prior"] == "low", metric].iloc[0]
+            high = subset.loc[subset["prior"] == "high", metric].iloc[0]
+            ax.plot([i - 0.12, i + 0.12], [low, high], color="#999999", lw=1.5, zorder=1)
+            ax.scatter(i - 0.12, low, color=PRIOR_COLORS["low"], s=65, zorder=3)
+            ax.scatter(i + 0.12, high, color=PRIOR_COLORS["high"], s=65, zorder=3)
+        ax.set_title(title)
+        ax.set_xticks(x)
+        ax.set_xticklabels(cond_order, fontsize=8.5, rotation=24, ha="right")
+        ax.tick_params(axis="x", pad=5)
+        ax.margins(x=0.06)
+        ax.set_ylabel("")
 
-    for j, ax in enumerate(axes):
-        for name, spec in posterior_specs.items():
-            lo, hi = spec["range"][j]
-            ax.axvspan(lo, hi, color=spec["color"], alpha=0.08)
-            sns.kdeplot(samples[name][:, j], ax=ax, color=spec["color"], lw=2, fill=False, label=name if j == 0 else None)
-        ax.axvline(float(theta_true[j]), color="black", ls="--", lw=1.5)
-        ax.set_title(param_labels[j])
-        ax.set_xlim(*xlims[j])
-        ax.set_ylabel("Density" if j == 0 else "")
-        ax.set_xlabel("")
-    axes[0].legend(frameon=False, fontsize=11, loc="upper left")
-    fig.suptitle("Posterior estimates shift with the training prior", y=1.05, fontsize=16)
+    axes[0].set_ylabel("Metric value")
+    handles = [
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=PRIOR_COLORS["low"], markersize=9, label="Lower prior"),
+        plt.Line2D([0], [0], marker="o", color="w", markerfacecolor=PRIOR_COLORS["high"], markersize=9, label="Higher prior"),
+    ]
+    axes[0].legend(handles=handles, frameon=False, fontsize=11, loc="upper right")
+    fig.suptitle("Prior sensitivity across three SBI benchmarks", y=1.05, fontsize=16)
     fig.savefig(PAPER_DIR / "fig_prior_sensitivity.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
-    prior_stats = {}
-    for name, spec in posterior_specs.items():
-        accs = torch.load(spec["accs"]).float()
-        unc = torch.load(spec["unc"]).float()
-        prior_stats[name] = {
-            "mean_abs_error": float(accs.abs().mean().item()),
-            "mean_uncertainty": float(unc.mean().item()),
-        }
-    summary["prior"] = {
-        "representative_index": idx,
-        "true_theta": [float(x) for x in theta_true.tolist()],
-        "stats": prior_stats,
-    }
+    prior_summary = {}
+    for model, label in model_labels.items():
+        prior_summary[label] = {}
+        for nsim in nsims:
+            subset = df[(df["model"] == model) & (df["nsim"] == nsim)].set_index("prior")
+            prior_summary[label][str(nsim)] = {
+                metric: {
+                    "low": float(subset.loc["low", metric]),
+                    "high": float(subset.loc["high", metric]),
+                }
+                for metric, _ in metrics
+            }
+    summary["prior"] = prior_summary
 
 
 def ensemble_figure(summary: dict) -> None:
-    bagging_base = ENSEMBLE_DIR / "phylo" / "ensemble" / "bagging"
-    vanilla_base = ENSEMBLE_DIR / "phylo" / "ensemble" / "vanilla"
-
-    ensemble_stats = {
-        "Single NPE": {
-            "mae": torch.load(bagging_base / "accs_npe_single.pt").abs().mean(1).cpu().numpy(),
-            "unc": torch.load(bagging_base / "unc_npe_single.pt").mean(1).cpu().numpy(),
-            "conf": maybe_mean_last_dim(torch.load(bagging_base / "conf_npe_single.pt")),
-            "logp": float(torch.load(bagging_base / "lpm_npe_single.pt").item()),
-            "ks": calibration_ks(torch.load(bagging_base / "conf_npe_single.pt")),
-            "color": "#d95f02",
-        },
-        "Vanilla ensemble": {
-            "mae": torch.load(vanilla_base / "accs_npe_vanilla.pt").abs().mean(1).cpu().numpy(),
-            "unc": torch.load(vanilla_base / "unc_npe_vanilla.pt").mean(1).cpu().numpy(),
-            "conf": maybe_mean_last_dim(torch.load(vanilla_base / "conf_npe_vanilla.pt")),
-            "logp": float(torch.load(vanilla_base / "lpm_npe_vanilla.pt").item()),
-            "ks": calibration_ks(torch.load(vanilla_base / "conf_npe_vanilla.pt")),
-            "color": "#7570b3",
-        },
-        "Bagging ensemble": {
-            "mae": torch.load(bagging_base / "accs_npe_bagging.pt").abs().mean(1).cpu().numpy(),
-            "unc": torch.load(bagging_base / "unc_npe_bagging.pt").mean(1).cpu().numpy(),
-            "conf": maybe_mean_last_dim(torch.load(bagging_base / "conf_npe_bagging.pt")),
-            "logp": float(torch.load(bagging_base / "lpm_npe_bagging.pt").item()),
-            "ks": calibration_ks(torch.load(bagging_base / "conf_npe_bagging.pt")),
-            "color": "#d95f02",
-        }
+    model_order = ["avecilla", "phylo", "vz"]
+    model_labels = {"avecilla": "Avecilla et al.", "phylo": "Moshe et al.", "vz": "Vande Zande et al."}
+    strategy_labels = {
+        "single": "Single",
+        "prolonged": "Prolonged",
+        "K3": "K=3",
+        "K5": "K=5",
     }
-    ensemble_stats["Bagging ensemble"]["color"] = "#1b9e77"
-    ensemble_stats["Single NPE"]["color"] = "#d95f02"
-    ensemble_stats["Vanilla ensemble"]["color"] = "#7570b3"
+    records = []
+    for model in model_order:
+        meta = load_json(ENSEMBLE_DIR / f"{model}_ensemble_experiment.json")
+        for result in meta["results"]:
+            rtype = result["type"]
+            if rtype == "single":
+                strategy = "single"
+            elif rtype == "prolonged":
+                strategy = "prolonged"
+            elif result.get("ensemble_size") == 3:
+                strategy = "K3"
+            elif result.get("ensemble_size") == 5:
+                strategy = "K5"
+            else:
+                continue
+            stats = load_json(ENSEMBLE_DIR / f"posterior_{result['tag']}_summary.json")
+            records.append(
+                {
+                    "model": model_labels[model],
+                    "strategy": strategy,
+                    "nmae": stats["nmae"],
+                    "sbcc_abs_err": stats["sbcc_abs_err"],
+                    "norm_interval_width": stats["norm_interval_width"],
+                    "wall_min": result["wall_s"] / 60.0,
+                }
+            )
+    df = pd.DataFrame(records)
+    metrics = [
+        ("nmae", "NMAE"),
+        ("sbcc_abs_err", "SBCC abs. error"),
+        ("norm_interval_width", "Norm. interval width"),
+        ("wall_min", "Wall time (min)"),
+    ]
 
-    fig, axes = plt.subplots(1, 3, figsize=(13.5, 4.2), tight_layout=True)
-    titles = ["Mean absolute error", "Mean posterior width", "Calibration diagnostic"]
-    xlabels = ["Per-observation error", "Per-observation uncertainty", "Posterior confidence rank"]
+    fig, axes = plt.subplots(1, 4, figsize=(20.8, 5.8), constrained_layout=True)
+    base_x = np.arange(len(model_order))
+    width = 0.18
+    strategy_order = ["single", "prolonged", "K3", "K5"]
 
-    for name, stats in ensemble_stats.items():
-        color = stats["color"]
-        for ax, key in zip(axes[:2], ["mae", "unc"]):
-            x, y = ecdf(stats[key])
-            ax.plot(x, y, color=color, lw=2, label=name if key == "mae" else None)
-        x, y = ecdf(stats["conf"])
-        axes[2].plot(x, y, color=color, lw=2, label=name)
-
-    axes[2].plot([0, 1], [0, 1], color="black", ls="--", lw=1, alpha=0.6)
-    for ax, title, xlabel in zip(axes, titles, xlabels):
+    for ax, (metric, title) in zip(axes, metrics):
+        for idx, strategy in enumerate(strategy_order):
+            vals = []
+            for model in [model_labels[m] for m in model_order]:
+                row = df[(df["model"] == model) & (df["strategy"] == strategy)].iloc[0]
+                vals.append(row[metric])
+            xpos = base_x + (idx - 1.5) * width
+            ax.bar(xpos, vals, width=width, color=ENSEMBLE_COLORS[strategy], label=strategy_labels[strategy])
         ax.set_title(title)
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel("ECDF")
-    axes[0].legend(frameon=False, fontsize=11, loc="lower right")
-    fig.suptitle("Bagging modestly stabilizes ensemble NPE on the phylogeny benchmark", y=1.05, fontsize=16)
+        ax.set_xticks(base_x)
+        ax.set_xticklabels([model_labels[m] for m in model_order], fontsize=9, rotation=12, ha="right")
+        ax.tick_params(axis="x", pad=4)
+        ax.margins(x=0.08)
+        ax.set_ylabel("")
+
+    axes[0].set_ylabel("Metric value")
+    axes[0].legend(frameon=False, fontsize=10, loc="upper left")
+    fig.suptitle("Budget-fair single vs prolonged vs ensemble comparisons", y=1.05, fontsize=16)
     fig.savefig(PAPER_DIR / "fig_ensemble_comparison.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
-    summary["ensemble"] = {
-        name: {
-            "mean_mae": float(stats["mae"].mean()),
-            "mean_uncertainty": float(stats["unc"].mean()),
-            "mean_confidence": float(stats["conf"].mean()),
-            "mean_log_prob": stats["logp"],
-            "calibration_ks": stats["ks"],
+    ensemble_summary = {}
+    for model in [model_labels[m] for m in model_order]:
+        subset = df[df["model"] == model].set_index("strategy")
+        ensemble_summary[model] = {
+            strategy_labels[strategy]: {
+                "nmae": float(subset.loc[strategy, "nmae"]),
+                "sbcc_abs_err": float(subset.loc[strategy, "sbcc_abs_err"]),
+                "norm_interval_width": float(subset.loc[strategy, "norm_interval_width"]),
+                "wall_min": float(subset.loc[strategy, "wall_min"]),
+            }
+            for strategy in strategy_order
         }
-        for name, stats in ensemble_stats.items()
-    }
+    summary["ensemble"] = ensemble_summary
 
 
 def misspecification_figure(summary: dict) -> None:
-    metric_files = {
-        "Matched WF": MISSPEC_DIR / "test_sims" / "metrics_WF.csv",
-        "WF + DFE mismatch": MISSPEC_DIR / "test_sims" / "metrics_WF_DFE.csv",
-        "WF + bottleneck mismatch": MISSPEC_DIR / "test_sims" / "metrics_WF_bottleneck.csv",
+    exp_meta = load_json(MISSPEC_DIR / "misspecification_experiment.json")
+    trunc_gens = np.array(exp_meta["trunc_gens"], dtype=int)
+    n_samples = 5000
+    n_ppc = 40
+
+    posterior_paths = {
+        model["label"]: MISSPEC_DIR / Path(model["posterior_path"]).name
+        for model in exp_meta["models"]
     }
-    dfs = []
-    for label, path in metric_files.items():
-        df = pd.read_csv(path)
-        df = df.rename(columns={"Unnamed: 0": "architecture"})
-        df["model_label"] = label
-        dfs.append(df)
-    metrics = pd.concat(dfs, ignore_index=True)
+    with posterior_paths["avecilla_misspec"].open("rb") as handle:
+        post_ave = pickle.load(handle)
+    with posterior_paths["chuong_correct"].open("rb") as handle:
+        post_chu = pickle.load(handle)
 
-    arch_order = [a for a in ["nle", "nre", "npe", "npse", "abc", "mamba_de"] if a in set(metrics["architecture"])]
-    model_order = list(metric_files.keys())
-    colors = ["#1b9e77", "#d95f02", "#7570b3"]
+    obs_df = pd.read_csv(DATA_DIR / "ltr.csv")
+    replicate_names = obs_df.iloc[:, 0].tolist()
+    full_gens = np.array([int(col) for col in obs_df.columns[1:]], dtype=int)
+    obs_trunc = obs_df[[str(g) for g in trunc_gens]].to_numpy(float)
+    obs_full = obs_df[[str(g) for g in full_gens]].to_numpy(float)
+    trunc_boundary = int(trunc_gens[-1])
 
-    fig, axes = plt.subplots(1, 2, figsize=(13.5, 4.6), tight_layout=True)
-    width = 0.24
-    x = np.arange(len(arch_order))
+    delta_s = []
+    delta_d = []
+    trunc_rmse_ave = []
+    trunc_rmse_chu = []
+    full_rmse_ave = []
+    full_rmse_chu = []
+    rng = np.random.default_rng(123)
+    predictive_store = []
 
-    for i, model in enumerate(model_order):
-        subset = metrics[metrics["model_label"] == model].set_index("architecture").loc[arch_order]
-        axes[0].bar(x + (i - 1) * width, subset["large either"].astype(float), width=width, color=colors[i], label=model)
-        axes[1].bar(x + (i - 1) * width, subset["rmse"].astype(float), width=width, color=colors[i], label=model)
+    for i in range(len(replicate_names)):
+        x_obs = torch.tensor(obs_trunc[i], dtype=torch.float32)
+        samples_ave = sample_posterior(post_ave, x_obs, n_samples)
+        samples_chu = sample_posterior(post_chu, x_obs, n_samples)
 
-    axes[0].set_title("Frequency of large parameter error")
-    axes[0].set_ylabel("Fraction of test cases")
-    axes[1].set_title("Posterior-predictive RMSE")
-    axes[1].set_ylabel("RMSE")
-    for ax in axes:
-        ax.set_xticks(x)
-        ax.set_xticklabels([a.upper() if a != "mamba_de" else "MAMBA-DE" for a in arch_order], rotation=20)
-    axes[0].legend(frameon=False, fontsize=10, loc="upper left")
-    fig.suptitle("Misspecified simulators degrade recovery and predictive fit", y=1.05, fontsize=16)
+        delta_s.append(float(samples_ave[:, 0].mean() - samples_chu[:, 0].mean()))
+        delta_d.append(float(samples_ave[:, 1].mean() - samples_chu[:, 1].mean()))
+
+        idx_ave = rng.choice(len(samples_ave), n_ppc, replace=False)
+        idx_chu = rng.choice(len(samples_chu), n_ppc, replace=False)
+
+        trunc_preds_ave = []
+        trunc_preds_chu = []
+        full_preds_ave = []
+        full_preds_chu = []
+
+        for idx in idx_ave:
+            trunc_preds_ave.append(
+                np.clip(
+                    avecilla_at_chuong_gens(samples_ave[idx], generations=trunc_gens)
+                    + rng.normal(0, SIGMA, len(trunc_gens)),
+                    0,
+                    1,
+                )
+            )
+            full_preds_ave.append(
+                np.clip(
+                    avecilla_at_chuong_gens(samples_ave[idx], generations=full_gens)
+                    + rng.normal(0, SIGMA, len(full_gens)),
+                    0,
+                    1,
+                )
+            )
+
+        for idx in idx_chu:
+            trunc_preds_chu.append(
+                np.clip(
+                    chuong_truncated(samples_chu[idx], generations=trunc_gens)
+                    + rng.normal(0, SIGMA, len(trunc_gens)),
+                    0,
+                    1,
+                )
+            )
+            full_preds_chu.append(
+                np.clip(
+                    chuong_truncated(samples_chu[idx], generations=full_gens)
+                    + rng.normal(0, SIGMA, len(full_gens)),
+                    0,
+                    1,
+                )
+            )
+
+        trunc_preds_ave = np.asarray(trunc_preds_ave)
+        trunc_preds_chu = np.asarray(trunc_preds_chu)
+        full_preds_ave = np.asarray(full_preds_ave)
+        full_preds_chu = np.asarray(full_preds_chu)
+
+        mean_trunc_ave = np.mean(trunc_preds_ave, axis=0)
+        mean_trunc_chu = np.mean(trunc_preds_chu, axis=0)
+        mean_full_ave = np.mean(full_preds_ave, axis=0)
+        mean_full_chu = np.mean(full_preds_chu, axis=0)
+
+        trunc_rmse_ave.append(float(np.sqrt(np.mean((mean_trunc_ave - obs_trunc[i]) ** 2))))
+        trunc_rmse_chu.append(float(np.sqrt(np.mean((mean_trunc_chu - obs_trunc[i]) ** 2))))
+        full_rmse_ave.append(float(np.sqrt(np.mean((mean_full_ave - obs_full[i]) ** 2))))
+        full_rmse_chu.append(float(np.sqrt(np.mean((mean_full_chu - obs_full[i]) ** 2))))
+
+        predictive_store.append(
+            {
+                "replicate": replicate_names[i].replace("gap1_", "").replace("_", " ").upper(),
+                "obs_full": obs_full[i],
+                "full_preds_ave": full_preds_ave,
+                "full_preds_chu": full_preds_chu,
+            }
+        )
+
+    fig, axes = plt.subplots(2, len(replicate_names), figsize=(2.7 * len(replicate_names), 6.4), sharex=True, sharey=True)
+
+    legend_handles = [
+        plt.Line2D([0], [0], color="black", marker="o", markersize=4, lw=1.4, label="Observed data"),
+        plt.Line2D([0], [0], color=MISSPEC_COLORS["avecilla"], lw=2.2, label="Avecilla et al. posterior median"),
+        plt.Line2D([0], [0], color=MISSPEC_COLORS["chuong"], lw=2.2, label="Chuong et al. posterior median"),
+        plt.Rectangle((0, 0), 1, 1, facecolor="#BDBDBD", alpha=0.12, edgecolor="none", label="Truncated fit window"),
+    ]
+
+    for i, entry in enumerate(predictive_store):
+        rep_label = entry["replicate"]
+        obs = entry["obs_full"]
+        for row, model_key, color, row_label in [
+            (0, "full_preds_ave", MISSPEC_COLORS["avecilla"], "Avecilla et al.\nmisspecified"),
+            (1, "full_preds_chu", MISSPEC_COLORS["chuong"], "Chuong et al.\ncorrect"),
+        ]:
+            ax = axes[row, i]
+            preds = entry[model_key]
+            lo = np.quantile(preds, 0.1, axis=0)
+            mid = np.quantile(preds, 0.5, axis=0)
+            hi = np.quantile(preds, 0.9, axis=0)
+            ax.axvspan(full_gens[0], trunc_boundary, color="#BDBDBD", alpha=0.12, zorder=0)
+            ax.fill_between(full_gens, lo, hi, color=color, alpha=0.18, zorder=1)
+            ax.plot(full_gens, mid, color=color, lw=2.1, zorder=2)
+            ax.plot(full_gens, obs, "o-", color="black", ms=3.8, lw=1.4, zorder=3)
+            ax.axvline(trunc_boundary, color="#777777", ls="--", lw=1.0, alpha=0.8)
+            ax.set_title(rep_label, fontsize=10)
+            ax.set_ylim(-0.03, 1.05)
+            ax.set_xticks([int(full_gens[0]), trunc_boundary, int(full_gens[-1])])
+            if i == 0:
+                ax.set_ylabel(f"{row_label}\nCNV frequency")
+            else:
+                ax.set_ylabel("")
+            if row == 1:
+                ax.set_xlabel("Generation")
+
+    fig.legend(handles=legend_handles, frameon=False, fontsize=9.5, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 0.98))
+    fig.suptitle("Misspecification becomes obvious only after forward prediction", y=1.06, fontsize=16)
     fig.savefig(PAPER_DIR / "fig_misspecification_metrics.png", dpi=300, bbox_inches="tight")
     plt.close(fig)
 
     summary["misspecification"] = {
-        model: {
-            "mean_large_either": float(metrics.loc[metrics["model_label"] == model, "large either"].astype(float).mean()),
-            "mean_rmse": float(metrics.loc[metrics["model_label"] == model, "rmse"].astype(float).mean()),
-        }
-        for model in model_order
+        "delta_log_s_mean": float(np.mean(delta_s)),
+        "delta_log_s_std": float(np.std(delta_s)),
+        "delta_log_delta_mean": float(np.mean(delta_d)),
+        "delta_log_delta_std": float(np.std(delta_d)),
+        "truncated_rmse": {
+            "avecilla": float(np.mean(trunc_rmse_ave)),
+            "chuong": float(np.mean(trunc_rmse_chu)),
+        },
+        "full_rmse": {
+            "avecilla": float(np.mean(full_rmse_ave)),
+            "chuong": float(np.mean(full_rmse_chu)),
+        },
     }
 
 
