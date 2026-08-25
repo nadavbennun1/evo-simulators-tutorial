@@ -1,0 +1,1303 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Simulation-based inference</title><link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="css/workshop.css"><noscript><style>.static-fallback{display:block}</style></noscript></head><body data-page="sbi"><a class="skip-link" href="#main">Skip to lesson</a><header class="site-header"><a class="wordmark" href="index.html"><span>Δ</span> Drift &amp; Design</a><nav aria-label="Workshop chapters"><a class="" href="index.html">Start</a><a class="" href="evolution.html">Evolution</a><a class="active" href="sbi.html">SBI</a></nav><div class="header-actions"><button id="workshop-mode" type="button" aria-pressed="false">Workshop mode</button><button id="reset-all" type="button">Reset all</button></div></header><div class="progress-track" aria-hidden="true"><span id="reading-progress"></span></div><main id="main"><header class="chapter-hero"><p class="eyebrow">Chapter 02 · Learning from simulations</p><h1>Simulation-based inference</h1><p class="lede">Mechanistic evolution, uncertainty, and experimental design—kept close enough to inspect.</p></header><div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson"><section class="lesson-cell prose-cell" id="cell-46c3d4e4" data-cell-id="46c3d4e4"><h1>Simulation-Based Inference for Experimental Evolution</h1>
+<h3>From ABC to Neural Posterior Estimation to Collective Inference</h3>
+<hr />
+<p><strong>Nadav Ben Nun</strong> &nbsp;|&nbsp; <em>Gresham Lab (NYU) · Selmecki Lab (UMN)</em></p>
+<hr />
+<h2>Overview</h2>
+<p>Experimental evolution reveals the dynamics of selection, mutation, and drift — but <strong>inferring the underlying parameters is challenging</strong>:</p>
+<ul>
+<li>Evolution is <strong>stochastic</strong>: the same parameters produce variable outcomes</li>
+<li>We observe <strong>discrete, noisy snapshots</strong> of evolving populations</li>
+<li>There is <strong>no closed-form likelihood</strong>: <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mtext>data</mtext><mo>&#x02223;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is analytically intractable</li>
+</ul>
+<p><strong>Simulation-Based Inference (SBI)</strong> solves this by learning the relationship between parameters and data directly from a simulator.</p>
+<hr />
+<h3>Roadmap</h3>
+<table>
+<thead>
+<tr>
+<th>Section</th>
+<th>Method</th>
+<th>Key Feature</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Wright-Fisher Simulator</strong></td>
+<td>Mechanistic model of GAP1 CNV dynamics</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>ABC</strong></td>
+<td>Intuitive baseline; rejection sampling</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>NPE</strong></td>
+<td>Neural density estimator; amortized inference</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>Flexible Zhou NPE</strong></td>
+<td>Odd vs even passage schedules with one trained estimator</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Collective Posterior</strong></td>
+<td>Formally combines evidence from multiple replicates</td>
+</tr>
+<tr>
+<td>6</td>
+<td><strong>Real Data</strong></td>
+<td><em>Chuong et al.</em> — ALLΔ line, 8 replicates, 116 generations</td>
+</tr>
+</tbody>
+</table></section>
+<section class="lesson-cell code-cell" id="cell-91d9e8fc" data-cell-id="91d9e8fc"><details class="code-panel"><summary>Show the code <span>Python · cell 1</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">import sys, warnings
+# CollectivePosterior implementation lives in the same directory (tutorials/)
+sys.path.insert(0, &#x27;.&#x27;)
+warnings.filterwarnings(&#x27;ignore&#x27;) # ignore warnings for cleaner output
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import torch
+import pickle
+from scipy.stats import gaussian_kde
+from tqdm.auto import tqdm
+
+# ── Plotting style ──────────────────────────────────────────────────────────
+plt.rcParams.update({
+    &#x27;font.size&#x27;: 15, &#x27;axes.titlesize&#x27;: 18, &#x27;axes.labelsize&#x27;: 16,
+    &#x27;xtick.labelsize&#x27;: 16, &#x27;ytick.labelsize&#x27;: 16,
+    &#x27;figure.dpi&#x27;: 400,
+    &#x27;axes.spines.top&#x27;: False, &#x27;axes.spines.right&#x27;: False,
+    &#x27;legend.frameon&#x27;: False, &#x27;figure.facecolor&#x27;: &#x27;white&#x27;,
+})
+
+C = {
+    &#x27;prior&#x27;: &#x27;#AAAAAA&#x27;,
+    &#x27;abc&#x27;:   &#x27;#E67E22&#x27;,
+    &#x27;npe&#x27;:   &#x27;#27AE60&#x27;,
+    &#x27;coll&#x27;:  &#x27;#8E44AD&#x27;,
+    &#x27;data&#x27;:  &#x27;#E74C3C&#x27;,
+    &#x27;sim&#x27;:   &#x27;#3498DB&#x27;,
+    &#x27;true&#x27;:  &#x27;#2C3E50&#x27;,
+}
+
+# 7 distinct colors for the 7 LTR replicates
+import matplotlib.cm as cm
+REP_COLORS = [cm.tab10(i) for i in range(30)]
+
+print(&quot;✓ Libraries loaded&quot;)
+
+
+# change xlabel, ylabel, and title font sizes for the entire notebook
+plt.rcParams.update({
+    &#x27;font.size&#x27;: 14, &#x27;axes.titlesize&#x27;: 18, &#x27;axes.labelsize&#x27;: 16,
+    &#x27;xtick.labelsize&#x27;: 16, &#x27;ytick.labelsize&#x27;: 16,
+})</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ Libraries loaded</pre></section>
+<section class="lesson-cell prose-cell" id="cell-fa1ab176" data-cell-id="fa1ab176"><h2>1. The Problem: Inferring Parameters from Evolutionary Trajectories</h2>
+<h3>Case study: GAP1 Copy Number Variant (CNV) Dynamics</h3>
+<p><em>(Chuong et al. 2025)</em></p>
+<p><em>Saccharomyces cerevisiae</em> populations are evolved under glutamine limitation for <strong>116 generations</strong>.
+Under nutrient stress, cells that amplify the <em>GAP1</em> gene (a general amino acid permease) gain a
+fitness benefit — they can acquire the gene through copy number variation (CNV).</p>
+<p>We track the <strong>fraction of cells carrying a GAP1 CNV</strong> by barcode sequencing at 12 time points.</p>
+<p><strong>Four genetic backgrounds are tested:</strong>
+- <strong>WT</strong> — wild type
+- <strong>LTRΔ</strong> — deletion of upstream Long Terminal Repeat elements (7 replicates)
+- <strong>ARSΔ</strong> — deletion of an Autonomously Replicating Sequence
+- <strong>ALLΔ</strong> — deletion of LTRs and ARS</p>
+<p><strong>We want to infer:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Symbol</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CNV selection coefficient</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math></td>
+<td>How much faster do CNV cells grow?</td>
+</tr>
+<tr>
+<td>CNV mutation rate</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B4;</mi></mrow></math></td>
+<td>How often does the CNV arise per generation?</td>
+</tr>
+<tr>
+<td>Initial CNV frequency</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C6;</mi></mrow></math></td>
+<td>How many undetectable CNV cells were present at the start?</td>
+</tr>
+</tbody>
+</table>
+<h3>The mathematical challenge</h3>
+<p>We want the <strong>posterior distribution</strong>:</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mtext>obs</mtext></msub><mo stretchy="false">&#x00029;</mo><mspace width="0.278em" /><mo>&#x0221D;</mo><mspace width="0.278em" /><munder><munder><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><msub><mi>x</mi><mtext>obs</mtext></msub><mo>&#x02223;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow><mo>&#x23DF;</mo></munder><mrow><mtext>likelihood&#x000A0;(intractable!)</mtext></mrow></munder><mi>&#x000B7;</mi><munder><munder><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow><mo>&#x23DF;</mo></munder><mrow><mtext>prior</mtext></mrow></munder></mrow></math></div></p>
+<p>The Wright-Fisher model is stochastic — there is no analytical expression for <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x02223;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math>.
+<strong>We need simulation-based inference.</strong></p></section>
+<section class="lesson-cell code-cell" id="cell-393e2607" data-cell-id="393e2607"><details class="code-panel"><summary>Show the code <span>Python · cell 3</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ═══════════════════════════════════════════════════════════════════
+# THE WRIGHT-FISHER SIMULATOR  (Chuong et al. 2025 model)
+# ═══════════════════════════════════════════════════════════════════
+
+# Generation time points at which CNV frequency was measured
+GENERATIONS = np.array([8, 21, 29, 37, 50, 58, 66, 79, 87, 95, 108, 116])
+
+# Fixed SNV parameters (not inferred)
+S_SNV = 1e-3   # fitness benefit of point mutations
+M_SNV = 1e-5   # rate of SNV acquisition per generation
+N     = int(1e7)  # effective population size
+
+
+def WF(log_s, log_m, log_p0, seed=None):
+    &quot;&quot;&quot;
+    Wright-Fisher simulator for GAP1 CNV dynamics.
+
+    Four-genotype model:
+        wt   (wildtype)    : fitness = 1              starts at high frequency
+        cnv+ (CNV present) : fitness = 1 + s_cnv      rare initially, can arise via mutation
+        cnv- (CNV lost)    : fitness = 1 + s_cnv      starts at p0 (pre-existing CNVs)
+        snv  (point mutant): fitness = 1 + s_snv      very rare, fixed parameters
+
+    Transitions (per generation):
+        wt → cnv+  at rate m_cnv
+        wt → snv   at rate m_snv
+        (all other transitions irreversible, no back-mutation)
+
+    Parameters (log₁₀ scale):
+    ─────────────────────────────────────────────────────────────────
+    log_s   : log10(CNV fitness benefit)   ∈ [-2, 0]  → s  from 0.01 to 1
+    log_m   : log10(CNV mutation rate)     ∈ [-7, -2]  → μ  from 1e-7 to 0.01
+    log_p0  : log10(initial CNV fraction)  ∈ [-8, -2]  → p0 from 1e-8 to 0.01
+
+    Returns
+    ───────
+    np.array of shape (12,): CNV frequency (cnv+) at each generation in GENERATIONS
+    &quot;&quot;&quot;
+    s, m, p0 = 10 ** np.array([log_s, log_m, log_p0])
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Fitness vector: [wt, cnv+, cnv-, snv]
+    w = np.array([1.0, 1.0 + s, 1.0 + s, 1.0 + S_SNV])
+    S_mat = np.diag(w)
+
+    # Mutation matrix (columns = source, rows = destination)
+    # wt can mutate to cnv+ at rate m, to snv at rate m_snv
+    M = np.array([
+        [1 - m - M_SNV,  0,  0,  0],   # wt
+        [m,              1,  0,  0],   # cnv+
+        [0,              0,  1,  0],   # cnv-
+        [M_SNV,          0,  0,  1],   # snv
+    ], dtype=&#x27;float64&#x27;)
+
+    # Combined operator: selection then mutation
+    E = M @ S_mat
+
+    # Initial counts: mostly wt, small pre-existing cnv- fraction
+    n = np.zeros(4)
+    n[0] = N * (1 - p0)   # wt
+    n[2] = N * p0          # cnv- (pre-existing, e.g. from earlier CNV events)
+
+    # Simulate generation by generation, tracking cnv+ (index 1)
+    cnv_freq = []
+    for _ in range(int(GENERATIONS.max()) + 1):
+        cnv_freq.append(n[1] / N)            # record cnv+ frequency
+        p = E @ (n / N)
+        p /= p.sum()                          # renormalise
+        n = np.random.multinomial(N, p).astype(float)
+
+    return np.array(cnv_freq)[GENERATIONS]
+
+
+# ── Quick sanity check ───────────────────────────────────────────────────────
+traj = WF(log_s=-0.9, log_m=-5.0, log_p0=-5.5, seed=42) # LTR MAP
+print(f&quot;WF simulator test  (s=0.1, 𝛿=3.2e-5, 𝜑=1e-5):&quot;)
+print(f&quot;  Gen   8: CNV fraction = {traj[0]:.5f}&quot;)
+print(f&quot;  Gen 116: CNV fraction = {traj[-1]:.3f}&quot;)
+print(f&quot;  → CNV rises from rare to significant fraction over 116 generations&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">WF simulator test  (s=0.1, 𝛿=3.2e-5, 𝜑=1e-5):
+  Gen   8: CNV fraction = 0.00011
+  Gen 116: CNV fraction = 0.946
+  → CNV rises from rare to significant fraction over 116 generations</pre></section>
+<section class="lesson-cell code-cell" id="cell-cdda66b7" data-cell-id="cdda66b7"><details class="code-panel"><summary>Show the code <span>Python · cell 4</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">fig, axes = plt.subplots(1, 2, figsize=(15, 6), sharey=True)
+
+TRUE = dict(log_s=-0.9, log_m=-5.0, log_p0=-5.5)
+
+# ── Panel A: Stochasticity ── same θ, different realisations ────────────────
+ax = axes[0]
+for seed in range(500):
+    traj = WF(**TRUE, seed=seed)
+    ax.plot(GENERATIONS, traj, alpha=0.3, lw=0.1, color=&#x27;grey&#x27;)
+
+# One highlighted &quot;observed&quot; trajectory
+x_example = WF(**TRUE, seed=7)
+ax.plot(GENERATIONS, x_example, &#x27;o-&#x27;, ms=8, lw=1.5,
+        zorder=5, label=&#x27;One observed replicate&#x27;)
+
+ax.set_xlabel(&#x27;Generation&#x27;)
+ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(&#x27;Minimal stochasticity:\nsame parameters, similar outcomes&#x27;)
+ax.set_ylim(-0.02, 1.02)
+ax.legend()
+
+# ── Panel B: Sensitivity to s ────────────────────────────────────────────────
+ax = axes[1]
+param_sweep = [
+    (-0.5, &#x27;#E74C3C&#x27;, &#x27;s = 0.32&#x27;),
+    (TRUE[&#x27;log_s&#x27;], &#x27;#2980B9&#x27;, f&#x27;s = {10 ** TRUE[&quot;log_s&quot;]:.2f}&#x27;),
+    (-1.5, &#x27;#27AE60&#x27;, &#x27;s = 0.03&#x27;),
+]
+for log_s, color, label in param_sweep:
+    traj = WF(log_s=log_s, log_m=TRUE[&#x27;log_m&#x27;], log_p0=TRUE[&#x27;log_p0&#x27;], seed=42)
+    ax.plot(GENERATIONS, traj, lw=2.5, color=color, label=label)
+
+ax.set_xlabel(&#x27;Generation&#x27;)
+ax.set_title(&#x27;Sensitivity to CNV selection coefficient s\n($𝛿$ and $\\varphi$ fixed)&#x27;)
+ax.legend(title=&#x27;Selection coefficient s&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+plt.suptitle(&#x27;The Wright-Fisher Simulator — GAP1 CNV&#x27;, y=1.02)
+plt.tight_layout()
+plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/cdda66b7-out-0.png" alt="Stored notebook figure from cell cdda66b7"><figcaption>Stored notebook output · cell cdda66b7</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-f992e16d" data-cell-id="f992e16d"><h2>2. Approximate Bayesian Computation (ABC)</h2>
+<h3>Core idea: replace the likelihood with a distance</h3>
+<p>Since <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo>&#x02223;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math> is intractable, <strong>simulate</strong> and <strong>compare</strong>:</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x003B8;</mi><mo>&#x02208;</mo><mtext>posterior</mtext><mi>&#x027FA;</mi><mi>d</mi><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><msub><mi>x</mi><mtext>sim</mtext></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002C;</mo><mspace width="0.167em" /><msub><mi>x</mi><mtext>obs</mtext></msub><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow><mo>&#x0003C;</mo><mi>&#x003B5;</mi></mrow></math></div></p>
+<pre><code>Algorithm: Rejection ABC
+────────────────────────
+1. Draw θ ~ p(θ)                     [sample from prior]
+2. Simulate x_sim ~ p(x | θ)         [run the WF model]
+3. Compute d = RMSE(x_sim, x_obs)    [how close?]
+4. Accept θ if d &lt; ε                 [rejection step]
+</code></pre>
+<p>The accepted samples approximate <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mtext>obs</mtext></msub><mo stretchy="false">&#x00029;</mo></mrow></math> — exact in the limit <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B5;</mi><mo>&#x02192;</mo><mn>0</mn></mrow></math>.</p>
+<hr />
+<table>
+<thead>
+<tr>
+<th>✓ Pros</th>
+<th>✗ Cons</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Intuitive and easy to implement</td>
+<td><strong>Computationally expensive</strong> (many simulations needed)</td>
+</tr>
+<tr>
+<td>No training phase required</td>
+<td>Distance function choice is an art</td>
+</tr>
+<tr>
+<td>Exact in the <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B5;</mi><mo>&#x02192;</mo><mn>0</mn></mrow></math> limit</td>
+<td><strong>Not amortized</strong>: must re-run for every new observation</td>
+</tr>
+<tr>
+<td>Works with any black-box simulator</td>
+<td>Curse of dimensionality for many parameters</td>
+</tr>
+</tbody>
+</table></section>
+<section class="lesson-cell code-cell" id="cell-67d19e3c" data-cell-id="67d19e3c"><details class="code-panel"><summary>Show the code <span>Python · cell 6</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">def rejection_abc(observed, n_sim=5_000, quantile=0.02, seed=None):
+    &quot;&quot;&quot;
+    Rejection ABC for the Chuong et al. WF model.
+
+    Parameters
+    ----------
+    observed  : 1-D array of observed CNV frequencies at GENERATIONS (length 12)
+    n_sim     : number of prior samples to draw
+    quantile  : acceptance fraction  (e.g. 0.02 → accept best 2%)
+
+    Returns
+    -------
+    accepted  : (n_accepted, 3) array of accepted (log_s, log_m, log_p0)
+    distances : (n_sim,) array of RMSE values for all simulations
+    epsilon   : acceptance threshold used
+    &quot;&quot;&quot;
+    if seed is not None:
+        np.random.seed(seed)
+
+    # Prior: BoxUniform in log₁₀ space  (matching the trained NPE posterior)
+    prior_low  = np.array([-2.,  -7.,  -8.])
+    prior_high = np.array([ 0.,  -2.,  -2.])
+
+    # 1. Sample from prior
+    thetas = np.random.uniform(prior_low, prior_high, (n_sim, 3))
+
+    # 2. Simulate and compute RMSE distance
+    distances = np.zeros(n_sim)
+    for i in range(n_sim):
+        log_s, log_m, log_p0 = thetas[i]
+        x_sim = WF(log_s, log_m, log_p0)
+        distances[i] = np.sqrt(np.mean((x_sim - observed) ** 2))
+
+    # 3. Accept the best `quantile` fraction
+    epsilon  = np.quantile(distances, quantile)
+    accepted = thetas[distances &lt;= epsilon]
+
+    return accepted, distances, epsilon
+</code></pre></details></section>
+<section class="lesson-cell code-cell" id="cell-0ba5658f" data-cell-id="0ba5658f"><details class="code-panel"><summary>Show the code <span>Python · cell 7</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">
+# ── Synthetic &quot;ground truth&quot; observation ────────────────────────────────────
+# Choose true parameters in the middle of the prior range
+TRUE_LOG_S  = -0.9   # s   = 0.13  (strong CNV benefit)
+TRUE_LOG_M  = -5.0   # μ   ≈ 1e-5  (moderate mutation rate)
+TRUE_LOG_P0 = -5.5   # p₀  = 5e-5  (rare initial CNV)
+
+x_obs_synth = WF(TRUE_LOG_S, TRUE_LOG_M, TRUE_LOG_P0, seed=42)
+
+print(f&quot;True parameters:  log₁₀(s)={TRUE_LOG_S},  log₁₀(𝛿)={TRUE_LOG_M},  log₁₀(𝜑)={TRUE_LOG_P0}&quot;)
+print(f&quot;Observed CNV freq (gen 8 → 116): {x_obs_synth.round(3)}&quot;)
+
+# ── Run ABC ──────────────────────────────────────────────────────────────────
+N_SIM_ABC = 30_000
+print(f&quot;\nRunning ABC ({N_SIM_ABC:,} simulations, {2:.0f}% acceptance) ...&quot;)
+print(&quot;(Each simulation runs the WF model for 116 generations with N=10⁷)&quot;)
+
+abc_samples, abc_distances, abc_eps = rejection_abc(
+    x_obs_synth, n_sim=N_SIM_ABC, quantile=0.02, seed=0)
+
+print(f&quot;\nResults:&quot;)
+print(f&quot;  Acceptance threshold (ε): {abc_eps:.4f}&quot;)
+print(f&quot;  Accepted samples:         {len(abc_samples)}&quot;)
+print(f&quot;  Acceptance rate:          {len(abc_samples)/N_SIM_ABC:.1%}&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">True parameters:  log₁₀(s)=-0.9,  log₁₀(𝛿)=-5.0,  log₁₀(𝜑)=-5.5
+Observed CNV freq (gen 8 → 116): [0.    0.001 0.002 0.006 0.027 0.066 0.154 0.453 0.669 0.821 0.926 0.946]
+
+Running ABC (30,000 simulations, 2% acceptance) ...
+(Each simulation runs the WF model for 116 generations with N=10⁷)</pre><pre class="cell-output" aria-label="Stored notebook output">
+Results:
+  Acceptance threshold (ε): 0.1009
+  Accepted samples:         600
+  Acceptance rate:          2.0%</pre></section>
+<section class="station answer-gated" id="guess-parameter" data-station="guess-parameter">
+      <div class="station-kicker">Interactive station</div><h2>Guess the parameters—then reveal uncertainty</h2><p class="prediction">Inspect the frozen trajectory. Choose plausible values; several combinations can look alike.</p>
+        <div class="interactive-grid"><form class="controls" id="guess-controls"><label>log₁₀(s) <output id="guess-s-label"></output><input id="guess-s" type="range" min="-2" max="0" step="0.05" value="-1"></label><label>log₁₀(δ) <output id="guess-m-label"></output><input id="guess-m" type="range" min="-7" max="-2" step="0.05" value="-4.5"></label><label>log₁₀(φ) <output id="guess-p0-label"></output><input id="guess-p0" type="range" min="-8" max="-2" step="0.05" value="-5"></label><button id="guess-reveal" type="button">Reveal posterior</button><button id="guess-new" type="button">Next fixed example</button><button type="reset">Reset</button></form><div class="viz"><canvas id="guess-canvas" width="760" height="430" aria-label="Hidden-parameter trajectory and posterior reveal"></canvas><p id="guess-summary" class="plot-summary"></p></div></div><div class="static-fallback"><img src="assets/fallback/guess-parameter.png" alt="Representative static result for guess parameter"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<section class="lesson-cell code-cell" id="cell-da54003d" data-cell-id="da54003d"><details class="code-panel"><summary>Show the code <span>Python · cell 8</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">PARAM_NAMES  = [&#x27;log₁₀(s)&#x27;,      &#x27;log₁₀(𝛿)&#x27;,         &#x27;log₁₀(𝜑)&#x27;]
+xlabels     = [&#x27;log₁₀(s)&#x27;, &#x27;log₁₀($𝛿$)&#x27;, &#x27;log₁₀($𝜑$)&#x27;]
+PARAM_LABELS = [&#x27;CNV selection coefficient s&#x27;, &#x27;CNV mutation rate $𝛿$&#x27;, &#x27;Initial CNV freq $𝜑$&#x27;]
+TRUE_VALS    = [TRUE_LOG_S, TRUE_LOG_M, TRUE_LOG_P0]
+PRIOR_BOUNDS = [(-2, 0),         (-7, -2),              (-8, -2)]
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+
+for ax_idx in range(3):
+    ax = axes[ax_idx]
+    lo, hi = PRIOR_BOUNDS[ax_idx]
+    x_range = np.linspace(lo, hi, 300)
+
+    # Prior (flat)
+    prior_h = np.ones_like(x_range) / (hi - lo)
+    ax.fill_between(x_range, prior_h, alpha=0.25, color=C[&#x27;prior&#x27;], label=&#x27;Prior&#x27;)
+
+    # ABC posterior
+    abc_col = abc_samples[:, ax_idx]
+    kde_abc = gaussian_kde(abc_col, bw_method=0.3)
+    ax.fill_between(x_range, kde_abc(x_range), alpha=0.5, color=C[&#x27;abc&#x27;])
+    ax.plot(x_range, kde_abc(x_range), lw=2, color=C[&#x27;abc&#x27;], label=&#x27;ABC&#x27;)
+
+    # True value
+    ax.axvline(TRUE_VALS[ax_idx], ls=&#x27;--&#x27;, lw=2.5, color=C[&#x27;true&#x27;],
+               label=f&#x27;True&#x27;)
+
+    ax.set_xlabel(xlabels[ax_idx])
+    ax.set_ylabel(&#x27;Density&#x27; if ax_idx == 0 else &#x27;&#x27;)
+    ax.set_title(PARAM_LABELS[ax_idx])
+    ax.set_xlim(lo, hi)
+
+axes[0].legend(loc=&#x27;upper left&#x27;)
+plt.suptitle(f&#x27;ABC Posteriors  (synthetic data, {N_SIM_ABC:,} sims)&#x27;)
+plt.tight_layout()
+plt.show()
+
+print(&quot;\nABC posterior summary:&quot;)
+for idx, pname in enumerate(PARAM_NAMES):
+    col = abc_samples[:, idx]
+    print(f&quot;  {pname}: mean = {col.mean():.2f} ± {col.std():.2f}   (true = {TRUE_VALS[idx]:.1f})&quot;)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/da54003d-out-0.png" alt="Stored notebook figure from cell da54003d"><figcaption>Stored notebook output · cell da54003d</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">
+ABC posterior summary:
+  log₁₀(s): mean = -0.97 ± 0.14   (true = -0.9)
+  log₁₀(𝛿): mean = -4.67 ± 0.98   (true = -5.0)
+  log₁₀(𝜑): mean = -6.13 ± 1.23   (true = -5.5)</pre></section>
+<section class="lesson-cell prose-cell" id="cell-8d7d8c01" data-cell-id="8d7d8c01"><h2>3. Neural Posterior Estimation (NPE)</h2>
+<h3>The key insight: <em>amortize</em> the computational cost</h3>
+<p>ABC repeats expensive simulations for every new observation.
+<strong>NPE</strong> trains a neural network <strong>once</strong> and then performs inference in microseconds.</p>
+<h3>How it works</h3>
+<ol>
+<li>
+<p><strong>Training</strong> (expensive, done once):
+   Sample <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi></mrow></math> pairs <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><msub><mi>&#x003B8;</mi><mi>i</mi></msub><mo>&#x0002C;</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">&#x00029;</mo></mrow></math> from the joint <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo><mspace width="0.167em" /><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>x</mi><mo stretchy="false">&#x0007C;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math>, and train a conditional density estimator:
+   <div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>q</mi><mi>&#x003D5;</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><mi>x</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02248;</mo><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><mi>x</mi><mo stretchy="false">&#x00029;</mo></mrow></math></div>
+   using a <strong>normalizing flow</strong> (Masked Autoregressive Flow) — a neural network mapping a Gaussian
+   into an arbitrary posterior shape, conditioned on <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>x</mi></mrow></math>.</p>
+</li>
+<li>
+<p><strong>Inference</strong> (cheap, amortized):
+   For any new <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>x</mi><mtext>obs</mtext></msub></mrow></math>, condition the trained network: a single forward pass gives the full posterior <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>q</mi><mi>&#x003D5;</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mtext>obs</mtext></msub><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+</li>
+</ol>
+<h3>Training objective</h3>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x02112;</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003D5;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><mo>&#x02212;</mo><mspace width="0.167em" /><msub><mi>&#x1D53C;</mi><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x0002C;</mo><mspace width="0.167em" /><mi>x</mi><mo stretchy="false">&#x00029;</mo></mrow></msub><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">[</mo><mi>log</mi><msub><mi>q</mi><mi>&#x003D5;</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><mi>x</mi><mo stretchy="false">&#x00029;</mo><mo stretchy="true" fence="true" form="postfix">]</mo></mrow></mrow></math></div></p>
+<p>Minimised over simulated <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x0002C;</mo><mi>x</mi><mo stretchy="false">&#x00029;</mo></mrow></math> pairs.</p>
+<hr />
+<table>
+<thead>
+<tr>
+<th></th>
+<th><strong>ABC</strong></th>
+<th><strong>NPE</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Simulations per inference</td>
+<td>100,000 (≈1 min)</td>
+<td>≈ 0 (amortized)</td>
+</tr>
+<tr>
+<td>One-time training cost</td>
+<td>None</td>
+<td>30,000 sims (≈15 mins)</td>
+</tr>
+<tr>
+<td>Posterior quality</td>
+<td>Approximate (depends on ε)</td>
+<td>Asymptotically exact</td>
+</tr>
+<tr>
+<td>Cost of new observations</td>
+<td>Full re-run</td>
+<td>One forward pass</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<p><strong>Tip</strong>: When training NPE, add a small Gaussian noise as measurement errors. If there is no noise in the training simulations, we will not be able to infer from noisy observations!</p>
+<p>Here, we added a Gaussian noise <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi><mo stretchy="false">&#x00028;</mo><mn>0</mn><mo>&#x0002C;</mo><mn>0.02</mn><mo stretchy="false">&#x00029;</mo></mrow></math></p></section>
+<section class="station answer-gated" id="training-viewer" data-station="training-viewer">
+      <div class="station-kicker">Interactive station</div><h2>100 epochs of learning</h2><p class="prediction">Prediction: when does lower validation loss begin to produce useful posterior predictions?</p>
+        <div class="preset-row"><button data-epoch="0">Untrained</button><button data-epoch="5">Early</button><button data-epoch="50">Mid-training</button><button data-epoch="best">Best validation</button><button data-epoch="100">Final</button></div>
+        <label class="wide-control">Epoch <output id="epoch-label">0</output><input id="epoch-slider" type="range" min="0" max="100" value="0"></label>
+        <div class="button-row"><button id="epoch-play" type="button">Play</button><button id="epoch-reset" type="button">Reset</button></div>
+        <p class="snap-note" id="epoch-snap">Posterior snapshots snap to genuine stored checkpoints.</p>
+        <div class="plot-pair training-plots"><canvas id="loss-canvas" width="660" height="340" aria-label="Training and validation loss across 100 epochs"></canvas><canvas id="training-posterior-canvas" width="660" height="340" aria-label="Posterior marginals at selected checkpoint"></canvas><canvas id="training-ppc-canvas" width="660" height="340" aria-label="Posterior predictive check at selected checkpoint"></canvas></div>
+        <p class="plot-summary" id="training-summary" aria-live="polite"></p>
+        <div class="what-changed"><strong>What changed?</strong> Lower loss improves the learned conditional density on average; a useful PPC is related evidence, not a calibration guarantee.</div><div class="static-fallback"><img src="assets/fallback/training-viewer.png" alt="Representative static result for training viewer"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<section class="lesson-cell code-cell" id="cell-88e4194b" data-cell-id="88e4194b"><details class="code-panel"><summary>Show the code <span>Python · cell 10</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Training code (for reference — we load a pre-trained model below) ────────
+
+TRAINING_CODE = &#x27;&#x27;&#x27;
+from sbi.inference import NPE
+from sbi.utils import BoxUniform
+from simulator import WF
+import numpy as np
+import torch
+import pickle
+
+# 1. Prior over (s, 𝛿, 𝜑) in log₁₀ space
+prior = BoxUniform(
+    low  = torch.tensor([-2., -7., -8.]),
+    high = torch.tensor([ 0., -2., -2.])
+)
+
+# 2. Simulate 30,000 (θ, x) pairs
+n_sim = 30_000
+theta_sim = prior.sample((n_sim,))
+x_sim     = torch.zeros(n_sim, len(GENERATIONS))
+
+for i in tqdm(range(n_sim)):
+    log_s, log_m, log_p0 = theta_sim[i].numpy()
+    clean_curve = WF(log_s, log_m, log_p0)
+    noisy_curve = np.clip(clean_curve + np.random.normal(0, 0.02, len(GENERATIONS)), 0, 1)
+    x_sim[i] = torch.tensor(noisy_curve, dtype=torch.float32)
+
+# 3. Train a Masked Autoregressive Flow
+inference   = NPE(prior, density_estimator=&quot;maf&quot;)
+density_est = inference.append_simulations(theta_sim, x_sim).train(stop_after_epochs=20)
+posterior   = inference.build_posterior(density_est)
+
+# 4. Save for reuse
+with open(&quot;posteriors/posterior_WF_30000_20.pkl&quot;, &quot;wb&quot;) as f:
+    pickle.dump(posterior, f)
+&#x27;&#x27;&#x27;
+
+print(&quot;NPE training code (30 k sims, density estimator = MAF):&quot;)
+print(TRAINING_CODE)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">NPE training code (30 k sims, density estimator = MAF):
+
+from sbi.inference import NPE
+from sbi.utils import BoxUniform
+from simulator import WF
+import numpy as np
+import torch
+import pickle
+
+# 1. Prior over (s, 𝛿, 𝜑) in log₁₀ space
+prior = BoxUniform(
+    low  = torch.tensor([-2., -7., -8.]),
+    high = torch.tensor([ 0., -2., -2.])
+)
+
+# 2. Simulate 30,000 (θ, x) pairs
+n_sim = 30_000
+theta_sim = prior.sample((n_sim,))
+x_sim     = torch.zeros(n_sim, len(GENERATIONS))
+
+for i in tqdm(range(n_sim)):
+    log_s, log_m, log_p0 = theta_sim[i].numpy()
+    clean_curve = WF(log_s, log_m, log_p0)
+    noisy_curve = np.clip(clean_curve + np.random.normal(0, 0.02, len(GENERATIONS)), 0, 1)
+    x_sim[i] = torch.tensor(noisy_curve, dtype=torch.float32)
+
+# 3. Train a Masked Autoregressive Flow
+inference   = NPE(prior, density_estimator=&quot;maf&quot;)
+density_est = inference.append_simulations(theta_sim, x_sim).train(stop_after_epochs=20)
+posterior   = inference.build_posterior(density_est)
+
+# 4. Save for reuse
+with open(&quot;posteriors/posterior_WF_30000_20.pkl&quot;, &quot;wb&quot;) as f:
+    pickle.dump(posterior, f)</pre></section>
+<section class="lesson-cell code-cell" id="cell-63121753" data-cell-id="63121753"><details class="code-panel"><summary>Show the code <span>Python · cell 11</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">POSTERIOR_PATH = &#x27;posterior_WF_30000_20.pkl&#x27;
+
+with open(POSTERIOR_PATH, &#x27;rb&#x27;) as f:
+    npe_posterior = pickle.load(f)
+
+print(&quot;✓ Pre-trained NPE posterior loaded&quot;)
+print(f&quot;  Trained on : 30,000 simulations&quot;)
+print(f&quot;  Density est: Masked Autoregressive Flow (MAF)&quot;)
+print(f&quot;  Parameters : log_s, log_𝛿, log_𝜑  (log₁₀ scale)&quot;)
+print(f&quot;  Obs. dim.  : {len(GENERATIONS)} time points  {list(GENERATIONS)}&quot;)
+print(f&quot;  Population : N = 10⁷&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ Pre-trained NPE posterior loaded
+  Trained on : 30,000 simulations
+  Density est: Masked Autoregressive Flow (MAF)
+  Parameters : log_s, log_𝛿, log_𝜑  (log₁₀ scale)
+  Obs. dim.  : 12 time points  [8, 21, 29, 37, 50, 58, 66, 79, 87, 95, 108, 116]
+  Population : N = 10⁷</pre></section>
+<section class="lesson-cell code-cell" id="cell-90cc8760" data-cell-id="90cc8760"><details class="code-panel"><summary>Show the code <span>Python · cell 12</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Condition NPE on the same synthetic observation used for ABC ─────────────
+x_obs_tensor = torch.tensor(x_obs_synth, dtype=torch.float32)
+
+N_NPE = 600
+npe_samples = npe_posterior.set_default_x(x_obs_tensor).sample((N_NPE,)).numpy()
+
+print(f&quot;NPE posterior: {npe_samples.shape} samples&quot;)
+print(&quot;\nPosterior summaries (ABC vs NPE):&quot;)
+header = (f&quot;{&#x27;Parameter&#x27;:&lt;14}  {&#x27;True&#x27;:&gt;6}  &quot;
+          f&quot;{&#x27;ABC mean&#x27;:&gt;10}  {&#x27;NPE mean&#x27;:&gt;10}  {&#x27;ABC std&#x27;:&gt;8}  {&#x27;NPE std&#x27;:&gt;8}&quot;)
+print(header); print(&quot;─&quot; * len(header))
+for idx, pname in enumerate(PARAM_NAMES):
+    print(f&quot;{pname:&lt;14}  {TRUE_VALS[idx]:&gt;6.1f}  &quot;
+          f&quot;{abc_samples[:, idx].mean():&gt;10.2f}  {npe_samples[:, idx].mean():&gt;10.2f}  &quot;
+          f&quot;{abc_samples[:, idx].std():&gt;8.3f}  {npe_samples[:, idx].std():&gt;8.3f}&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">NPE posterior: (600, 3) samples
+
+Posterior summaries (ABC vs NPE):
+Parameter         True    ABC mean    NPE mean   ABC std   NPE std
+──────────────────────────────────────────────────────────────────
+log₁₀(s)          -0.9       -0.97       -0.90     0.141     0.032
+log₁₀(𝛿)          -5.0       -4.67       -5.07     0.979     0.269
+log₁₀(𝜑)          -5.5       -6.13       -6.10     1.225     0.534</pre></section>
+<section class="lesson-cell code-cell" id="cell-098a16bd" data-cell-id="098a16bd"><details class="code-panel"><summary>Show the code <span>Python · cell 13</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+xlabels = [&#x27;$log₁₀(s)$&#x27;, &#x27;$log₁₀(𝛿)$&#x27;, &#x27;$log₁₀(𝜑)$&#x27;]
+for ax_idx in range(3):
+    ax = axes[ax_idx]
+    lo, hi = PRIOR_BOUNDS[ax_idx]
+    x_range = np.linspace(lo, hi, 300)
+
+    # Prior
+    ax.fill_between(x_range, np.ones_like(x_range) / (hi - lo),
+                    alpha=0.2, color=C[&#x27;prior&#x27;], label=&#x27;Prior&#x27;)
+
+    # ABC
+    kde_abc = gaussian_kde(abc_samples[:, ax_idx], bw_method=0.3)
+    ax.fill_between(x_range, kde_abc(x_range), alpha=0.5, color=C[&#x27;abc&#x27;])
+    ax.plot(x_range, kde_abc(x_range), lw=2, ls=&#x27;--&#x27;, color=C[&#x27;abc&#x27;], label=&#x27;ABC&#x27;)
+
+    # NPE
+    kde_npe = gaussian_kde(npe_samples[:, ax_idx], bw_method=0.15)
+    ax.fill_between(x_range, kde_npe(x_range), alpha=0.4, color=C[&#x27;npe&#x27;])
+    ax.plot(x_range, kde_npe(x_range), lw=2.5, color=C[&#x27;npe&#x27;], label=&#x27;NPE&#x27;)
+
+    # True value
+    ax.axvline(TRUE_VALS[ax_idx], ls=&#x27;--&#x27;, lw=2.5, color=C[&#x27;true&#x27;],
+               label=f&#x27;True&#x27;)
+
+    ax.set_xlabel(xlabels[ax_idx])
+    ax.set_ylabel(&#x27;Density&#x27; if ax_idx == 0 else &#x27;&#x27;)
+    ax.set_title(PARAM_LABELS[ax_idx])
+    ax.set_xlim(lo, hi)
+
+axes[0].legend(loc=&#x27;upper left&#x27;)
+plt.suptitle(&#x27;ABC vs NPE  —  synthetic data, single replicate&#x27;)
+plt.tight_layout()
+plt.show()
+
+print(&quot;\n→ NPE is AMORTIZED: condition on any new observation with one forward pass&quot;)
+print(&quot;→ No new simulations needed after training!&quot;)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/098a16bd-out-0.png" alt="Stored notebook figure from cell 098a16bd"><figcaption>Stored notebook output · cell 098a16bd</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">
+→ NPE is AMORTIZED: condition on any new observation with one forward pass
+→ No new simulations needed after training!</pre></section>
+<section class="lesson-cell prose-cell" id="cell-zhou-flex-intro" data-cell-id="zhou-flex-intro"><h2>4. Inference Flexibility: One Zhou NPE, Different Passage Schedules</h2>
+<h3>Why the observation schedule belongs in the data</h3>
+<p>The Chuong NPE above receives a fixed 12-number vector: position <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>j</mi></mrow></math> always refers to one
+predefined generation. The <strong>Zhou et al. aneuploidy-stability model</strong> has a more flexible,
+design-conditioned NPE. It learns</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>q</mi><mi>&#x003D5;</mi></msub><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>y</mi><mrow><mrow><mi mathvariant="normal">o</mi><mi mathvariant="normal">b</mi><mi mathvariant="normal">s</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">r</mi><mi mathvariant="normal">v</mi><mi mathvariant="normal">e</mi><mi mathvariant="normal">d</mi></mrow></mrow></msub><mo>&#x0002C;</mo><mspace width="0.278em" /><mi>m</mi><mo>&#x0002C;</mo><mspace width="0.278em" /><mi>d</mi><mo>&#x0002C;</mo><mspace width="0.278em" /><msub><mi>p</mi><mn>0</mn></msub><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow><mo>&#x0002C;</mo></mrow></math></div></p>
+<p>where</p>
+<ul>
+<li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>y</mi></mrow></math> contains the observed Aneuploid, Wild-Type, and LOH frequencies;</li>
+<li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>m</mi></mrow></math> is an explicit passage mask, so “not measured” is distinct from frequency zero;</li>
+<li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>d</mi></mrow></math> is measurement depth at each observed passage; and</li>
+<li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>p</mi><mn>0</mn></msub></mrow></math> is the measured three-state composition at passage 0.</li>
+</ul>
+<p>Here $\theta=(\log_{10}\mu_{\mathrm{Tri\to WT}},\,w_{\mathrm{Tri}},\,
+w_{\mathrm{LOH}},\,\log_{10}\mu_{\mathrm{Tri\to LOH}})$.</p>
+<p>During training, each simulated trajectory is viewed through many masks. One jointly trained
+embedding and normalizing flow can therefore infer from a supported schedule without retraining.
+We will reveal the <strong>same experiment</strong> in two ways:</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mtext>odd:&#x000A0;</mtext><mo stretchy="false">&#x00028;</mo><mn>0</mn><mo>&#x0002C;</mo><mn>1</mn><mo>&#x0002C;</mo><mn>3</mn><mo>&#x0002C;</mo><mn>5</mn><mo>&#x0002C;</mo><mn>7</mn><mo>&#x0002C;</mo><mn>9</mn><mo>&#x0002C;</mo><mn>11</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0002C;</mo><mspace width="2em" /><mtext>even:&#x000A0;</mtext><mo stretchy="false">&#x00028;</mo><mn>0</mn><mo>&#x0002C;</mo><mn>2</mn><mo>&#x0002C;</mo><mn>4</mn><mo>&#x0002C;</mo><mn>6</mn><mo>&#x0002C;</mo><mn>8</mn><mo>&#x0002C;</mo><mn>10</mn><mo>&#x0002C;</mo><mn>12</mn><mo stretchy="false">&#x00029;</mo><mo>&#x0002E;</mo></mrow></math></div></p>
+<p>Passage 0 is supplied in both cases.</p></section>
+<section class="lesson-cell code-cell" id="cell-zhou-flex-load" data-cell-id="zhou-flex-load"><details class="code-panel"><summary>Show the code <span>Python · cell 15</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Load the three completed robust Zhou NPEs and verify their hashes ────────
+from pathlib import Path
+import hashlib, json
+
+EVODESIGN_SRC = (Path(&#x27;..&#x27;) / &#x27;evodesign&#x27; / &#x27;src&#x27;).resolve()
+if str(EVODESIGN_SRC) not in sys.path:
+    sys.path.insert(0, str(EVODESIGN_SRC))
+
+from evodesign.simulators.observation import ObservationModel
+
+ZHOU_MODEL_DIR = Path(&#x27;zhou_npe_models&#x27;)
+zhou_npe_payloads = []
+zhou_model_metadata = []
+
+for seed_idx in range(3):
+    model_path = ZHOU_MODEL_DIR / f&#x27;robust_npe_seed_{seed_idx}.pkl&#x27;
+    metadata_path = ZHOU_MODEL_DIR / f&#x27;robust_npe_seed_{seed_idx}.json&#x27;
+    metadata = json.loads(metadata_path.read_text())
+    observed_hash = hashlib.sha256(model_path.read_bytes()).hexdigest()
+    assert observed_hash == metadata[&#x27;model&#x27;][&#x27;sha256&#x27;], &#x27;Zhou NPE checksum mismatch&#x27;
+    with model_path.open(&#x27;rb&#x27;) as f:
+        zhou_npe_payloads.append(pickle.load(f))
+    zhou_model_metadata.append(metadata)
+
+ZHOU_SPACE = zhou_npe_payloads[0][&#x27;space&#x27;]
+assert all(payload[&#x27;space&#x27;] == ZHOU_SPACE for payload in zhou_npe_payloads)
+
+print(&#x27;✓ Three hash-verified robust Zhou NPEs loaded&#x27;)
+print(&#x27;  Independent biological trajectories : 200,000&#x27;)
+print(&#x27;  Schedule-varied training views       : 800,000 per model&#x27;)
+print(&#x27;  Architecture                         : CNN-32 embedding + 64×3 NSF&#x27;)
+print(&#x27;  Training epochs                      :&#x27;,
+      [p[&#x27;training_summary&#x27;][&#x27;epochs&#x27;] for p in zhou_npe_payloads])
+print(&#x27;  Supported grid                       : passages 0–12 (passage 0 forced)&#x27;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ Three hash-verified robust Zhou NPEs loaded
+  Independent biological trajectories : 200,000
+  Schedule-varied training views       : 800,000 per model
+  Architecture                         : CNN-32 embedding + 64×3 NSF
+  Training epochs                      : [78, 80, 88]
+  Supported grid                       : passages 0–12 (passage 0 forced)</pre></section>
+<section class="lesson-cell prose-cell" id="cell-zhou-flex-contract" data-cell-id="zhou-flex-contract"><h3>What made this NPE flexible?</h3>
+<p>The three production-scale estimators were trained independently on the same frozen bank:</p>
+<ul>
+<li><strong>200,000</strong> independent full Zhou trajectories;</li>
+<li><strong>800,000</strong> encoded views per estimator;</li>
+<li>exact, dense-prefix, random-causal, and structured passage masks;</li>
+<li><strong>4,034 random masks</strong> in the random-causal family;</li>
+<li>flow depth <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mn>10</mn><mn>4</mn></msup></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mn>10</mn><mn>5</mn></msup></mrow></math>, or <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mn>10</mn><mn>6</mn></msup></mrow></math> events;</li>
+<li>multinomial readout plus Gaussian noise <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C3;</mi><mo>&#x02208;</mo><mo stretchy="false">&#x0007B;</mo><mn>0.01</mn><mo>&#x0002C;</mo><mn>0.02</mn><mo>&#x0002C;</mo><mn>0.03</mn><mo stretchy="false">&#x0007D;</mo></mrow></math>; and</li>
+<li>a grouped split, so different masks of one biological trajectory never cross between
+  training and validation.</li>
+</ul>
+<p>The input is a fixed passage grid internally, but missing passages are masked before the CNN.
+Thus this model supports different subsets of passages 0–12; it does <strong>not</strong> claim validated
+extrapolation to new passages outside that horizon or to a different assay.</p>
+<p>The example below is frozen grouped-validation base <strong>35</strong>. Its latent trajectory and true
+parameters come directly from the persisted bank. We create one <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mn>10</mn><mn>5</mn></msup></mrow></math>-event noisy measurement
+realization, then hide either the even or odd passages. This is an inference demonstration—not
+a coverage study. The three model seeds are displayed separately so optimization disagreement
+cannot be hidden by the ensemble curve.</p></section>
+<section class="station answer-gated" id="zhou-schedule-designer" data-station="zhou-schedule-designer">
+      <div class="station-kicker">Interactive station</div><h2>Design a Zhou passage schedule</h2><p class="prediction">Prediction: which passages constrain rates, and which constrain relative fitness?</p>
+        <div class="preset-row"><button data-schedule="odd">Odd passages</button><button data-schedule="even">Even passages</button><button data-schedule="early">Early only</button><button data-schedule="late">Late only</button><button data-schedule="sparse">Sparse</button><button data-schedule="full">Full schedule</button><button data-schedule="zero">Passage 0 only</button></div>
+        <div class="passage-grid" id="passage-grid"></div><label class="inline-toggle"><input id="reveal-withheld" type="checkbox" checked> Reveal withheld observations</label>
+        <div class="plot-pair"><canvas id="zhou-trajectory-canvas" width="720" height="380" aria-label="Latent trajectory and selected or withheld passage observations"></canvas><canvas id="zhou-posterior-canvas" width="720" height="380" aria-label="Four Zhou posterior marginals for the selected schedule"></canvas></div>
+        <div id="zhou-summary" class="parameter-summary" aria-live="polite"></div><canvas id="zhou-ppc-canvas" width="1100" height="340" aria-label="Posterior predictive intervals at observed and withheld passages"></canvas>
+        <div class="button-row"><button id="zhou-reset" type="button">Reset</button></div>
+        <div class="what-changed"><strong>What changed?</strong> <span id="zhou-change"></span> This is an illustrative flexibility demonstration, not a coverage study.</div><div class="static-fallback"><img src="assets/fallback/zhou-schedule-designer.png" alt="Representative static result for zhou schedule designer"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<section class="lesson-cell code-cell" id="cell-zhou-flex-data" data-cell-id="zhou-flex-data"><details class="code-panel"><summary>Show the code <span>Python · cell 17</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── One bank trajectory, two observation schedules; passage 0 in both ───────
+example_bank = json.loads((ZHOU_MODEL_DIR / &#x27;grouped_validation_examples.json&#x27;).read_text())
+ZHOU_BASE_INDEX = 35
+example_pos = example_bank[&#x27;indices&#x27;].index(ZHOU_BASE_INDEX)
+
+ZHOU_TRUE = torch.tensor(example_bank[&#x27;theta&#x27;][example_pos], dtype=torch.float32)
+ZHOU_P0 = torch.tensor([example_bank[&#x27;p0&#x27;][example_pos]], dtype=torch.float32)
+zhou_latent_at_passages = torch.tensor(
+    example_bank[&#x27;latent_passages&#x27;][example_pos], dtype=torch.float32
+)
+
+ZHOU_FULL_DESIGN = ZHOU_SPACE.full(depth=100_000)
+ZHOU_DESIGNS = {
+    &#x27;Odd passages&#x27;:  ZHOU_SPACE.make((1, 3, 5, 7, 9, 11), depths=100_000),
+    &#x27;Even passages&#x27;: ZHOU_SPACE.make((2, 4, 6, 8, 10, 12), depths=100_000),
+}
+ZHOU_SCHEDULE_COLORS = {&#x27;Odd passages&#x27;: &#x27;#E67E22&#x27;, &#x27;Even passages&#x27;: &#x27;#2E86C1&#x27;}
+ZHOU_STATE_COLORS = [&#x27;#8E44AD&#x27;, &#x27;#27AE60&#x27;, &#x27;#E74C3C&#x27;]
+ZHOU_STATE_NAMES = [&#x27;Aneuploid&#x27;, &#x27;Wild Type&#x27;, &#x27;LOH&#x27;]
+ZHOU_PASSAGES = np.arange(13)
+
+# ObservationModel only reads the generations requested by the design.
+zhou_latent_full = torch.zeros(1, 121, 3)
+zhou_latent_full[:, ::10, :] = zhou_latent_at_passages
+zhou_full_observation = ObservationModel(
+    noise_model=&#x27;multinomial_gaussian&#x27;, gaussian_noise=0.02, fp_rate=1e-4
+).observe(zhou_latent_full, ZHOU_FULL_DESIGN, seed=20260825)
+
+zhou_masked_observations = {}
+fig, axes = plt.subplots(1, 2, figsize=(15, 5.5), sharex=True, sharey=True)
+for ax, (schedule_name, design) in zip(axes, ZHOU_DESIGNS.items()):
+    measured_generations = list(design.sampled_generations)
+    measured_passages = np.array(design.points)
+    masked = torch.full_like(zhou_full_observation, float(&#x27;nan&#x27;))
+    masked[:, measured_generations, :] = zhou_full_observation[:, measured_generations, :]
+    zhou_masked_observations[schedule_name] = masked
+
+    for state_idx, (state, state_color) in enumerate(zip(ZHOU_STATE_NAMES, ZHOU_STATE_COLORS)):
+        ax.plot(ZHOU_PASSAGES, zhou_latent_at_passages[:, state_idx],
+                color=state_color, lw=2, alpha=.35)
+        ax.scatter(measured_passages,
+                   zhou_full_observation[0, measured_passages * 10, state_idx],
+                   color=state_color, s=55, edgecolor=&#x27;white&#x27;, linewidth=.7,
+                   label=state if schedule_name == &#x27;Odd passages&#x27; else None, zorder=3)
+    ax.set_title(f&#x27;{schedule_name}\n{tuple(design.points)}&#x27;)
+    ax.set_xlabel(&#x27;Passage&#x27;)
+    ax.set_xticks(range(13))
+    ax.set_ylim(-.03, 1.03)
+axes[0].set_ylabel(&#x27;Population frequency&#x27;)
+axes[0].legend(title=&#x27;Observed state&#x27;, fontsize=10)
+plt.suptitle(&#x27;One Zhou trajectory, two observation schedules\npassage 0 is included in both&#x27;, y=1.04)
+plt.tight_layout(); plt.show()
+
+print(&#x27;True θ =&#x27;, dict(zip(
+    [&#x27;log₁₀ μ_Tri→WT&#x27;, &#x27;w_Tri&#x27;, &#x27;w_LOH&#x27;, &#x27;log₁₀ μ_Tri→LOH&#x27;],
+    ZHOU_TRUE.numpy().round(4)
+)))
+print(&#x27;Passage-0 context =&#x27;, ZHOU_P0.numpy().round(4).tolist()[0])
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/zhou-flex-data-out-0.png" alt="Stored notebook figure from cell zhou-flex-data"><figcaption>Stored notebook output · cell zhou-flex-data</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">True θ = {&#x27;log₁₀ μ_Tri→WT&#x27;: -2.4319, &#x27;w_Tri&#x27;: 0.8902, &#x27;w_LOH&#x27;: 0.9833, &#x27;log₁₀ μ_Tri→LOH&#x27;: -3.0454}
+Passage-0 context = [0.9944999814033508, 0.004999999888241291, 0.0005000000237487257]</pre></section>
+<section class="lesson-cell code-cell" id="cell-zhou-flex-inference" data-cell-id="zhou-flex-inference"><details class="code-panel"><summary>Show the code <span>Python · cell 18</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Infer from odd vs even passages with the same three trained NPEs ─────────
+ZHOU_DRAWS_PER_SEED = 800
+zhou_seed_samples = {name: [] for name in ZHOU_DESIGNS}
+
+for schedule_idx, (schedule_name, design) in enumerate(ZHOU_DESIGNS.items()):
+    observation = zhou_masked_observations[schedule_name]
+    for seed_idx, payload in enumerate(zhou_npe_payloads):
+        condition = payload[&#x27;encoder&#x27;].encode(observation, design, context=ZHOU_P0)
+        torch.manual_seed(20261000 + 100 * schedule_idx + seed_idx)
+        draws = payload[&#x27;estimator&#x27;].sample(
+            (ZHOU_DRAWS_PER_SEED,), condition=condition
+        ).reshape(ZHOU_DRAWS_PER_SEED, -1).detach().cpu().numpy()
+        zhou_seed_samples[schedule_name].append(draws)
+
+zhou_ensemble_samples = {
+    name: np.concatenate(seed_draws, axis=0)
+    for name, seed_draws in zhou_seed_samples.items()
+}
+
+ZHOU_PARAM_LABELS = [
+    r&#x27;$\log_{10}\,\mu_{\mathrm{Tri\to WT}}$&#x27;,
+    r&#x27;$w_{\mathrm{Tri}}$&#x27;,
+    r&#x27;$w_{\mathrm{LOH}}$&#x27;,
+    r&#x27;$\log_{10}\,\mu_{\mathrm{Tri\to LOH}}$&#x27;,
+]
+ZHOU_PARAM_TITLES = [&#x27;Tri → WT rate&#x27;, &#x27;Trisomic fitness&#x27;, &#x27;LOH fitness&#x27;, &#x27;Tri → LOH rate&#x27;]
+ZHOU_PRIOR_BOUNDS = [(-7, -2), (.85, 1.05), (.85, 1.05), (-7, -2)]
+
+fig, axes = plt.subplots(1, 4, figsize=(15, 5.2))
+for param_idx, ax in enumerate(axes):
+    lo, hi = ZHOU_PRIOR_BOUNDS[param_idx]
+    grid = np.linspace(lo, hi, 350)
+    for schedule_name, schedule_color in ZHOU_SCHEDULE_COLORS.items():
+        # Thin curves expose seed-to-seed variability.
+        for seed_idx, seed_draws in enumerate(zhou_seed_samples[schedule_name]):
+            seed_kde = gaussian_kde(seed_draws[:, param_idx], bw_method=.22)
+            ax.plot(grid, seed_kde(grid), color=schedule_color, alpha=.22, lw=1)
+        # Thick curve is an equal-weight mixture of the three independently trained NPEs.
+        ensemble = zhou_ensemble_samples[schedule_name][:, param_idx]
+        ensemble_kde = gaussian_kde(ensemble, bw_method=.18)
+        ax.plot(grid, ensemble_kde(grid), color=schedule_color, lw=2.8,
+                label=schedule_name if param_idx == 0 else None)
+    ax.axvline(float(ZHOU_TRUE[param_idx]), color=C[&#x27;true&#x27;], ls=&#x27;--&#x27;, lw=2.2,
+               label=&#x27;True value&#x27; if param_idx == 0 else None)
+    ax.set(xlim=(lo, hi), xlabel=ZHOU_PARAM_LABELS[param_idx],
+           ylabel=&#x27;Density&#x27; if param_idx == 0 else &#x27;&#x27;, title=ZHOU_PARAM_TITLES[param_idx])
+axes[0].legend(fontsize=10)
+plt.suptitle(&#x27;Zhou NPE: inference from odd versus even passages\n&#x27;
+             &#x27;thin = individual NPE seeds · thick = equal-weight three-seed mixture&#x27;, y=1.04)
+plt.tight_layout(); plt.show()
+
+summary_rows = []
+for schedule_name, samples in zhou_ensemble_samples.items():
+    for param_idx, label in enumerate(ZHOU_PARAM_LABELS):
+        q05, q95 = np.quantile(samples[:, param_idx], [.05, .95])
+        summary_rows.append({
+            &#x27;schedule&#x27;: schedule_name,
+            &#x27;parameter&#x27;: label,
+            &#x27;posterior mean&#x27;: samples[:, param_idx].mean(),
+            &#x27;90% lower&#x27;: q05,
+            &#x27;90% upper&#x27;: q95,
+            &#x27;true value&#x27;: float(ZHOU_TRUE[param_idx]),
+        })
+zhou_inference_summary = pd.DataFrame(summary_rows)
+display(zhou_inference_summary.round(4))
+
+print(&#x27;Both inferences use passage 0 and the same noisy trajectory.&#x27;)
+print(&#x27;Only the revealed passage mask changes; no model is retrained between schedules.&#x27;)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/zhou-flex-inference-out-0.png" alt="Stored notebook figure from cell zhou-flex-inference"><figcaption>Stored notebook output · cell zhou-flex-inference</figcaption></figure><pre class="cell-output">        schedule                               parameter  ...  90% upper  true value
+0   Odd passages   $\log_{10}\,\mu_{\mathrm{Tri\to WT}}$  ...    -2.3070     -2.4319
+1   Odd passages                      $w_{\mathrm{Tri}}$  ...     0.9005      0.8902
+2   Odd passages                      $w_{\mathrm{LOH}}$  ...     0.9913      0.9833
+3   Odd passages  $\log_{10}\,\mu_{\mathrm{Tri\to LOH}}$  ...    -2.7886     -3.0454
+4  Even passages   $\log_{10}\,\mu_{\mathrm{Tri\to WT}}$  ...    -2.2489     -2.4319
+5  Even passages                      $w_{\mathrm{Tri}}$  ...     0.9073      0.8902
+6  Even passages                      $w_{\mathrm{LOH}}$  ...     0.9870      0.9833
+7  Even passages  $\log_{10}\,\mu_{\mathrm{Tri\to LOH}}$  ...    -2.6547     -3.0454
+
+[8 rows x 6 columns]</pre><pre class="cell-output" aria-label="Stored notebook output">Both inferences use passage 0 and the same noisy trajectory.
+Only the revealed passage mask changes; no model is retrained between schedules.</pre></section>
+<section class="lesson-cell prose-cell" id="cell-zhou-flex-takeaway" data-cell-id="zhou-flex-takeaway"><h3>Reading the result</h3>
+<p>Odd and even passages support similar conclusions, but the posterior curves are not identical:
+the two schedules observe different stochastic snapshots of the transition. The thin lines show
+that the three independently initialized NPEs agree closely for this example; the thick lines pool
+equal numbers of draws from all three.</p>
+<p>The important point is <strong>not</strong> that odd or even passages are universally superior. It is that one
+amortized posterior accepts either supported design because the passage mask and depth travel with
+the observations. Flexibility does not manufacture information—it lets the posterior represent
+honestly which information the experiment actually collected.</p>
+<blockquote>
+<p><strong>Workshop rule:</strong> passage 0 is always supplied as both an observation and the <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>p</mi><mn>0</mn></msub></mrow></math> context.
+A missing passage is represented by the mask, never by a zero-frequency vector.</p>
+</blockquote></section>
+<section class="lesson-cell prose-cell" id="cell-928bf2bf" data-cell-id="928bf2bf"><h2>5. The Collective Posterior: Combining Multiple Replicates</h2>
+<h3>The multi-replicate setting</h3>
+<p>Experimental evolution is almost always run with <strong>many independent replicates</strong> of the same experiment.
+Each replicate <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>i</mi></mrow></math> gives an independent observation <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>x</mi><mi>i</mi></msub></mrow></math> from the <em>same underlying parameters</em> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B8;</mi></mrow></math>.</p>
+<p>The LTRΔ line has <strong>7 replicates</strong> — we want to use all of them together.</p>
+<h3>Naïve approach — just multiply posteriors?</h3>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mn>1</mn></msub><mo>&#x0002C;</mo><mi>&#x02026;</mi><mo>&#x0002C;</mo><msub><mi>x</mi><mi>r</mi></msub><mo stretchy="false">&#x00029;</mo><mi>\stackrel</mi><mrow><mo>&#x0003F;</mo></mrow><mrow><mo>&#x0221D;</mo></mrow><munderover><mo>&#x0220F;</mo><mrow><mi>i</mi><mo>&#x0003D;</mo><mn>1</mn></mrow><mi>r</mi></munderover><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">&#x00029;</mo></mrow></math></div></p>
+<p><strong>This is wrong!</strong> Multiplying <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi></mrow></math> individual posteriors counts the prior <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi></mrow></math> times,
+giving a posterior that is drastically over-sharpened.</p>
+<h3>The correct derivation</h3>
+<p>By Bayes rule on the full joint:</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mn>1</mn></msub><mo>&#x0002C;</mo><mi>&#x02026;</mi><mo>&#x0002C;</mo><msub><mi>x</mi><mi>r</mi></msub><mo stretchy="false">&#x00029;</mo><mspace width="0.278em" /><mo>&#x0221D;</mo><mspace width="0.278em" /><munderover><mo>&#x0220F;</mo><mrow><mi>i</mi><mo>&#x0003D;</mo><mn>1</mn></mrow><mi>r</mi></munderover><mi>p</mi><mo stretchy="false">&#x00028;</mo><msub><mi>x</mi><mi>i</mi></msub><mo>&#x02223;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo><mi>&#x000B7;</mi><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math></div></p>
+<p>Substituting <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>p</mi><mo stretchy="false">&#x00028;</mo><msub><mi>x</mi><mi>i</mi></msub><mo>&#x02223;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">&#x00029;</mo><mi>&#x000B7;</mi><mi>p</mi><mo stretchy="false">&#x00028;</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">&#x00029;</mo><mo>&#x0002F;</mo><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math>:</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><menclose notation="box"><mrow><mi>log</mi><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mn>1</mn></msub><mo>&#x0002C;</mo><mi>&#x02026;</mi><mo>&#x0002C;</mo><msub><mi>x</mi><mi>r</mi></msub><mo stretchy="false">&#x00029;</mo><mo>&#x0003D;</mo><msubsup><mo>&#x02211;</mo><mrow><mi>i</mi><mo>&#x0003D;</mo><mn>1</mn></mrow><mi>r</mi></msubsup><mi>log</mi><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">&#x00029;</mo><mo>&#x02212;</mo><mo stretchy="false">&#x00028;</mo><mi>r</mi><mo>&#x02212;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo><mi>log</mi><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02212;</mo><mi>log</mi><mi>C</mi></mrow></menclose></mrow></math></div></p>
+<p>The <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mi>r</mi><mo>&#x02212;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo><mi>log</mi><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math> term <strong>removes <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi><mo>&#x02212;</mo><mn>1</mn></mrow></math> excess prior copies</strong>.
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>C</mi></mrow></math> is a normalising constant.</p>
+<h3>Intuition table</h3>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mo>&#x02211;</mo><mi>i</mi></msub><mi>log</mi><msub><mi>p</mi><mi>i</mi></msub><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo>&#x02223;</mo><msub><mi>x</mi><mi>i</mi></msub><mo stretchy="false">&#x00029;</mo></mrow></math></td>
+<td>Aggregate evidence from all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi></mrow></math> replicates</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x02212;</mo><mo stretchy="false">&#x00028;</mo><mi>r</mi><mo>&#x02212;</mo><mn>1</mn><mo stretchy="false">&#x00029;</mo><mi>log</mi><mi>p</mi><mo stretchy="false">&#x00028;</mo><mi>&#x003B8;</mi><mo stretchy="false">&#x00029;</mo></mrow></math></td>
+<td>Undo <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi><mo>&#x02212;</mo><mn>1</mn></mrow></math> extra priors</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x02212;</mo><mi>log</mi><mi>C</mi></mrow></math></td>
+<td>Ensure the result normalises to a proper distribution</td>
+</tr>
+</tbody>
+</table>
+<h3>Why this matters for Chuong et al.</h3>
+<ul>
+<li><strong>8 ALLΔ experimental replicates</strong></li>
+<li>
+<p>Replicates have somewhat different trajectories (biological variability)</p>
+</li>
+<li>
+<p>The collective posterior gives a single rigorous summary of all evidence</p>
+</li>
+<li>
+<p>if all individual posteriors are identical Gaussians, the collective posterior should be ≈<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msqrt><mrow><mn>8</mn></mrow></msqrt><mo>&#x02248;</mo><mn>2.8</mn><mi>&#x000D7;</mi></mrow></math> narrower</p>
+</li>
+</ul></section>
+<section class="station answer-gated" id="collective-outlier-lab" data-station="collective-outlier-lab">
+      <div class="station-kicker">Interactive station</div><h2>Collective posterior outlier laboratory</h2><p class="prediction">Question: which replicate has the most leverage on the shared estimate?</p>
+        <div class="preset-row"><button data-coll-select="all">Select all</button><button data-coll-select="clean">Clean only</button><button data-coll-select="outliers">Outliers only</button><button id="coll-loo">Leave one out</button></div>
+        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Contamination strength <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
+        <div class="viz"><canvas id="collective-trajectory-canvas" width="760" height="310" aria-label="Selected replicate trajectories"></canvas><canvas id="collective-posterior-canvas" width="760" height="310" aria-label="Individual, naive product, and prior-adjusted collective posterior"></canvas><p id="collective-summary" class="plot-summary" aria-live="polite"></p></div></div>
+        <div class="what-changed"><strong>Scientific caveat.</strong> Exclusion here is sensitivity analysis, not automatic justification for discarding data. The browser uses Σ log pᵢ − (r−1) log p(prior), exactly as derived above.</div><div class="static-fallback"><img src="assets/fallback/collective-outlier-lab.png" alt="Representative static result for collective outlier lab"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<section class="lesson-cell code-cell" id="cell-641ccac1" data-cell-id="641ccac1"><details class="code-panel"><summary>Show the code <span>Python · cell 21</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Import the CollectivePosterior used in Chuong et al. analysis ───────────
+from collective_posterior import CollectivePosterior
+
+# Key API (collective_posterior.py):
+# ─────────────────────────────────────────────────────────────────────────────
+#
+#   cp = CollectivePosterior(prior, Xs, amortized_posterior=posterior,
+#                             log_C=None,      ← MUST call get_log_C() first
+#                             epsilon=-10000,   ← log-density floor
+#                             n_eval=int(1e5))  ← MC samples for log C
+#
+#   cp.get_log_C(n_reps=10)        → estimate log C (also seeds MCMC candidates)
+#   cp.rejection_sample(n_samples) → torch.Tensor of samples from collective posterior
+#   cp.get_map()                   → MAP estimate via Nelder-Mead optimisation
+#
+# Core log-probability formula:
+#   log p_collective(θ) = Σᵢ log pᵢ(θ|xᵢ)  −  (r−1)·log p(θ)  −  log C
+# (individual log pᵢ values are clamped at epsilon to avoid −∞)
+# ─────────────────────────────────────────────────────────────────────────────
+
+print(&quot;✓ CollectivePosterior imported from collective_posterior.py&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ CollectivePosterior imported from collective_posterior.py</pre></section>
+<section class="lesson-cell code-cell" id="cell-235e2755" data-cell-id="235e2755"><details class="code-panel"><summary>Show the code <span>Python · cell 22</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">from sbi.utils import BoxUniform
+
+# ── Generate r=8 synthetic replicates with the same true θ ───────────────────
+N_REPS = 8
+print(f&quot;Generating {N_REPS} synthetic replicates&quot;)
+print(f&quot;  True: log_s={TRUE_LOG_S}, log_m={TRUE_LOG_M}, log_p0={TRUE_LOG_P0}&quot;)
+
+x_reps = [
+    torch.tensor(WF(TRUE_LOG_S, TRUE_LOG_M, TRUE_LOG_P0, seed=seed),
+                 dtype=torch.float32)
+    for seed in range(N_REPS)
+]
+Xs_synth = torch.stack(x_reps)   # (4, 12)
+
+# ── Individual posteriors (NPE conditioned on each replicate) ─────────────────
+print(&quot;\nSampling individual posteriors ...&quot;)
+ind_samples = [
+    npe_posterior.set_default_x(Xs_synth[i]).sample((600,)).numpy()
+    for i in range(N_REPS)
+]
+print(&quot;✓ Individual posteriors sampled&quot;)
+
+# ── Collective posterior ──────────────────────────────────────────────────────
+prior_cp = BoxUniform(
+    low  = torch.tensor([-2., -7., -8.]),
+    high = torch.tensor([ 0., -2., -2.])
+)
+
+cp = CollectivePosterior(prior_cp, Xs_synth, amortized_posterior=npe_posterior, epsilon=-10)
+
+print(&quot;\nEstimating normalising constant log C ...&quot;)
+log_C = cp.get_log_C()
+print(f&quot;  log C ≈ {log_C:.2f}&quot;)
+
+print(&quot;\nSampling from collective posterior ...&quot;)
+coll_samples = cp.rejection_sample(600).numpy()
+print(f&quot;✓ Collective posterior: {coll_samples.shape}&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">Generating 8 synthetic replicates
+  True: log_s=-0.9, log_m=-5.0, log_p0=-5.5
+
+Sampling individual posteriors ...</pre><pre class="cell-output" aria-label="Stored notebook output">✓ Individual posteriors sampled
+
+Estimating normalising constant log C ...
+  log C ≈ 52.14
+
+Sampling from collective posterior ...</pre><pre class="cell-output" aria-label="Stored notebook output">Rejection Sampling:  74%|███████▎  | 441/600 [00:07&lt;00:03, 49.25it/s]</pre><pre class="cell-output" aria-label="Stored notebook output">Rejection Sampling: 602it [00:10, 58.98it/s]</pre><pre class="cell-output" aria-label="Stored notebook output">✓ Collective posterior: (600, 3)</pre></section>
+<section class="lesson-cell code-cell" id="cell-64f5036c" data-cell-id="64f5036c"><details class="code-panel"><summary>Show the code <span>Python · cell 23</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+
+for ax_idx in range(3):
+    ax = axes[ax_idx]
+    lo, hi = PRIOR_BOUNDS[ax_idx]
+    x_range = np.linspace(lo, hi, 300)
+
+    # Individual posteriors (thin, colored)
+    for i, samps in enumerate(ind_samples):
+        kde = gaussian_kde(samps[:, ax_idx], bw_method=0.2)
+        ax.plot(x_range, kde(x_range), lw=1.5, alpha=0.65,
+                color=C[&#x27;npe&#x27;])
+
+    # Collective posterior (bold, purple)
+    kde_c = gaussian_kde(coll_samples[:, ax_idx], bw_method=0.15)
+    ax.fill_between(x_range, kde_c(x_range), alpha=0.35, color=C[&#x27;coll&#x27;])
+    ax.plot(x_range, kde_c(x_range), lw=3, color=C[&#x27;coll&#x27;],
+            label=&#x27;Collective&#x27; if ax_idx == 0 else None)
+
+    # True value
+    ax.axvline(TRUE_VALS[ax_idx], ls=&#x27;--&#x27;, lw=2.5, color=C[&#x27;true&#x27;],
+               label=f&#x27;True&#x27; if ax_idx == 0 else None)
+
+    ax.set_xlabel(xlabels[ax_idx])
+    ax.set_ylabel(&#x27;Density&#x27; if ax_idx == 0 else &#x27;&#x27;)
+    ax.set_title(PARAM_LABELS[ax_idx])
+    ax.set_xlim(lo, hi)
+
+axes[0].legend(loc=&#x27;upper left&#x27;)
+plt.suptitle(f&#x27;Individual vs. Collective Posterior  ({N_REPS} synthetic replicates)&#x27;)
+plt.tight_layout()
+plt.show()
+
+# ── Quantify precision gain ──────────────────────────────────────────────────
+print(&quot;\nPrecision gain (posterior std):&quot;)
+print(f&quot;{&#x27;Parameter&#x27;:&lt;14}  {&#x27;Indiv. (mean ± sd)&#x27;:&gt;22}  {&#x27;Collective&#x27;:&gt;12}  {&#x27;Fold gain&#x27;:&gt;10}&quot;)
+print(&quot;─&quot; * 66)
+for ax_idx, pname in enumerate(PARAM_NAMES):
+    ind_stds = [np.std(s[:, ax_idx]) for s in ind_samples]
+    coll_std = np.std(coll_samples[:, ax_idx])
+    fold     = np.mean(ind_stds) / coll_std
+    print(f&quot;{pname:&lt;14}  {np.mean(ind_stds):&gt;10.3f} ± {np.std(ind_stds):.3f}  &quot;
+          f&quot;{coll_std:&gt;12.3f}  {fold:&gt;9.1f}×&quot;)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/64f5036c-out-0.png" alt="Stored notebook figure from cell 64f5036c"><figcaption>Stored notebook output · cell 64f5036c</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">
+Precision gain (posterior std):
+Parameter           Indiv. (mean ± sd)    Collective   Fold gain
+──────────────────────────────────────────────────────────────────
+log₁₀(s)             0.031 ± 0.003         0.022        1.4×
+log₁₀(𝛿)             0.254 ± 0.016         0.179        1.4×
+log₁₀(𝜑)             0.561 ± 0.030         0.436        1.3×</pre></section>
+<section class="lesson-cell prose-cell" id="cell-d74c479a" data-cell-id="d74c479a"><h2>6. Application to Real Data — ALLΔ Line (Chuong et al.)</h2>
+<h3>The ALLΔ background</h3>
+<p>In the ALLΔ strain, both <strong>Long Terminal Repeats (LTRs)</strong> and an <strong>Autonomously Replicating Sequence (ARS)</strong> are deleted. This changes the regulatory landscape for CNV formation.</p>
+<ul>
+<li><strong>8 independent replicate populations</strong> evolved for 116 generations</li>
+<li>CNV frequency measured at 12 time points by barcode sequencing</li>
+<li>High variability across replicates (range: 65%–95% by generation 116)</li>
+</ul>
+<p><strong>Goal:</strong> Use NPE to infer <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo stretchy="false">&#x00028;</mo><mi>s</mi><mo>&#x0002C;</mo><mi>&#x003B4;</mi><mo>&#x0002C;</mo><mi>&#x003C6;</mi><mo stretchy="false">&#x00029;</mo></mrow></math> for each replicate, then combine with the
+Collective Posterior for a joint estimate across all 8 replicates.</p></section>
+<section class="lesson-cell code-cell" id="cell-06591c66" data-cell-id="06591c66"><details class="code-panel"><summary>Show the code <span>Python · cell 25</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">all_df = pd.read_csv(&#x27;data/all.csv&#x27;, index_col=0)
+all_df.columns = all_df.columns.astype(int)   # column names are generation numbers
+
+# ── Plot all 8 replicates ────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(15, 6))
+
+for j, (strain, row) in enumerate(all_df.iterrows()):
+    ax.plot(all_df.columns, row.values, &#x27;o-&#x27;,
+            color=&#x27;#DEBD52&#x27;, ms=7, lw=2)
+ax.set_xlabel(&#x27;Generation&#x27;)
+ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(&#x27;ALLΔ data (Chuong et al. 2025)\n8 independent replicates&#x27;)
+ax.set_ylim(-0.02, 1.02)
+plt.tight_layout()
+plt.show()
+
+# Prepare as tensor (r × 12)
+all_Xs = torch.tensor(all_df.values, dtype=torch.float32)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/06591c66-out-0.png" alt="Stored notebook figure from cell 06591c66"><figcaption>Stored notebook output · cell 06591c66</figcaption></figure></section>
+<section class="lesson-cell code-cell" id="cell-fbd6e87f" data-cell-id="fbd6e87f"><details class="code-panel"><summary>Show the code <span>Python · cell 26</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Individual NPE posteriors for each ALLΔ replicate ───────────────────────
+strains = list(all_df.index)
+print(f&quot;Computing NPE posteriors for {len(strains)} ALLΔ replicates ...&quot;)
+
+real_ind_samples = {}
+for j, strain in enumerate(strains):
+    x_i   = all_Xs[j]                                    # tensor(12,)
+    samps = npe_posterior.set_default_x(x_i).sample((600,)).numpy()
+    real_ind_samples[strain] = samps
+
+print(&quot;✓ Individual posteriors computed&quot;)
+
+# ── Posterior mean per replicate ─────────────────────────────────────────────
+print(&quot;\nPosterior means per replicate (log₁₀ scale):&quot;)
+print(f&quot;{&#x27;Replicate&#x27;:&lt;18}  {&#x27;log_s&#x27;:&gt;8}  {&#x27;log_m&#x27;:&gt;8}  {&#x27;log_p0&#x27;:&gt;8}&quot;)
+print(&quot;─&quot; * 50)
+for strain in strains:
+    m = real_ind_samples[strain].mean(axis=0)
+    print(f&quot;{strain:&lt;18}  {m[0]:&gt;8.2f}  {m[1]:&gt;8.2f}  {m[2]:&gt;8.2f}&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">Computing NPE posteriors for 8 ALLΔ replicates ...</pre><pre class="cell-output" aria-label="Stored notebook output">✓ Individual posteriors computed
+
+Posterior means per replicate (log₁₀ scale):
+Replicate              log_s     log_m    log_p0
+──────────────────────────────────────────────────
+gap1_all_1             -0.94     -4.49     -5.09
+gap1_all_2             -1.15     -4.04     -4.65
+gap1_all_3             -1.03     -4.48     -6.41
+gap1_all_4             -0.90     -5.17     -5.79
+gap1_all_5             -0.68     -5.76     -5.48
+gap1_all_6             -0.85     -5.30     -6.08
+gap1_all_7             -0.91     -5.04     -5.78
+gap1_all_8             -0.82     -5.12     -5.88</pre></section>
+<section class="lesson-cell code-cell" id="cell-5a23707f" data-cell-id="5a23707f"><details class="code-panel"><summary>Show the code <span>Python · cell 27</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Build collective posterior over all 8 ALLΔ replicates ───────────────────
+print(f&quot;Building collective posterior over {len(strains)} ALLΔ replicates ...&quot;)
+
+cp_all = CollectivePosterior(prior_cp, all_Xs, amortized_posterior=npe_posterior, epsilon=-10)
+cp_all.epsilon = cp_all.estimate_epsilon(all_Xs, quant=0.99)[0]
+print(f&quot;  Estimated epsilon (log-density floor): {cp_all.epsilon:.2f}&quot;)
+
+print(&quot;Estimating log C ...&quot;)
+log_C_all = cp_all.get_log_C()
+print(f&quot;  log C ≈ {log_C_all:.2f}&quot;)
+
+print(&quot;Sampling from collective posterior ...&quot;)
+coll_all = cp_all.rejection_sample(600).numpy()
+print(f&quot;✓ Collective posterior samples: {coll_all.shape}&quot;)
+
+# ── Plot: individual vs collective ──────────────────────────────────────────
+fig, axes = plt.subplots(1, 3, figsize=(15, 6))
+
+for ax_idx in range(3):
+    ax = axes[ax_idx]
+    lo, hi = PRIOR_BOUNDS[ax_idx]
+    x_range = np.linspace(lo, hi, 300)
+
+    # All 7 individual posteriors
+    for j, strain in enumerate(strains):
+        samps = real_ind_samples[strain]
+        kde   = gaussian_kde(samps[:, ax_idx], bw_method=0.2)
+        ax.plot(x_range, kde(x_range), lw=1.5, alpha=0.55,
+                color=C[&#x27;npe&#x27;],
+                label=&#x27;Individual&#x27; if j == 0 else None)
+
+    # Collective posterior
+    kde_c = gaussian_kde(coll_all[:, ax_idx], bw_method=0.15)
+    ax.fill_between(x_range, kde_c(x_range), alpha=0.35, color=C[&#x27;coll&#x27;])
+    ax.plot(x_range, kde_c(x_range), lw=3, color=C[&#x27;coll&#x27;],
+            label=&#x27;Collective&#x27; if ax_idx == 0 else None)
+
+    ax.set_xlabel(xlabels[ax_idx])
+    ax.set_ylabel(&#x27;Density&#x27; if ax_idx == 0 else &#x27;&#x27;)
+    ax.set_title(PARAM_LABELS[ax_idx])
+    ax.set_xlim(lo, hi)
+
+axes[0].legend()
+plt.suptitle(&#x27;ALLΔ: Individual vs. Collective Posterior  (real data, 8 replicates)&#x27;)
+plt.tight_layout()
+plt.show()
+
+# ── Collective MAP quick approximation - sample with maximal log-prob────────────────────────────────────────────────────────────
+log_p = cp_all.log_prob(torch.tensor(coll_all, dtype=torch.float32)).numpy().ravel()
+map_est = coll_all[np.argmax(log_p)]
+
+print(&quot;\nCollective Posterior MAP estimate (ALLΔ):&quot;)
+descs = [&#x27;CNV fitness benefit  s&#x27;, &#x27;CNV mutation rate    𝛿&#x27;, &#x27;Initial CNV freq   𝜑&#x27;]
+for pname, log_val, desc in zip(PARAM_NAMES, map_est, descs):
+    print(f&quot;  {desc}:  10^{log_val:.2f} = {10**log_val:.4g}   ({pname} = {log_val:.2f})&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">Building collective posterior over 8 ALLΔ replicates ...
+  Estimated epsilon (log-density floor): -9.03
+Estimating log C ...</pre><pre class="cell-output" aria-label="Stored notebook output">  log C ≈ -10.26
+Sampling from collective posterior ...</pre><pre class="cell-output" aria-label="Stored notebook output">Rejection Sampling: 601it [00:03, 195.12it/s]</pre><pre class="cell-output" aria-label="Stored notebook output">✓ Collective posterior samples: (600, 3)</pre><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/5a23707f-out-4.png" alt="Stored notebook figure from cell 5a23707f"><figcaption>Stored notebook output · cell 5a23707f</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">
+Collective Posterior MAP estimate (ALLΔ):
+  CNV fitness benefit  s:  10^-0.86 = 0.1391   (log₁₀(s) = -0.86)
+  CNV mutation rate    𝛿:  10^-5.30 = 4.994e-06   (log₁₀(𝛿) = -5.30)
+  Initial CNV freq   𝜑:  10^-5.64 = 2.277e-06   (log₁₀(𝜑) = -5.64)</pre></section>
+<section class="lesson-cell code-cell" id="cell-ade63ee2" data-cell-id="ade63ee2"><details class="code-panel"><summary>Show the code <span>Python · cell 28</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># Posterior predictive check: simulate trajectories from collctive posterior samples and compare to data
+print(&quot;\nPosterior predictive check: simulating trajectories from collective posterior samples ...&quot;)
+
+map_trajs = np.zeros((len(coll_all), len(GENERATIONS)))
+for i in tqdm(range(len(coll_all))):
+    log_s, log_m, log_p0 = coll_all[i]
+    map_trajs[i] = WF(log_s, log_m, log_p0)
+
+# Plot MAP trajectories vs data
+fig, ax = plt.subplots(figsize=(15, 6))
+for i in range(100):
+    ax.plot(GENERATIONS, map_trajs[i], color=C[&#x27;coll&#x27;], alpha=0.3, lw=1, label=&#x27;Collective posterior sims&#x27; if i == 0 else None)
+for j, strain in enumerate(strains):
+    ax.plot(all_df.columns.astype(&#x27;int&#x27;), all_df.loc[strain].values, &#x27;o-&#x27;,
+            color=&#x27;#DEBD52&#x27;, ms=7, lw=0.5, label=&#x27;ALLΔ replicates&#x27; if j == 0 else None)
+ax.set_xlabel(&#x27;Generation&#x27;)
+ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(&#x27;Posterior Predictive Check: MAP trajectories vs. ALLΔ data&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+# Make lines bolder in legend but not in the plot
+handles, labels = ax.get_legend_handles_labels()
+new_handles = []
+for h in handles:
+    if h.get_label() == &#x27;Collective posterior sims&#x27;:
+        new_handles.append(plt.Line2D([], [], color=C[&#x27;coll&#x27;], lw=5, alpha=0.5))
+    elif h.get_label() == &#x27;ALLΔ replicates&#x27;:
+        new_handles.append(plt.Line2D([], [], color=&#x27;#DEBD52&#x27;, lw=5, alpha=0.8))
+    else:
+        new_handles.append(h)
+ax.legend(handles=new_handles, labels=labels)
+plt.tight_layout()
+plt.show()</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">
+Posterior predictive check: simulating trajectories from collective posterior samples ...</pre><pre class="cell-output">  0%|          | 0/600 [00:00&lt;?, ?it/s]</pre><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/ade63ee2-out-2.png" alt="Stored notebook figure from cell ade63ee2"><figcaption>Stored notebook output · cell ade63ee2</figcaption></figure></section>
+<section class="station answer-gated" id="ppc-detective" data-station="ppc-detective">
+      <div class="station-kicker">Interactive station</div><h2>PPC mismatch detective</h2><p class="prediction">Choose a diagnosis, then inspect what posterior predictive checks can—and cannot—tell you.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> Well specified</label><label><input type="radio" name="diagnosis" value="noise"> Noise mismatch</label><label><input type="radio" name="diagnosis" value="outlier"> Contamination</label><label><input type="radio" name="diagnosis" value="support"> Support issue</label><label><input type="radio" name="diagnosis" value="structure"> Structural mismatch</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observation, posterior predictive band, and residuals"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Reveal diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary"></p><div class="what-changed"><strong>Interpret carefully.</strong> PPC tension can flag mismatch, but it rarely identifies a unique cause by itself.</div><div class="static-fallback"><img src="assets/fallback/ppc-detective.png" alt="Representative static result for ppc detective"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<section class="lesson-cell prose-cell" id="cell-3fce18ac" data-cell-id="3fce18ac"><h2>Summary &amp; Conclusions</h2>
+<hr />
+<h3>The SBI Toolkit for Experimental Evolution</h3>
+<table>
+<thead>
+<tr>
+<th>Method</th>
+<th>Core idea</th>
+<th>When to use</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>ABC</strong></td>
+<td>Reject simulations far from data</td>
+<td>Quick prototyping; few parameters</td>
+</tr>
+<tr>
+<td><strong>NPE</strong></td>
+<td>Neural posterior estimator trained on simulations</td>
+<td>Amortized — fast inference over many strains/conditions</td>
+</tr>
+<tr>
+<td><strong>Flexible Zhou NPE</strong></td>
+<td>Encode frequencies together with their passage mask</td>
+<td>Different supported passage schedules without retraining</td>
+</tr>
+<tr>
+<td><strong>Collective Posterior</strong></td>
+<td>Combine <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi></mrow></math> NPE/ABC posteriors</td>
+<td>Multiple replicates of the same experiment</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3>Key takeaways</h3>
+<ol>
+<li>
+<p><strong>Stochastic models need SBI</strong> — Wright-Fisher and its extensions have no analytical likelihood.</p>
+</li>
+<li>
+<p><strong>NPE dramatically outperforms ABC</strong> — train once on 30k simulations, then evaluate any
+   observation in milliseconds.</p>
+</li>
+<li>
+<p><strong>The observation design is data too</strong> — the Zhou NPE conditions jointly on genotype frequencies, passage mask, depth, and passage-0 state.</p>
+</li>
+<li>
+<p><strong>Replicates are gold</strong> — the Collective Posterior integrates all <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>r</mi></mrow></math> replicates,
+   reflecting the dynamics of individual posteriors.</p>
+</li>
+<li>
+<p><strong>The framework is general</strong> — it extends naturally to multi-chromosome models (Zhou et al.),
+   CNV stability (De et al.), chemostat growth models, and beyond.</p>
+</li>
+</ol>
+<hr />
+<h3>Results for ALLΔ (Chuong et al., 2025)</h3>
+<p>Using the Collective Posterior over all 8 ALLΔ replicates:
+- <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> — selection coefficient (fitness benefit of carrying a GAP1 CNV)
+- <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B4;</mi></mrow></math> — per-generation rate at which CNVs arise
+- <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C6;</mi></mrow></math> — initial CNV frequency at the start of the experiment</p>
+<p>These estimates are <strong>biologically interpretable</strong> and come with <strong>full uncertainty quantification</strong>.</p>
+<hr />
+<h3>Resources</h3>
+<ul>
+<li><strong>SBI library</strong> (<code>pip install sbi</code>): https://sbi-project.github.io</li>
+<li><strong>Collective Posterior paper</strong>: Ben Nun et al., 2026 (under review)</li>
+<li><strong>Chuong et al. data</strong>: Chuong et al., 2025 (eLife)</li>
+</ul>
+<hr />
+<p><em>Contact: Nadav Ben Nun</em></p>
+<p><em>nadavbennun1@mail.tau.ac.il</em></p></section><nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">← Evolutionary simulators</a><a href="index.html">Workshop home →</a></nav></article></div></main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer><script src="js/science.js" defer></script><script src="js/core.js" defer></script><script src="js/plots.js" defer></script><script src="js/sbi.js" defer></script></body></html>

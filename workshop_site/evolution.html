@@ -1,0 +1,1407 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>Evolutionary simulators</title><link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="css/workshop.css"><noscript><style>.static-fallback{display:block}</style></noscript></head><body data-page="evolution"><a class="skip-link" href="#main">Skip to lesson</a><header class="site-header"><a class="wordmark" href="index.html"><span>Δ</span> Drift &amp; Design</a><nav aria-label="Workshop chapters"><a class="" href="index.html">Start</a><a class="active" href="evolution.html">Evolution</a><a class="" href="sbi.html">SBI</a></nav><div class="header-actions"><button id="workshop-mode" type="button" aria-pressed="false">Workshop mode</button><button id="reset-all" type="button">Reset all</button></div></header><div class="progress-track" aria-hidden="true"><span id="reading-progress"></span></div><main id="main"><header class="chapter-hero"><p class="eyebrow">Chapter 01 · Models before methods</p><h1>Evolutionary simulators</h1><p class="lede">Mechanistic evolution, uncertainty, and experimental design—kept close enough to inspect.</p></header><div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson"><section class="lesson-cell prose-cell" id="cell-9bb0927d" data-cell-id="9bb0927d"><h1>Evolutionary Simulators: From Chemostats to Chromosomes</h1>
+<hr />
+<p><strong>Nadav Ben Nun</strong> &nbsp;|&nbsp; <em>Presenting at Gresham Lab (NYU), Selmecki Lab (UMN)</em></p>
+<hr />
+<p>Different biological questions — and different experimental systems — require different
+computational models. This notebook traces five simulators developed for experimental
+evolution.</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>Paper</th>
+<th>Model</th>
+<th>System</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>Avecilla et al.</strong></td>
+<td>3-genotype Wright-Fisher</td>
+<td>Chemostat (continuous culture)</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>Avecilla et al.</strong></td>
+<td>Chemostat ODE (Monod)</td>
+<td>Chemostat (continuous culture)</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Chuong et al.</strong></td>
+<td>4-genotype Wright-Fisher</td>
+<td>Discrete-generation batch</td>
+</tr>
+<tr>
+<td>4</td>
+<td><strong>De et al.</strong></td>
+<td>2-genotype Wright-Fisher</td>
+<td>CNV reversion</td>
+</tr>
+<tr>
+<td>5</td>
+<td><strong>Zhou et al.</strong></td>
+<td>Aneuploidy stability WF</td>
+<td>Trisomic → diploid / LOH</td>
+</tr>
+</tbody>
+</table>
+<p>Each section follows the same structure:
+1. <strong>Empirical data</strong> — what was measured
+2. <strong>Model</strong> — equations and diagram
+3. <strong>Model fit</strong> — simulations with <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B8;</mi><mo>&#x0002B;</mo><mi>&#x1D4A9;</mi><mo stretchy="false">&#x00028;</mo><mn>0</mn><mo>&#x0002C;</mo><mi>&#x003C3;</mi><mo stretchy="false">&#x00029;</mo></mrow></math> noise to replicate group dynamics</p>
+<hr />
+<h3>Running on Google Colab</h3>
+<p>Upload the entire <code>tutorials/</code> folder to Google Drive, then open this notebook in Colab.
+All data and code are bundled — no server connection required.</p></section>
+<section class="lesson-cell code-cell" id="cell-7f319e7c" data-cell-id="7f319e7c"><details class="code-panel"><summary>Show the code <span>Python · cell 1</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">import sys, warnings, os
+warnings.filterwarnings(&#x27;ignore&#x27;)
+
+# evo_model.py lives in the same directory as this notebook
+sys.path.insert(0, &#x27;.&#x27;)
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+from scipy.integrate import odeint
+from IPython.display import Image, display
+from matplotlib.lines import Line2D
+
+# ── Plotting style ──────────────────────────────────────────────────────────
+plt.rcParams.update({
+    &#x27;font.size&#x27;: 15, &#x27;axes.titlesize&#x27;: 18, &#x27;axes.labelsize&#x27;: 16,
+    &#x27;xtick.labelsize&#x27;: 16, &#x27;ytick.labelsize&#x27;: 16, &#x27;figure.titlesize&#x27;:20,
+    &#x27;figure.dpi&#x27;: 400,
+    &#x27;axes.spines.top&#x27;: False, &#x27;axes.spines.right&#x27;: False,
+    &#x27;legend.frameon&#x27;: False, &#x27;figure.facecolor&#x27;: &#x27;white&#x27;,
+})
+
+C = {
+    &#x27;avecilla_wf&#x27;:   &#x27;#E67E22&#x27;,
+    &#x27;avecilla_ode&#x27;:  &#x27;#2980B9&#x27;,
+    &#x27;chuong&#x27;:        &#x27;#6699cc&#x27;,
+    &#x27;de&#x27;:            &#x27;#C0392B&#x27;,
+    &#x27;zhou&#x27;:          &#x27;#8E44AD&#x27;,
+    &#x27;data&#x27;:          &#x27;#2C3E50&#x27;,
+}
+REP_COLORS = [cm.tab20(x) for x in np.linspace(0, 1, 12, endpoint=False)]
+
+GENERATIONS = np.array([8, 21, 29, 37, 50, 58, 66, 79, 87, 95, 108, 116])
+
+# ── Load empirical data ──────────────────────────────────────────────────────
+ltr_df   = pd.read_csv(&#x27;data/ltr.csv&#x27;,   index_col=0)
+lauer_df = pd.read_csv(&#x27;data/lauer.csv&#x27;, index_col=0)
+ltr_df.columns   = ltr_df.columns.astype(int)
+lauer_df.columns = lauer_df.columns.astype(int)
+# Use only the 9 gln replicates (gln_01–gln_09); drop bc01/bc02
+lauer_df = lauer_df.loc[[r for r in lauer_df.index if r.startswith(&#x27;gln_&#x27;)]]
+LAUER_GEN = lauer_df.columns.values
+LTR_GEN   = ltr_df.columns.values
+
+def show_image(path, width=600):
+    &quot;&quot;&quot;Display a local image, or print a placeholder if not found.&quot;&quot;&quot;
+    if os.path.exists(path):
+        display(Image(path, width=width))
+    else:
+        print(f&quot;[Image not found: &#x27;{path}&#x27; — upload the diagram to the tutorials directory]&quot;)
+
+def noisy_sims(simulator, theta, sigma, n=20, extra_kw=None):
+    &quot;&quot;&quot;
+    Run `simulator` n times, each with theta perturbed by independent Gaussian noise.
+
+    Each simulation draws  theta_i ~ N(theta, sigma)  and uses a different drift seed.
+    The spread of the resulting trajectories reflects BOTH parameter variation across
+    replicates AND within-replicate stochastic drift.
+
+    Parameters
+    ──────────
+    simulator : callable  — the WF/ODE simulator function
+    theta     : dict      — central parameter values  (tune to match data)
+    sigma     : dict      — per-parameter noise std   (tune to match data spread)
+    n         : int       — number of simulations
+    extra_kw  : dict      — additional fixed kwargs (e.g. generation=...) not perturbed
+
+    Returns: list of n simulation results
+    &quot;&quot;&quot;
+    extra_kw = extra_kw or {}
+    results  = []
+    for i in range(n):
+        rng = np.random.default_rng(i)
+        theta_i = {k: v + rng.normal(0, sigma.get(k, 0)) for k, v in theta.items()}
+        np.random.seed(i)
+        results.append(simulator(**theta_i, **extra_kw))
+    return results
+
+print(&quot;✓ Setup complete&quot;)
+print(f&quot;  LTR data  : {ltr_df.shape[0]} replicates × {ltr_df.shape[1]} time points&quot;)
+print(f&quot;  Lauer data: {lauer_df.shape[0]} replicates × {lauer_df.shape[1]} time points&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ Setup complete
+  LTR data  : 7 replicates × 12 time points
+  Lauer data: 9 replicates × 11 time points</pre></section>
+<section class="lesson-cell prose-cell" id="cell-cd6f3ea8" data-cell-id="cd6f3ea8"><h2>1. Avecilla et al. — Wright-Fisher Model</h2>
+<p><em>(Avecilla et al. 2022, <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC9140244/">PMC9140244</a>)</em></p>
+<hr />
+<h3>The data: Lauer et al. chemostat experiment</h3>
+<p><em>S. cerevisiae</em> was evolved in <strong>glutamine-limited chemostats</strong> for over 100 generations.
+GAP1 CNV frequency was measured in 9 independent replicate populations by barcode sequencing.</p>
+<ul>
+<li><strong>9 replicate populations</strong> (<code>gln_01</code> to <code>gln_09</code>)</li>
+<li><strong>Observable</strong>: fraction of cells carrying a GAP1 CNV</li>
+</ul></section>
+<section class="lesson-cell code-cell" id="cell-21748f7d" data-cell-id="21748f7d"><details class="code-panel"><summary>Show the code <span>Python · cell 3</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">fig, ax = plt.subplots(figsize=(15, 6))
+
+for j, (rep, row) in enumerate(lauer_df.iterrows()):
+    ax.plot(LAUER_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;avecilla_wf&#x27;], ms=7, lw=2)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(&#x27;9 replicates&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+
+plt.suptitle(&#x27;Lauer et al. — Chemostat Evolution Data&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/21748f7d-out-0.png" alt="Stored notebook figure from cell 21748f7d"><figcaption>Stored notebook output · cell 21748f7d</figcaption></figure></section>
+<section class="lesson-cell code-cell" id="cell-b09b721a" data-cell-id="b09b721a"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 4</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;avecilla_wf_model.png&#x27;)
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/b09b721a-out-0.png" alt="Stored notebook figure from cell b09b721a"><figcaption>Stored notebook output · cell b09b721a</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-3282b174" data-cell-id="3282b174"><h3>The model: 3-genotype Wright-Fisher</h3>
+<p>Two types of beneficial mutation arise from the ancestral genotype:
+- A <strong>GAP1 CNV</strong> (amplification of the amino-acid permease gene)
+- Other <strong>beneficial mutations</strong> (SNVs, other structural variants)</p>
+<h4>Genotypes</h4>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Genotype</th>
+<th>Fitness</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>X</mi><mi>A</mi></msub></mrow></math></td>
+<td>Ancestral (WT)</td>
+<td>1</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>X</mi><mi>C</mi></msub></mrow></math></td>
+<td>GAP1 CNV</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><msub><mi>s</mi><mi>C</mi></msub></mrow></math></td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>X</mi><mi>B</mi></msub></mrow></math></td>
+<td>Other beneficial mutation</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><msub><mi>s</mi><mi>B</mi></msub></mrow></math></td>
+</tr>
+</tbody>
+</table>
+<h4>Discrete-generation update</h4>
+<p><strong>Mutation</strong> (only ancestral cells mutate):
+<div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msubsup><mi>x</mi><mi>C</mi><mi>&#x02020;</mi></msubsup><mo>&#x0003D;</mo><msub><mi>x</mi><mi>A</mi></msub><msub><mi>&#x003B4;</mi><mi>C</mi></msub><mo>&#x0002B;</mo><msub><mi>x</mi><mi>C</mi></msub><mo>&#x0002C;</mo><mspace width="1em" /><msubsup><mi>x</mi><mi>B</mi><mi>&#x02020;</mi></msubsup><mo>&#x0003D;</mo><msub><mi>x</mi><mi>A</mi></msub><msub><mi>&#x003B4;</mi><mi>B</mi></msub><mo>&#x0002B;</mo><msub><mi>x</mi><mi>B</mi></msub><mo>&#x0002C;</mo><mspace width="1em" /><msubsup><mi>x</mi><mi>A</mi><mi>&#x02020;</mi></msubsup><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x02212;</mo><msub><mi>&#x003B4;</mi><mi>C</mi></msub><mo>&#x02212;</mo><msub><mi>&#x003B4;</mi><mi>B</mi></msub><mo stretchy="false">&#x00029;</mo><mspace width="0.167em" /><msub><mi>x</mi><mi>A</mi></msub></mrow></math></div></p>
+<p><strong>Selection</strong>: <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>x</mi><mi>i</mi><mo>&#x0002A;</mo></msubsup><mo>&#x0003D;</mo><mrow><mfrac><mrow><msub><mi>w</mi><mi>i</mi></msub><msubsup><mi>x</mi><mi>i</mi><mi>&#x02020;</mi></msubsup></mrow><mover><mrow><mi>w</mi></mrow><mo stretchy="true">&#x000AF;</mo></mover></mfrac></mrow></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>w</mi></mrow><mo stretchy="true">&#x000AF;</mo></mover><mo>&#x0003D;</mo><msub><mi>&#x003A3;</mi><mrow><mi>i</mi></mrow></msub><msub><mi>w</mi><mi>i</mi></msub><msubsup><mi>x</mi><mi>i</mi><mi>&#x02020;</mi></msubsup></mrow></math> </p>
+<p><strong>Drift</strong> (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi><mo>&#x0003D;</mo><mn>3.3</mn><mi>&#x000D7;</mi><msup><mn>10</mn><mn>8</mn></msup></mrow></math>):
+<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>n</mi><mrow><mi>t</mi><mo>&#x0002B;</mo><mn>1</mn></mrow></msub><mi>&#x0007E;</mi><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">u</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">l</mi></mrow><mo stretchy="false">&#x00028;</mo><mi>N</mi><mo>&#x0002C;</mo><mspace width="0.278em" /><msup><mi>x</mi><mo>&#x0002A;</mo></msup><mo stretchy="false">&#x00029;</mo></mrow></math></p></section>
+<section class="station answer-gated" id="evolution-playground" data-station="evolution-playground">
+      <div class="station-kicker">Interactive station</div><h2>Predict the evolutionary trajectory</h2><p class="prediction">Question: which force will dominate—selection, conversion, or drift?</p>
+        <div class="preset-row"><button data-evo-preset="balanced">Balanced</button><button data-evo-preset="selection">Selection wins</button><button data-evo-preset="conversion">Fast conversion</button><button data-evo-preset="drift">Small population</button></div>
+        <div class="interactive-grid"><form class="controls" id="evo-controls">
+          <label>Tri → WT rate <output id="evo-mut-wt-label"></output><input id="evo-mut-wt" type="range" min="-7" max="-2" step="0.05" value="-4"></label>
+          <label>Tri → LOH rate <output id="evo-mut-loh-label"></output><input id="evo-mut-loh" type="range" min="-7" max="-2" step="0.05" value="-4.4"></label>
+          <label>Trisomic relative fitness <output id="evo-wtri-label"></output><input id="evo-wtri" type="range" min="0.85" max="1.05" step="0.002" value="0.96"></label>
+          <label>LOH relative fitness <output id="evo-wloh-label"></output><input id="evo-wloh" type="range" min="0.85" max="1.05" step="0.002" value="0.99"></label>
+          <label>Initial trisomic fraction <output id="evo-p0-label"></output><input id="evo-p0" type="range" min="0.5" max="1" step="0.01" value="0.99"></label>
+          <label>Passages <output id="evo-duration-label"></output><input id="evo-duration" type="range" min="1" max="12" step="1" value="12"></label>
+          <label>Effective population Nₑ <select id="evo-ne"><option>1000</option><option>10000</option><option selected>100000</option><option>1000000</option></select></label>
+          <label>Replicate trajectories <input id="evo-reps" type="number" min="1" max="24" value="8"></label>
+          <label>Seed <input id="evo-seed" type="number" min="0" value="20260825"></label>
+          <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
+          <div class="viz"><canvas id="evo-canvas" width="760" height="440" aria-label="Population frequency trajectories"></canvas><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div></div></div>
+        <div class="what-changed"><strong>What changed?</strong> <span id="evo-driver"></span></div><div class="static-fallback"><img src="assets/fallback/evolution-playground.png" alt="Representative static result for evolution playground"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<section class="lesson-cell code-cell" id="cell-efcdf8fa" data-cell-id="efcdf8fa"><details class="code-panel"><summary>Show the code <span>Python · cell 6</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">def WF_Avecilla(log_delta_C, log_delta_B, s_C, s_B,
+                generation, seed=None, N=int(3.3e8)):
+    &quot;&quot;&quot;
+    Avecilla et al. 3-genotype Wright-Fisher simulator.
+
+    Parameters
+    ──────────
+    log_delta_C : log10(CNV formation rate δ_C per generation)
+    log_delta_B : log10(other-beneficial mutation rate δ_B per generation)
+    s_C, s_B    : fitness advantages (linear scale)
+    generation  : array of generation indices to return
+    N           : effective population size (default 3.3 × 10^8)
+
+    Returns: np.ndarray shape (len(generation), 3) — frequencies [x_A, x_C, x_B]
+    &quot;&quot;&quot;
+    delta_C = 10 ** log_delta_C
+    delta_B = 10 ** log_delta_B
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    w = np.array([1.0, 1.0 + s_C, 1.0 + s_B])
+    M = np.array([
+        [1 - delta_C - delta_B,  0,  0],
+        [delta_C,                1,  0],
+        [delta_B,                0,  1],
+    ], dtype=&#x27;float64&#x27;)
+    E = M @ np.diag(w)
+
+    n = np.array([N, 0.0, 0.0])
+    freqs = []
+    for _ in range(int(generation.max()) + 1):
+        freqs.append(n / n.sum())
+        p = E @ (n / n.sum())
+        p /= p.sum()
+        n = np.random.multinomial(int(N), p).astype(float)
+
+    return np.array(freqs)[generation.astype(int)]
+</code></pre></details></section>
+<section class="lesson-cell code-cell" id="cell-54e9f8de" data-cell-id="54e9f8de"><details class="code-panel"><summary>Show the code <span>Python · cell 7</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Model fit: Avecilla WF vs. Lauer data ────────────────────────────────────
+# Central theta (from Avecilla et al. / estimates) — adjust to improve the fit
+THETA_AVE = dict(
+    log_delta_C = -4.2,   # CNV formation rate
+    log_delta_B = -5.0,   # other-beneficial rate
+    s_C         =  0.07,  # CNV fitness advantage
+    s_B         =  0.001, # other-beneficial fitness advantage
+)
+# Per-parameter noise std — controls how much replicates differ from each other
+SIGMA_AVE = dict(
+    log_delta_C = 0.2,
+    log_delta_B = 0.2,
+    s_C         = 0.005,
+    s_B         = 0.005,
+)
+
+GEN_AVE = np.arange(120)
+trajs   = noisy_sims(WF_Avecilla, THETA_AVE, SIGMA_AVE, n=50,
+                     extra_kw=dict(generation=GEN_AVE))
+
+fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+# Panel A: simulation envelope + data
+ax = axes[0]
+for traj in trajs:
+    ax.plot(GEN_AVE, traj[:, 1], lw=1.5, alpha=0.25, color=C[&#x27;avecilla_wf&#x27;], label=&#x27;Simulations&#x27; if traj is trajs[0] else None)
+for j, (rep, row) in enumerate(lauer_df.iterrows()):
+    ax.plot(LAUER_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;avecilla_wf&#x27;], ms=7, lw=2, zorder=5, label=&#x27;Data&#x27; if j == 0 else None)
+from matplotlib.lines import Line2D
+ax.legend()
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+
+ax.set_title(f&#x27;Avecilla WF fit vs. Lauer data&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+# Panel B: all 3 genotypes in one perturbed replicate
+ax = axes[1]
+rng = np.random.default_rng(0)
+theta_ex = {k: v + rng.normal(0, SIGMA_AVE.get(k, 0)) for k, v in THETA_AVE.items()}
+traj_ex  = WF_Avecilla(**theta_ex, generation=GEN_AVE, seed=0)
+ax.plot(GEN_AVE, traj_ex[:, 0], lw=2.5, color=&#x27;#95A5A6&#x27;, label=&#x27;$X_A$ (ancestral)&#x27;)
+ax.plot(GEN_AVE, traj_ex[:, 1], lw=2.5, color=C[&#x27;avecilla_wf&#x27;], label=&#x27;$X_C$ (GAP1 CNV)&#x27;)
+ax.plot(GEN_AVE, traj_ex[:, 2], lw=2.5, color=&#x27;#8E44AD&#x27;,  label=&#x27;$X_B$ (other ben.)&#x27;)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;Frequency&#x27;)
+ax.set_title(&#x27;All 3 genotypes — one perturbed simulation&#x27;)
+ax.legend(); ax.set_ylim(-0.02, 1.02)
+
+plt.suptitle(&#x27;Avecilla WF — Model Fit  (θ + Gaussian noise)&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/54e9f8de-out-0.png" alt="Stored notebook figure from cell 54e9f8de"><figcaption>Stored notebook output · cell 54e9f8de</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-629428f4" data-cell-id="629428f4"><h3>Diagnostic: does <em>one</em> selection coefficient describe the whole sweep?</h3>
+<p>The fit above gives every GAP1 CNV the same advantage <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>s</mi><mi>C</mi></msub></mrow></math>. Real CNVs are not
+interchangeable — amplicon size, copy number and breakpoint all vary — so each new CNV
+is better described as drawing its effect from a <strong>distribution of fitness effects (DFE)</strong>.</p>
+<p>A DFE leaves a signature in the <em>shape</em> of the trajectory. Selection enriches the CNV
+pool for its own upper tail, so the mean advantage of the cells carrying a CNV
+<strong>rises with time</strong> even though the DFE itself never changes. A model that insists on a
+single <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> can only absorb that by reporting a different <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> in each stretch of the
+trajectory.</p>
+<p>The diagnostic makes that explicit:</p>
+<ol>
+<li><strong>Generate under a DFE</strong> — replace the single CNV genotype with <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>K</mi></mrow></math> classes; a new CNV
+   lands in class <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>k</mi></mrow></math> with probability <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>p</mi><mi>k</mi></msub></mrow></math> and carries fitness <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><msub><mi>s</mi><mi>k</mi></msub></mrow></math>, mean <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="true">&#x000AF;</mo></mover></mrow></math>.</li>
+<li><strong>Fit a constant-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> WF to sliding windows</strong> — in each window of <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>W</mi><mo>&#x0003D;</mo><mn>30</mn></mrow></math> generations,
+   fit the 2-genotype WF (CNV vs. everything else) with <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003B4;</mi><mi>C</mi></msub></mrow></math> held fixed, so <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> is
+   the only free parameter.</li>
+<li><strong>Plot <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> against window midpoint.</strong></li>
+</ol>
+<p>Constant-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> data should give a <strong>flat</strong> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> at the true value; DFE data should give a
+<strong>rising</strong> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math>. The same fit is applied to the Lauer replicates for comparison.</p></section>
+<section class="lesson-cell code-cell" id="cell-da8788a6" data-cell-id="da8788a6"><details class="code-panel"><summary>Show the code <span>Python · cell 9</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Step 1: the same WF, but CNVs draw their fitness from a DFE ──────────────
+from scipy.stats import gamma as gamma_dist
+
+DFE_SHAPE = 2.0    # gamma shape of the CNV fitness-effect distribution
+DFE_SMAX  = 0.10   # sets the scale of the grid (rescaled to hit the mean)
+DFE_K     = 25     # number of CNV fitness classes
+
+
+def dfe_grid(s_bar, shape=DFE_SHAPE, s_max=DFE_SMAX, K=DFE_K):
+    &quot;&quot;&quot;
+    Discrete DFE for new CNVs: K fitness classes on (0, s_max], gamma-shaped weights.
+
+    The DFE *is* this grid — weights come from a gamma pdf evaluated on the grid and
+    normalised, then the effects are rescaled so the grid mean is exactly `s_bar`
+    (no hidden truncation error, and s_bar is comparable to s_C of the constant-s model).
+
+    Returns: (s_grid, p_grid), both length K
+    &quot;&quot;&quot;
+    s = np.linspace(s_max / K, s_max, K)
+    p = gamma_dist.pdf(s, a=shape, scale=s_bar / shape)
+    p /= p.sum()
+    return s * (s_bar / (p @ s)), p
+
+
+def WF_Avecilla_DFE(log_delta_C, log_delta_B, s_bar, s_B,
+                    generation, seed=None, N=int(3.3e8), **dfe_kw):
+    &quot;&quot;&quot;
+    Avecilla WF in which each new CNV draws its own fitness effect from a DFE.
+
+    Identical to `WF_Avecilla` except that the single CNV genotype X_C is split into
+    K classes: the ancestor mutates into class k at rate δ_C·p_k and that class carries
+    fitness 1 + s_k.  Mutation → selection → multinomial drift are unchanged, and
+    s_bar plays the role of s_C on average.
+
+    Parameters
+    ──────────
+    log_delta_C, log_delta_B, s_B : as in WF_Avecilla
+    s_bar       : mean of the CNV fitness-effect distribution
+    dfe_kw      : passed to dfe_grid (shape, s_max, K)
+
+    Returns: np.ndarray shape (len(generation), 4) —
+             [x_A, x_C (all classes summed), x_B, mean s among CNV cells]
+    &quot;&quot;&quot;
+    s_grid, p_grid = dfe_grid(s_bar, **dfe_kw)
+    K = len(s_grid)
+    delta_C = 10 ** log_delta_C
+    delta_B = 10 ** log_delta_B
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    w = np.concatenate([[1.0], 1.0 + s_grid, [1.0 + s_B]])
+    M = np.zeros((K + 2, K + 2))
+    M[0, 0]           = 1 - delta_C - delta_B
+    M[1:K + 1, 0]     = delta_C * p_grid          # ancestral → CNV class k
+    M[K + 1, 0]       = delta_B                   # ancestral → other beneficial
+    M[np.arange(1, K + 2), np.arange(1, K + 2)] = 1.0
+    E = M @ np.diag(w)
+
+    n = np.zeros(K + 2); n[0] = N
+    out = []
+    for _ in range(int(generation.max()) + 1):
+        x   = n / n.sum()
+        x_C = x[1:K + 1].sum()
+        out.append([x[0], x_C, x[K + 1],
+                    (x[1:K + 1] @ s_grid) / x_C if x_C &gt; 0 else np.nan])
+        p = E @ x
+        p /= p.sum()
+        n = np.random.multinomial(int(N), p).astype(float)
+
+    return np.array(out)[generation.astype(int)]
+
+
+_s, _p = dfe_grid(0.045)
+print(f&quot;✓ DFE grid: {DFE_K} classes, s ∈ [{_s[0]:.4f}, {_s[-1]:.4f}], mean = {_p @ _s:.4f}&quot;)
+print(f&quot;  top 10% of new CNVs carry s ≥ {_s[np.searchsorted(np.cumsum(_p), 0.9)]:.3f}&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ DFE grid: 25 classes, s ∈ [0.0045, 0.1130], mean = 0.0450
+  top 10% of new CNVs carry s ≥ 0.086</pre></section>
+<section class="lesson-cell code-cell" id="cell-6355cf57" data-cell-id="6355cf57"><details class="code-panel"><summary>Show the code <span>Python · cell 10</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Step 2: fit a constant-s WF to sliding windows ───────────────────────────
+from scipy.optimize import minimize_scalar
+
+WINDOW    = 30           # window width, generations
+MIN_PTS   = 3            # time points required inside a window
+FIT_LIMIT = (-0.2, 1.0)  # search range for s-hat
+
+
+def _wf_const_s(s, x0, n_gen, delta_C=0.0):
+    &quot;&quot;&quot;Deterministic constant-s WF, CNV vs. everything else (mutation, then selection).&quot;&quot;&quot;
+    x, out = float(x0), [float(x0)]
+    for _ in range(n_gen):
+        x_mut = x + delta_C * (1 - x)
+        x = x_mut * (1 + s) / (1 + s * x_mut)
+        out.append(x)
+    return np.array(out)
+
+
+def _logit(x, eps=1e-9):
+    x = np.clip(np.asarray(x, float), eps, 1 - eps)
+    return np.log(x / (1 - x))
+
+
+def fit_constant_s(gens, freqs, delta_C=0.0):
+    &quot;&quot;&quot;
+    Least-squares fit of a constant-s WF to one stretch of a CNV trajectory.
+
+    s is the only free parameter: δ_C is held at its fitted value and the model is
+    anchored at the first observed frequency of the window. Residuals are taken on the
+    logit scale so a window at 1% CNV and a window at 60% CNV are weighted comparably.
+    &quot;&quot;&quot;
+    gens, freqs = np.asarray(gens, float), np.asarray(freqs, float)
+    idx = np.round(gens - gens[0]).astype(int)
+    y   = _logit(freqs)
+
+    def loss(s):
+        pred = _wf_const_s(s, freqs[0], idx[-1], delta_C)[idx]
+        return np.sum((_logit(pred) - y) ** 2)
+
+    return minimize_scalar(loss, bounds=FIT_LIMIT, method=&#x27;bounded&#x27;).x
+
+
+def sliding_s_hat(gens, freqs, width=WINDOW, delta_C=0.0, min_pts=MIN_PTS, x_max=0.98):
+    &quot;&quot;&quot;
+    Fit a constant-s WF in every window [t, t + width]; return (midpoints, s_hat).
+
+    One window is anchored at each observed time point. Windows with fewer than
+    `min_pts` points, or that start above `x_max`, are dropped — once the CNV has swept
+    there is no frequency change left to estimate s from.
+    &quot;&quot;&quot;
+    gens, freqs = np.asarray(gens, float), np.asarray(freqs, float)
+    mids, s_hat = [], []
+    for t0 in gens[gens &lt;= gens[-1] - width]:
+        m = (gens &gt;= t0) &amp; (gens &lt;= t0 + width)
+        if m.sum() &lt; min_pts or freqs[m][0] &gt; x_max or not np.all(np.isfinite(freqs[m])):
+            continue
+        mids.append(t0 + width / 2)
+        s_hat.append(fit_constant_s(gens[m], freqs[m], delta_C))
+    return np.array(mids), np.array(s_hat)
+
+
+# Sanity check: the estimator recovers a known constant s from noiseless data
+_gen  = np.arange(60)
+_true = _wf_const_s(0.07, 1e-3, 59)
+print(f&quot;✓ recovery check — true s = 0.070, fitted s = {fit_constant_s(_gen, _true):.4f}&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ recovery check — true s = 0.070, fitted s = 0.0700</pre></section>
+<section class="lesson-cell code-cell" id="cell-7b0a27f1" data-cell-id="7b0a27f1"><details class="code-panel"><summary>Show the code <span>Python · cell 11</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Step 3: ŝ against window midpoint ────────────────────────────────────────
+S_BAR = 0.045   # DFE mean, tuned so DFE trajectories match the Lauer data as well
+                # as the constant-s fit does (a fair like-for-like comparison)
+THETA_DFE = dict(log_delta_C=-4.2, log_delta_B=-5.0, s_bar=S_BAR, s_B=0.001)
+SIGMA_DFE = dict(log_delta_C=0.2,  log_delta_B=0.2,  s_bar=0.005, s_B=0.005)
+
+N_SIM       = 30
+DELTA_C_FIT = 10 ** THETA_AVE[&#x27;log_delta_C&#x27;]   # δ_C held fixed inside every window fit
+
+trajs_const = noisy_sims(WF_Avecilla, THETA_AVE, SIGMA_AVE, n=N_SIM,
+                         extra_kw=dict(generation=LAUER_GEN))
+trajs_dfe   = noisy_sims(WF_Avecilla_DFE, THETA_DFE, SIGMA_DFE, n=N_SIM,
+                         extra_kw=dict(generation=LAUER_GEN))
+
+
+def s_hat_band(cnv_trajectories):
+    &quot;&quot;&quot;Sliding-window ŝ for a set of CNV trajectories → (midpoints, [q25, q50, q75]).&quot;&quot;&quot;
+    fits = [sliding_s_hat(LAUER_GEN, x, delta_C=DELTA_C_FIT) for x in cnv_trajectories]
+    return fits[0][0], np.percentile(np.vstack([f[1] for f in fits]), [25, 50, 75], axis=0)
+
+
+mids_c, q_c = s_hat_band([t[:, 1] for t in trajs_const])
+mids_d, q_d = s_hat_band([t[:, 1] for t in trajs_dfe])
+mids_x, q_x = s_hat_band([row.values for _, row in lauer_df.iterrows()])
+mean_s_true = np.median(np.stack([t[:, 3] for t in trajs_dfe]), axis=0)
+
+fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+
+# Panel A: both generative models describe the data about equally well
+ax = axes[0]
+for i, traj in enumerate(trajs_const):
+    ax.plot(LAUER_GEN, traj[:, 1], lw=1.2, alpha=0.25, color=C[&#x27;avecilla_wf&#x27;],
+            label=&#x27;Constant $s$  ($s_C = 0.07$)&#x27; if i == 0 else None)
+for i, traj in enumerate(trajs_dfe):
+    ax.plot(LAUER_GEN, traj[:, 1], lw=1.2, alpha=0.25, color=C[&#x27;zhou&#x27;],
+            label=rf&#x27;DFE  ($\bar{{s}} = {S_BAR}$)&#x27; if i == 0 else None)
+for j, (rep, row) in enumerate(lauer_df.iterrows()):
+    ax.plot(LAUER_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;data&#x27;], ms=6, lw=1, zorder=5,
+            label=&#x27;Lauer data&#x27; if j == 0 else None)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(&#x27;Two generative models, one data set&#x27;)
+ax.set_ylim(-0.02, 1.02); ax.legend(loc=&#x27;upper left&#x27;, fontsize=13)
+
+# Panel B: constant-s fits in sliding windows (median + IQR across replicates)
+ax = axes[1]
+in_range = (LAUER_GEN &gt;= mids_d[0]) &amp; (LAUER_GEN &lt;= mids_d[-1])
+ax.fill_between(mids_c, q_c[0], q_c[2], color=C[&#x27;avecilla_wf&#x27;], alpha=0.2, lw=0)
+ax.plot(mids_c, q_c[1], lw=2.5, color=C[&#x27;avecilla_wf&#x27;], label=&#x27;Constant-$s$ simulations&#x27;)
+ax.fill_between(mids_d, q_d[0], q_d[2], color=C[&#x27;zhou&#x27;], alpha=0.2, lw=0)
+ax.plot(mids_d, q_d[1], lw=2.5, color=C[&#x27;zhou&#x27;], label=&#x27;DFE simulations&#x27;)
+ax.plot(LAUER_GEN[in_range], mean_s_true[in_range], lw=2, ls=(0, (4, 2)),
+        color=C[&#x27;zhou&#x27;], alpha=0.85, label=&#x27;DFE: true mean $s$ of CNV pool&#x27;)
+ax.fill_between(mids_x, q_x[0], q_x[2], color=C[&#x27;data&#x27;], alpha=0.15, lw=0)
+ax.plot(mids_x, q_x[1], &#x27;o-&#x27;, color=C[&#x27;data&#x27;], ms=7, lw=1.5, zorder=5, label=&#x27;Lauer data&#x27;)
+ax.axhline(THETA_AVE[&#x27;s_C&#x27;], lw=1.2, ls=&#x27;:&#x27;, color=C[&#x27;avecilla_wf&#x27;], alpha=0.9)
+ax.text(mids_c[-1] + 2, THETA_AVE[&#x27;s_C&#x27;] + 0.002, f&quot;true $s_C$ = {THETA_AVE[&#x27;s_C&#x27;]}&quot;,
+        color=C[&#x27;avecilla_wf&#x27;], fontsize=12, va=&#x27;bottom&#x27;)
+ax.set_xlabel(&#x27;Window midpoint (generation)&#x27;)
+ax.set_ylabel(r&#x27;$\hat{s}$   (constant-$s$ WF fit)&#x27;)
+ax.set_title(f&#x27;{WINDOW}-generation sliding windows&#x27;)
+ax.set_xlim(mids_d[0] - 6, mids_d[-1] + 22)
+ax.legend(loc=&#x27;lower right&#x27;, fontsize=12)
+
+plt.suptitle(&#x27;Avecilla WF — does one selection coefficient describe the whole sweep?&#x27;)
+plt.tight_layout(); plt.show()
+
+print(f&quot;ŝ, first → last window  (median over replicates)&quot;)
+print(f&quot;  constant-s truth : {q_c[1][0]:.3f} → {q_c[1][-1]:.3f}   &quot;
+      f&quot;(flat; true s_C = {THETA_AVE[&#x27;s_C&#x27;]})&quot;)
+print(f&quot;  DFE truth        : {q_d[1][0]:.3f} → {q_d[1][-1]:.3f}   &quot;
+      f&quot;({q_d[1][-1] / q_d[1][0]:.1f}× rise; true mean s of the CNV pool &quot;
+      f&quot;{mean_s_true[in_range][0]:.3f} → {mean_s_true[in_range][-1]:.3f})&quot;)
+print(f&quot;  Lauer data       : {q_x[1][0]:.3f} → {q_x[1][-1]:.3f}&quot;)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/7b0a27f1-out-0.png" alt="Stored notebook figure from cell 7b0a27f1"><figcaption>Stored notebook output · cell 7b0a27f1</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">ŝ, first → last window  (median over replicates)
+  constant-s truth : 0.068 → 0.069   (flat; true s_C = 0.07)
+  DFE truth        : 0.061 → 0.092   (1.5× rise; true mean s of the CNV pool 0.065 → 0.092)
+  Lauer data       : -0.019 → 0.091</pre></section>
+<section class="lesson-cell prose-cell" id="cell-f37292e6" data-cell-id="f37292e6"><p><strong>Reading the figure.</strong> The left panel is the identifiability problem: a constant <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> and a
+DFE with a <em>lower</em> mean produce trajectory envelopes that both cover the data, because the
+DFE's upper tail compensates for its lower mean. A single fit to the full trajectory cannot
+separate them.</p>
+<p>The right panel does separate them. Fitted to constant-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> data, the windowed estimator is
+flat and lands on the true <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>s</mi><mi>C</mi></msub><mo>&#x0003D;</mo><mn>0.07</mn></mrow></math> — so the rise seen elsewhere is a property of the
+data, not of the estimator. Fitted to DFE data, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> climbs steadily and tracks the
+dashed line: the true mean advantage of the cells that carry a CNV, which rises as selection
+enriches the pool for its own upper tail. <strong>The trend in <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math>, not its value, is what
+carries information about the DFE.</strong></p>
+<p><strong>On the Lauer replicates</strong>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> also rises — from ≈ 0 to ≈ 0.11 — but a DFE is only one
+of several explanations, and this diagnostic does not choose between them:</p>
+<ul>
+<li>the earliest windows sit on a 1–3% plateau close to the detection floor, where a rise from
+  near-zero <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> is expected whether or not fitness varies (the same plateau motivates
+  the pre-existing CNV⁻ pool in the <strong>Chuong model</strong>, §3);</li>
+<li>competing beneficial mutations (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>X</mi><mi>B</mi></msub></mrow></math>) and clonal interference bend the trajectory as well;</li>
+<li><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003B4;</mi><mi>C</mi></msub></mrow></math> is held fixed inside every window, so any error in it is absorbed by <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math>.</li>
+</ul>
+<p><strong>For inference.</strong> A rising <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> says the constant-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> WF is misspecified for that data,
+which matters for SBI: the posterior over <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>s</mi><mi>C</mi></msub></mrow></math> will concentrate on whatever value best
+compromises across the whole trajectory, with a tightness that reflects the assumed model
+rather than the actual uncertainty. Either fit the DFE parameters (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="true">&#x000AF;</mo></mover></mrow></math>, shape) directly
+— <code>WF_Avecilla_DFE</code> is a drop-in simulator — or use the windowed <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> trend as a
+posterior-predictive check on a fitted constant-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> model.</p></section>
+<section class="lesson-cell prose-cell" id="cell-6ec896e6" data-cell-id="6ec896e6"><h2>2. Avecilla et al. — Chemostat ODE Model</h2>
+<hr />
+<h3>Why an ODE for chemostat evolution?</h3>
+<p>In a <strong>chemostat</strong>, cells grow continuously — not in discrete synchronized generations.
+The ODE models nutrient-limited growth explicitly via <strong>Monod kinetics</strong>.</p>
+<h3>Three genotypes with mutation</h3>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfrac><mrow><mi>d</mi><msub><mi>X</mi><mi>A</mi></msub></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>&#x0003D;</mo><msub><mi>X</mi><mi>A</mi></msub><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><msub><mi>&#x003BC;</mi><mi>A</mi></msub><mo>&#x02212;</mo><mi>D</mi><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow><mo>&#x02212;</mo><mo stretchy="false">&#x00028;</mo><msub><mi>&#x003B4;</mi><mi>C</mi></msub><mo>&#x0002B;</mo><msub><mi>&#x003B4;</mi><mi>B</mi></msub><mo stretchy="false">&#x00029;</mo><mspace width="0.167em" /><msub><mi>X</mi><mi>A</mi></msub></mrow></math></div>
+<div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfrac><mrow><mi>d</mi><msub><mi>X</mi><mi>C</mi></msub></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>&#x0003D;</mo><msub><mi>X</mi><mi>C</mi></msub><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><msub><mi>&#x003BC;</mi><mi>C</mi></msub><mo>&#x02212;</mo><mi>D</mi><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow><mo>&#x0002B;</mo><msub><mi>&#x003B4;</mi><mi>C</mi></msub><mspace width="0.167em" /><msub><mi>X</mi><mi>A</mi></msub></mrow></math></div>
+<div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfrac><mrow><mi>d</mi><msub><mi>X</mi><mi>B</mi></msub></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>&#x0003D;</mo><msub><mi>X</mi><mi>B</mi></msub><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><msub><mi>&#x003BC;</mi><mi>B</mi></msub><mo>&#x02212;</mo><mi>D</mi><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow><mo>&#x0002B;</mo><msub><mi>&#x003B4;</mi><mi>B</mi></msub><mspace width="0.167em" /><msub><mi>X</mi><mi>A</mi></msub></mrow></math></div>
+<div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mfrac><mrow><mi>d</mi><mi>S</mi></mrow><mrow><mi>d</mi><mi>t</mi></mrow></mfrac><mo>&#x0003D;</mo><mi>D</mi><mo stretchy="false">&#x00028;</mo><msub><mi>S</mi><mn>0</mn></msub><mo>&#x02212;</mo><mi>S</mi><mo stretchy="false">&#x00029;</mo><mo>&#x02212;</mo><mfrac><mrow><mn>1</mn></mrow><mrow><mi>Y</mi></mrow></mfrac><mspace width="negativethinmathspace" /><mrow><mo stretchy="true" fence="true" form="prefix">&#x00028;</mo><msub><mi>X</mi><mi>A</mi></msub><msub><mi>&#x003BC;</mi><mi>A</mi></msub><mo>&#x0002B;</mo><msub><mi>X</mi><mi>C</mi></msub><msub><mi>&#x003BC;</mi><mi>C</mi></msub><mo>&#x0002B;</mo><msub><mi>X</mi><mi>B</mi></msub><msub><mi>&#x003BC;</mi><mi>B</mi></msub><mo stretchy="true" fence="true" form="postfix">&#x00029;</mo></mrow></mrow></math></div></p>
+<p>with Monod kinetics <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003BC;</mi><mi>i</mi></msub><mo>&#x0003D;</mo><msub><mi>r</mi><mi>i</mi></msub><mi>S</mi><mo>&#x0002F;</mo><mo stretchy="false">&#x00028;</mo><mi>S</mi><mo>&#x0002B;</mo><mi>k</mi><mo stretchy="false">&#x00029;</mo></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>r</mi><mi>i</mi></msub><mo>&#x0003D;</mo><msub><mi>r</mi><mi>A</mi></msub><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002B;</mo><msub><mi>s</mi><mi>i</mi></msub><mi>ln</mi><mn>2</mn><mo stretchy="false">&#x00029;</mo></mrow></math>.</p>
+<h3>Parameters (Avecilla et al., Table 2)</h3>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Value</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>D</mi></mrow></math></td>
+<td>0.12 h⁻¹</td>
+<td>Dilution rate</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>S</mi><mn>0</mn></msub></mrow></math></td>
+<td>0.8 mM</td>
+<td>Influent glutamine</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>k</mi></mrow></math></td>
+<td>0.103 mM</td>
+<td>Half-saturation (all genotypes)</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>Y</mi></mrow></math></td>
+<td>3.24 × 10⁷ cells mL⁻¹ mM⁻¹</td>
+<td>Yield</td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>r</mi><mi>A</mi></msub></mrow></math></td>
+<td>0.166 h⁻¹</td>
+<td>Ancestral max growth rate</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Time axis</strong>: hours. Conversion: 1 WF generation <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x0003D;</mo><mn>1.5</mn></mrow></math> h (empirical chemostat value).</p></section>
+<section class="lesson-cell code-cell" id="cell-252e23bf" data-cell-id="252e23bf"><details class="code-panel"><summary>Show the code <span>Python · cell 14</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># Avecilla et al. Table 2 constants
+D_AVE  = 0.12      # h⁻¹  dilution rate
+S0_AVE = 0.8       # mM   influent substrate
+K_AVE  = 0.103     # mM   half-saturation
+Y_AVE  = 3.24e7    # cells/mL/mM  yield
+R_A    = 0.166     # h⁻¹  ancestral max growth rate
+
+GEN_TO_HOURS = 1.5   # hours per WF generation (empirical chemostat value)
+
+
+def WF_Avecilla_ODE(log_delta_C, log_delta_B, s_C, s_B,
+                    D=D_AVE, S0=S0_AVE, k=K_AVE, Y=Y_AVE, r_A=R_A,
+                    t_max=700.0, n_points=1000):
+    &quot;&quot;&quot;
+    Avecilla et al. chemostat ODE — 3 competing genotypes with mutation.
+
+    Parameters use the same WF convention (per-generation s and δ), converted to per-hour:
+        delta_per_hr = 10**log_delta / GEN_TO_HOURS
+        r_C = r_A * (1 + s_C / (D * GEN_TO_HOURS))   # exact at steady state
+
+    Returns: t_grid (hours), freqs shape (n_points, 3) — [x_A, x_C, x_B]
+    &quot;&quot;&quot;
+    # Consistent with WF: at chemostat steady state, per-generation advantage = s_C
+    # mu_C - mu_A = s_C / GEN_TO_HOURS  →  r_C = r_A * (1 + s_C/(D*GEN_TO_HOURS))
+    r_C = r_A * (1 + s_C / (D * GEN_TO_HOURS))
+    r_B = r_A * (1 + s_B / (D * GEN_TO_HOURS))
+    # Per-hour mutation rate: delta_per_hr = delta_per_gen / GEN_TO_HOURS
+    delta_C = 10**log_delta_C / GEN_TO_HOURS
+    delta_B = 10**log_delta_B / GEN_TO_HOURS
+
+    S_ss = D * k / (r_A - D)
+    X_ss = Y * (S0 - S_ss)
+
+    def odes(y, t):
+        X_A, X_C, X_B, S = y
+        S   = max(S,   1e-12)
+        X_A = max(X_A, 0.0); X_C = max(X_C, 0.0); X_B = max(X_B, 0.0)
+        mu_A = r_A * S / (S + k)
+        mu_C = r_C * S / (S + k)
+        mu_B = r_B * S / (S + k)
+        dX_A = X_A * (mu_A - D) - (delta_C + delta_B) * X_A
+        dX_C = X_C * (mu_C - D) + delta_C * X_A
+        dX_B = X_B * (mu_B - D) + delta_B * X_A
+        dS   = D * (S0 - S) - (X_A * mu_A + X_C * mu_C + X_B * mu_B) / Y
+        return [dX_A, dX_C, dX_B, dS]
+
+    t_grid = np.linspace(0, t_max, n_points)
+    sol    = np.clip(odeint(odes, [X_ss, 0.0, 0.0, S_ss], t_grid), 0, None)
+    X_tot  = sol[:, :3].sum(axis=1, keepdims=True)
+    freqs  = sol[:, :3] / np.where(X_tot &gt; 0, X_tot, 1)
+    return t_grid, freqs
+</code></pre></details></section>
+<section class="lesson-cell prose-cell" id="cell-4ff32a3e" data-cell-id="4ff32a3e"><h3>Translating the ODE to WF language — and why it matters for inference</h3>
+<p>The ODE and WF share <strong>the same parameters</strong> (Fig below). The translation is:</p>
+<table>
+<thead>
+<tr>
+<th>ODE parameter</th>
+<th>WF parameter</th>
+<th>Relationship</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>r</mi><mi>C</mi></msub></mrow></math> (max growth rate of CNV)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>s</mi><mi>C</mi></msub></mrow></math> (selection coefficient)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>s</mi><mi>C</mi></msub><mo>&#x0003D;</mo><mo stretchy="false">&#x00028;</mo><msub><mi>r</mi><mi>C</mi></msub><mo>&#x02212;</mo><msub><mi>r</mi><mi>A</mi></msub><mo stretchy="false">&#x00029;</mo><mo>&#x0002F;</mo><mo stretchy="false">&#x00028;</mo><msub><mi>r</mi><mi>A</mi></msub><mi>ln</mi><mn>2</mn><mo stretchy="false">&#x00029;</mo></mrow></math></td>
+</tr>
+<tr>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003B4;</mi><mi>C</mi><mrow><mtext>hr</mtext></mrow></msubsup></mrow></math> (per-hour mutation rate)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003B4;</mi><mi>C</mi><mrow><mtext>gen</mtext></mrow></msubsup></mrow></math> (per-generation)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msubsup><mi>&#x003B4;</mi><mi>C</mi><mrow><mtext>gen</mtext></mrow></msubsup><mo>&#x0003D;</mo><msubsup><mi>&#x003B4;</mi><mi>C</mi><mrow><mtext>hr</mtext></mrow></msubsup><mi>&#x000B7;</mi><mi>ln</mi><mn>2</mn><mo>&#x0002F;</mo><mi>D</mi></mrow></math></td>
+</tr>
+<tr>
+<td>Continuous time <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>t</mi></mrow></math> (hours)</td>
+<td>Discrete generation <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>g</mi></mrow></math></td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>g</mi><mo>&#x0003D;</mo><mi>t</mi><mi>&#x000B7;</mi><mi>D</mi><mo>&#x0002F;</mo><mi>ln</mi><mn>2</mn></mrow></math></td>
+</tr>
+<tr>
+<td>Total cells <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x0003D;</mo><msub><mi>X</mi><mrow><mi>s</mi><mi>s</mi></mrow></msub><mi>&#x000D7;</mi><mi>V</mi></mrow></math></td>
+<td>Effective population size <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi></mrow></math></td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi><mo>&#x0003D;</mo><mi>Y</mi><mo stretchy="false">&#x00028;</mo><msub><mi>S</mi><mn>0</mn></msub><mo>&#x02212;</mo><msub><mi>S</mi><mrow><mi>s</mi><mi>s</mi></mrow></msub><mo stretchy="false">&#x00029;</mo><mi>&#x000D7;</mi><mi>V</mi></mrow></math></td>
+</tr>
+</tbody>
+</table>
+<p><strong>Consequence:</strong> the Avecilla WF model IS the discrete-generation approximation of the ODE.
+The Lauer data is measured in <strong>generations</strong>, so the WF model directly matches the time axis.</p>
+<p><strong>For inferring the mutation rate</strong> from Lauer data:</p>
+<blockquote>
+<p>Use <code>WF_Avecilla</code> with SBI — the posterior on <code>log_delta_C</code> is the per-generation
+CNV mutation rate. Convert to per-hour via <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msup><mi>&#x003B4;</mi><mrow><mtext>hr</mtext></mrow></msup><mo>&#x0003D;</mo><msup><mn>10</mn><mrow><msub><mi>&#x003B4;</mi><mi>C</mi></msub></mrow></msup><mi>&#x000B7;</mi><mi>D</mi><mo>&#x0002F;</mo><mi>ln</mi><mn>2</mn></mrow></math>.</p>
+</blockquote>
+<p>The ODE adds nutrient dynamics (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>S</mi></mrow></math>) which matter for mechanistic understanding of
+<em>why</em> selection coefficients have particular values — but for <strong>parameter inference</strong>
+from population-frequency data, the WF is sufficient and faster to simulate.</p></section>
+<section class="lesson-cell code-cell" id="cell-d29cac1e" data-cell-id="d29cac1e"><details class="code-panel"><summary>Show the code <span>Python · cell 16</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── ODE vs WF: same WF parameters, generation axis ───────────────────────────
+THETA_ODE = dict(log_delta_C=-4.2, log_delta_B=-5.0, s_C=0.07, s_B=0.001)
+
+lauer_hours = LAUER_GEN * GEN_TO_HOURS
+t_grid, freqs_ode = WF_Avecilla_ODE(**THETA_ODE, t_max=lauer_hours[-1] + 10)
+
+gen_range = np.arange(int(LAUER_GEN[-1]) + 1)
+traj_wf   = WF_Avecilla(**THETA_ODE, generation=gen_range, seed=42)
+
+fig, ax = plt.subplots(figsize=(8, 5))
+
+gen_axis = t_grid / GEN_TO_HOURS
+ax.plot(gen_axis, freqs_ode[:, 1], lw=2.5, color=C[&#x27;avecilla_ode&#x27;],
+        label=&#x27;ODE: $X_C$ (CNV)&#x27;)
+ax.plot(gen_axis, freqs_ode[:, 2], lw=2,   color=C[&#x27;avecilla_ode&#x27;], ls=&#x27;--&#x27;,
+        label=&#x27;ODE: $X_B$&#x27;, alpha=0.6)
+ax.plot(gen_range, traj_wf[:, 1], lw=2.5, color=C[&#x27;avecilla_wf&#x27;],
+        ls=(0, (4, 2)), label=&#x27;WF: $X_C$ (CNV)&#x27;)
+ax.plot(gen_range, traj_wf[:, 2], lw=2,   color=C[&#x27;avecilla_wf&#x27;], ls=&#x27;:&#x27;,
+        label=&#x27;WF: $X_B$&#x27;, alpha=0.6)
+
+ax.set_xlabel(f&#x27;Generation  (1 gen = {GEN_TO_HOURS} h)&#x27;)
+ax.set_ylabel(&#x27;Frequency&#x27;)
+ax.set_title(&#x27;ODE vs. WF — same θ&#x27;)
+ax.legend(); ax.set_ylim(-0.02, 1.02)
+plt.tight_layout(); plt.show()
+
+print(f&quot;1 WF generation = {GEN_TO_HOURS} h&quot;)
+r_C_check = R_A * (1 + THETA_ODE[&#x27;s_C&#x27;] / (D_AVE * GEN_TO_HOURS))
+print(f&quot;s_C = {THETA_ODE[&#x27;s_C&#x27;]}  →  r_C = {r_C_check:.4f} h⁻¹  &quot;
+      f&quot;(steady-state advantage: {(r_C_check - R_A)*D_AVE/R_A*GEN_TO_HOURS:.4f} per gen ≈ s_C)&quot;)
+print(f&quot;δ_C = 10^{THETA_ODE[&#x27;log_delta_C&#x27;]} per gen  →  &quot;
+      f&quot;{10**THETA_ODE[&#x27;log_delta_C&#x27;] / GEN_TO_HOURS:.2e} h⁻¹ in ODE&quot;)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/d29cac1e-out-0.png" alt="Stored notebook figure from cell d29cac1e"><figcaption>Stored notebook output · cell d29cac1e</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">1 WF generation = 1.5 h
+s_C = 0.07  →  r_C = 0.2306 h⁻¹  (steady-state advantage: 0.0700 per gen ≈ s_C)
+δ_C = 10^-4.2 per gen  →  4.21e-05 h⁻¹ in ODE</pre></section>
+<section class="lesson-cell prose-cell" id="cell-4cd32c54" data-cell-id="4cd32c54"><h2>3. Chuong et al. — 4-Genotype Wright-Fisher</h2>
+<p><em>(Chuong et al. 2025)</em></p>
+<hr />
+<h3>The data: LTRΔ discrete-generation evolution</h3>
+<p><em>S. cerevisiae</em> was evolved in <strong>discrete batch culture</strong> for 116 generations.
+Unlike the Avecilla chemostat, populations were passaged at fixed generation intervals.</p>
+<ul>
+<li><strong>7 replicate populations</strong></li>
+<li><strong>12 discrete generation time points</strong>: [8, 21, 29, 37, 50, 58, 66, 79, 87, 95, 108, 116]</li>
+<li><strong>Observable</strong>: GAP1 CNV⁺ frequency</li>
+</ul></section>
+<section class="lesson-cell code-cell" id="cell-f8f106e5" data-cell-id="f8f106e5"><details class="code-panel"><summary>Show the code <span>Python · cell 18</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">fig, ax = plt.subplots(figsize=(15, 6))
+
+
+for j, (strain, row) in enumerate(ltr_df.iterrows()):
+    ax.plot(LTR_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;chuong&#x27;], ms=6, lw=2)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+ax.set_title(&#x27;LTRΔ Data (Chuong et al.)\n7 replicates&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/f8f106e5-out-0.png" alt="Stored notebook figure from cell f8f106e5"><figcaption>Stored notebook output · cell f8f106e5</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-f9cb77d4" data-cell-id="f9cb77d4"><h3>Why Avecilla models don't fit LTR data</h3>
+<ol>
+<li><strong>Non-zero CNV at generation 8</strong> — pre-existing CNV pool absent from Avecilla WF</li>
+<li><strong>Different N</strong> — chemostat N = 3.3×10⁸ vs LTR N ≈ 10⁷; drift is stronger here</li>
+<li><strong>Chemostat ODE</strong> — wrong time units and wrong population dynamics for batch culture</li>
+</ol></section>
+<section class="lesson-cell code-cell" id="cell-104a1da1" data-cell-id="104a1da1"><details class="code-panel"><summary>Show the code <span>Python · cell 20</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># Simulate with s=-0.74, delta=-4.84 in the wf model from avecilla
+THETA_LTR = dict(log_delta_C=-4.84, log_delta_B=-5.0, s_C=10**(-0.74), s_B=0.001)
+trajs_ltr = noisy_sims(WF_Avecilla, THETA_LTR, SIGMA_AVE, n=20,
+                         extra_kw=dict(generation=LTR_GEN))
+fig, ax = plt.subplots(figsize=(8, 5))
+for traj in trajs_ltr:
+    ax.plot(LTR_GEN, traj[:, 1], lw=1.5, alpha=0.35, color=C[&#x27;avecilla_wf&#x27;])
+for j, (rep, row) in enumerate(ltr_df.iterrows()):
+    ax.plot(LTR_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;chuong&#x27;], ms=7, lw=2, zorder=5)
+
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(f&quot;WF simulations  — using Avecilla et al.&#x27;s model fit to LTRΔ data&quot;)
+ax.set_ylim(-0.02, 1.02); plt.tight_layout(); plt.show()</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/104a1da1-out-0.png" alt="Stored notebook figure from cell 104a1da1"><figcaption>Stored notebook output · cell 104a1da1</figcaption></figure></section>
+<section class="lesson-cell code-cell" id="cell-97c3a42c" data-cell-id="97c3a42c"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 21</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;chuong_wf_model.png&#x27;)
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/97c3a42c-out-0.png" alt="Stored notebook figure from cell 97c3a42c"><figcaption>Stored notebook output · cell 97c3a42c</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-5de3ea7b" data-cell-id="5de3ea7b"><h3>The model: Chuong et al. 4-genotype Wright-Fisher</h3>
+<p>Key extension over the Avecilla WF:</p>
+<p><strong>CNV⁻ pool</strong> (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>X</mi><mrow><msup><mi>C</mi><mo>&#x02212;</mo></msup></mrow></msub></mrow></math>): pre-existing CNV cells explain plateau</p>
+<h4>Genotypes</h4>
+<table>
+<thead>
+<tr>
+<th>Index</th>
+<th>Genotype</th>
+<th>Fitness</th>
+<th>Initial frequency</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>0</td>
+<td>WT (wild-type)</td>
+<td>1</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x02212;</mo><mi>&#x003C6;</mi></mrow></math></td>
+</tr>
+<tr>
+<td>1</td>
+<td>CNV⁺ (new CNV)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><mi>s</mi></mrow></math></td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x02248;</mo><mn>0</mn></mrow></math> (arises by mutation)</td>
+</tr>
+<tr>
+<td>2</td>
+<td>CNV⁻ (pre-existing)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><mi>s</mi></mrow></math></td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C6;</mi></mrow></math></td>
+</tr>
+<tr>
+<td>3</td>
+<td>SNV (point mutant)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><msub><mi>s</mi><mrow><mtext>snv</mtext></mrow></msub></mrow></math></td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mo>&#x02248;</mo><mn>0</mn></mrow></math></td>
+</tr>
+</tbody>
+</table>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>M</mi><mo>&#x0003D;</mo><mo>&#x00028;</mo><mtable><mtr><mtd><mn>1</mn><mo>&#x02212;</mo><mi>&#x003B4;</mi><mo>&#x02212;</mo><msub><mi>&#x003BC;</mi><mrow><mtext>snv</mtext></mrow></msub></mtd><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><mi>&#x003B4;</mi></mtd><mtd><mn>1</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><msub><mi>&#x003BC;</mi><mrow><mtext>snv</mtext></mrow></msub></mtd><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>&#x00029;</mo><mo>&#x0002C;</mo><mspace width="1em" /><mi>E</mi><mo>&#x0003D;</mo><mi>M</mi><mi>&#x000B7;</mi><mtext>diag</mtext><mo stretchy="false">&#x00028;</mo><mi>w</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002C;</mo><mspace width="1em" /><msub><mi>n</mi><mrow><mi>t</mi><mo>&#x0002B;</mo><mn>1</mn></mrow></msub><mi>&#x0007E;</mi><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">u</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">l</mi></mrow><mo stretchy="false">&#x00028;</mo><mi>N</mi><mo>&#x0002C;</mo><mspace width="0.278em" /><mi>E</mi><mspace width="0.167em" /><msub><mi>p</mi><mi>t</mi></msub><mo>&#x0002F;</mo><mo stretchy="false">&#x0007C;</mo><mi>E</mi><msub><mi>p</mi><mi>t</mi></msub><mo stretchy="false">&#x0007C;</mo><mo stretchy="false">&#x00029;</mo></mrow></math></div></p>
+<p><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi><mo>&#x0003D;</mo><mn>3.3</mn><mi>&#x000B7;</mi><msup><mn>10</mn><mn>8</mn></msup></mrow></math></p></section>
+<section class="lesson-cell code-cell" id="cell-6cfee4f5" data-cell-id="6cfee4f5"><details class="code-panel"><summary>Show the code <span>Python · cell 23</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">S_SNV  = 1e-3
+M_SNV  = 1e-5
+N_CHU  = int(3.3e8)
+
+
+def WF_Chuong(log_s, log_m, log_p0, seed=None):
+    &quot;&quot;&quot;
+    Chuong et al. 4-genotype Wright-Fisher simulator.
+
+    Parameters (log₁₀ scale)
+    ────────────────────────
+    log_s   : log10(CNV fitness benefit s)
+    log_m   : log10(CNV mutation rate δ, WT→CNV⁺)
+    log_p0  : log10(initial CNV⁻ fraction φ)
+
+    Returns: np.array length 12 — CNV⁺ frequency at GENERATIONS
+    &quot;&quot;&quot;
+    s, m, p0 = 10 ** np.array([log_s, log_m, log_p0])
+
+    if seed is not None:
+        np.random.seed(seed)
+
+    w = np.array([1.0, 1.0 + s, 1.0 + s, 1.0 + S_SNV])
+    M = np.array([
+        [1 - m - M_SNV,  0,  0,  0],
+        [m,              1,  0,  0],
+        [0,              0,  1,  0],
+        [M_SNV,          0,  0,  1],
+    ], dtype=&#x27;float64&#x27;)
+    E = M @ np.diag(w)
+
+    n    = np.zeros(4)
+    n[0] = N_CHU * (1 - p0)
+    n[2] = N_CHU * p0
+
+    cnv_freq = []
+    for _ in range(int(GENERATIONS.max()) + 1):
+        cnv_freq.append(n[1] / N_CHU)
+        p = E @ (n / N_CHU); p /= p.sum()
+        n = np.random.multinomial(N_CHU, p).astype(float)
+
+    return np.array(cnv_freq)[GENERATIONS]
+</code></pre></details></section>
+<section class="lesson-cell code-cell" id="cell-66cce2fa" data-cell-id="66cce2fa"><details class="code-panel"><summary>Show the code <span>Python · cell 24</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Model fit: Chuong WF vs. LTR data ────────────────────────────────────────
+THETA_CHU = dict(log_s=-0.74, log_m=-4.84, log_p0=-4.32)
+SIGMA_CHU = dict(
+    log_s  = 0.005,
+    log_m  = 0.1,
+    log_p0 = 0.1,
+)
+
+trajs_chu = noisy_sims(WF_Chuong, THETA_CHU, SIGMA_CHU, n=50)
+
+fig, ax = plt.subplots(figsize=(15, 6))
+
+# Panel A: simulations vs data
+for traj in trajs_chu:
+    ax.plot(GENERATIONS, traj, lw=1.5, alpha=0.35, color=C[&#x27;chuong&#x27;], label=&#x27;Simulations&#x27; if traj is trajs_chu[0] else &quot;&quot;)
+for j, (strain, row) in enumerate(ltr_df.iterrows()):
+    ax.plot(LTR_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;chuong&#x27;], ms=7, lw=1,
+            label=&#x27;Data&#x27; if j == 0 else &quot;&quot;, zorder=5)
+from matplotlib.lines import Line2D
+ax.legend()
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV⁺ frequency&#x27;)
+ax.set_title(f&#x27;Chuong WF fit vs. LTR data&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+
+plt.suptitle(&#x27;Chuong WF — Model Fit&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/66cce2fa-out-0.png" alt="Stored notebook figure from cell 66cce2fa"><figcaption>Stored notebook output · cell 66cce2fa</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-2973e9a8" data-cell-id="2973e9a8"><h2>4. De et al. — 2-Genotype Wright-Fisher</h2>
+<hr />
+<h3>The data: CNV fluorescent reporter assay</h3>
+<p>De et al. used <strong>fluorescent reporter strains</strong> to track CNV copy number dynamics.
+The <code>Multicopy_mCitrine</code> column tracks cells with amplified (multicopy) GAP1 reporters.</p>
+<ul>
+<li><strong>Key strain</strong>: DGY1886</li>
+<li><strong>Observable</strong>: <code>Multicopy_mCitrine</code> (%) — fraction of cells with amplified CNV</li>
+<li><strong>Note</strong>: CNV starts <strong>common</strong> and <strong>declines</strong> as revertants take over</li>
+</ul></section>
+<section class="lesson-cell code-cell" id="cell-e7044463" data-cell-id="e7044463"><details class="code-panel"><summary>Show the code <span>Python · cell 26</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">data = pd.read_csv(&#x27;data/clean_data_exp_2.csv&#x27;)
+
+# Filter contaminated replicate
+clean_data = data.drop(data[data[&#x27;Strain&#x27;]==&#x27;DGY2751_1&#x27;].index)
+
+# Prep
+num_lines = len(clean_data[&#x27;Line&#x27;].unique())
+num_strains_max = 4 # max strains per line
+generation_de = np.array(data[data[&#x27;Strain&#x27;] == &#x27;DGY1886_1&#x27;][&#x27;Generation&#x27;])
+
+# Match color palettes
+colors_mep = [&#x27;peru&#x27;, &#x27;orange&#x27;, &#x27;brown&#x27;, &#x27;orangered&#x27;, &#x27;sienna&#x27;]
+colors_gap = [&#x27;royalblue&#x27;, &#x27;limegreen&#x27;, &#x27;green&#x27;, &#x27;darkturquoise&#x27;, &#x27;steelblue&#x27;]
+color_g = &#x27;steelblue&#x27;
+color_m = &#x27;sienna&#x27;
+# Match strain names
+line_mapping = {&#x27;DGY1886&#x27;: &#x27;G_4&#x27;, &#x27;DGY2748&#x27;: &#x27;GM_12&#x27;, &#x27;DGY2750&#x27;: &#x27;GM_13&#x27;, &#x27;DGY2751&#x27;:&#x27;GM_14&#x27;, &#x27;DGY2755&#x27;:&#x27;GM_15&#x27;}</code></pre></details></section>
+<section class="lesson-cell code-cell" id="cell-8db7a696" data-cell-id="8db7a696"><details class="code-panel"><summary>Show the code <span>Python · cell 27</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># plot DGY2748 - both mcherry and mcitrine, all replicates
+
+line = &#x27;DGY2748&#x27;
+strain_focus = line_mapping[line]
+de_sub = clean_data[clean_data[&#x27;Line&#x27;] == line]
+
+gap1_traj = de_sub[&#x27;Multicopy_mCherry&#x27;].values
+mep2_traj = de_sub[&#x27;Multicopy_mCitrine &#x27;].values
+
+fig, ax = plt.subplots(figsize=(15, 6))
+
+
+for j, (rep, grp) in enumerate(de_sub.groupby(&#x27;Strain&#x27;)):
+    ax.plot(grp[&#x27;Generation&#x27;], grp[&#x27;Multicopy_mCherry&#x27;], &#x27;o-&#x27;,
+            color=&#x27;sienna&#x27;, ms=6, lw=2, label=&#x27;MEP2&#x27; if j == 0 else &quot;&quot;)
+
+for j, (rep, grp) in enumerate(de_sub.groupby(&#x27;Strain&#x27;)):
+    ax.plot(grp[&#x27;Generation&#x27;], grp[&#x27;Multicopy_mCitrine &#x27;], &#x27;o-&#x27;,
+            color=&#x27;steelblue&#x27;, ms=6, lw=2, label=&#x27;GAP1&#x27; if j == 0 else &quot;&quot;)
+ax.set_xlabel(&#x27;Generation&#x27;)
+plt.suptitle(f&#x27;{strain_focus} — CNV Reporter Data&#x27;)
+
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;CNV proportion&#x27;)
+plt.suptitle(f&#x27;De et al. — CNV Reporter Data: {strain_focus}&#x27;)
+ax.legend(loc=&#x27;lower left&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/8db7a696-out-0.png" alt="Stored notebook figure from cell 8db7a696"><figcaption>Stored notebook output · cell 8db7a696</figcaption></figure></section>
+<section class="lesson-cell code-cell" id="cell-35d77585" data-cell-id="35d77585"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 28</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;de_et_al_model.png&#x27;)
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/35d77585-out-0.png" alt="Stored notebook figure from cell 35d77585"><figcaption>Stored notebook output · cell 35d77585</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-3d886968" data-cell-id="3d886968"><h3>The model: De et al. 2-genotype WF (CNV reversion)</h3>
+<p>Asks the <strong>opposite question</strong> from Chuong: <em>How fast does an existing CNV revert?</em></p>
+<table>
+<thead>
+<tr>
+<th>Genotype</th>
+<th>Fitness</th>
+<th>Starts at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CNV (amplified)</td>
+<td>1</td>
+<td>1-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C6;</mi></mrow></math></td>
+</tr>
+<tr>
+<td>non-CNV (revertant)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mn>1</mn><mo>&#x0002B;</mo><mi>s</mi></mrow></math></td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C6;</mi></mrow></math></td>
+</tr>
+</tbody>
+</table>
+<p>Mutation direction: CNV → non-CNV at rate <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B4;</mi></mrow></math> (reversion).</p>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>M</mi><mo>&#x0003D;</mo><mo>&#x00028;</mo><mtable><mtr><mtd><mn>1</mn><mo>&#x02212;</mo><mi>&#x003B4;</mi></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><mi>&#x003B4;</mi></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>&#x00029;</mo><mo>&#x0002C;</mo><mspace width="1em" /><mi>E</mi><mo>&#x0003D;</mo><mi>M</mi><mi>&#x000B7;</mi><mtext>diag</mtext><mo stretchy="false">&#x00028;</mo><mn>1</mn><mo>&#x0002C;</mo><mspace width="0.167em" /><mn>1</mn><mo>&#x0002B;</mo><mi>s</mi><mo stretchy="false">&#x00029;</mo><mo>&#x0002C;</mo><mspace width="1em" /><mi>N</mi><mo>&#x0003D;</mo><mn>1.9</mn><mi>&#x000D7;</mi><msup><mn>10</mn><mn>6</mn></msup></mrow></math></div></p></section>
+<section class="lesson-cell code-cell" id="cell-2539f7c5" data-cell-id="2539f7c5"><details class="code-panel"><summary>Show the code <span>Python · cell 30</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">def WF_De(log_s, log_m, log_p0, generation=generation_de, seed=None, N=int(1.9e6)):
+    &quot;&quot;&quot;
+    De et al. 2-genotype WF (CNV reversion).
+    Genotype 0 = CNV (common), genotype 1 = non-CNV revertant (rare, fitness 1+s).
+    Returns: np.array — CNV frequency at each generation.
+    &quot;&quot;&quot;
+    s, m, p0 = 10 ** np.array([log_s, log_m, log_p0])
+    if seed is not None:
+        np.random.seed(seed)
+
+    E = np.array([[1 - m, 0], [m, 1]], dtype=&#x27;float64&#x27;) @ np.diag([1.0, 1.0 + s])
+
+    n = np.array([N * (1 - p0), N * p0])
+    cnv_freq = []
+    for _ in range(int(generation.max()) + 1):
+        cnv_freq.append(n[0] / N)
+        p = E @ (n / N); p /= p.sum()
+        n = np.random.multinomial(N, p).astype(float)
+
+    return np.array(cnv_freq)[generation.astype(int)]
+</code></pre></details></section>
+<section class="lesson-cell code-cell" id="cell-65a843c6" data-cell-id="65a843c6"><details class="code-panel"><summary>Show the code <span>Python · cell 31</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Model fit: De et al. WF vs. reporter data ────────────────────────────────
+# 2 fits - one for each reporter (mCherry = GAP1 CNV, mCitrine = MEP2 CNV)
+# simulations are Chuong&#x27;s green, gap1 cnv data is steelblue, mep2 cnv data is sienna
+THETA_DE_GAP = dict(log_s=-1.99, log_m=-3, log_p0=-1.2)
+THETA_DE_MEP = dict(log_s=-1.1, log_m=-2.8, log_p0=-1.0)
+SIGMA_DE = dict(log_s=0.05, log_m=0.2, log_p0=0.05)
+trajs_de_gap = noisy_sims(WF_De, THETA_DE_GAP, SIGMA_DE, n=20,
+                          extra_kw=dict(generation=generation_de))
+trajs_de_mep = noisy_sims(WF_De, THETA_DE_MEP, SIGMA_DE, n=20,
+                          extra_kw=dict(generation=generation_de))
+
+fig, axes = plt.subplots(1, 2, figsize=(15, 6))
+# Panel A: GAP1 CNV (mCherry) — simulation envelope vs data
+ax = axes[0]
+for traj in trajs_de_gap:
+    ax.plot(generation_de, traj, lw=1.5, alpha=0.35, color=&#x27;steelblue&#x27;, label=&#x27;Simulations&#x27; if traj is trajs_de_gap[0] else &#x27;&#x27;)
+for j, (rep, grp) in enumerate(de_sub.groupby(&#x27;Strain&#x27;)):
+    ax.plot(grp[&#x27;Generation&#x27;], grp[&#x27;Multicopy_mCitrine &#x27;], &#x27;o-&#x27;, color=&#x27;steelblue&#x27;,
+            ms=8, lw=0.25, label=&#x27;Data&#x27; if j == 0 else &#x27;&#x27;, zorder=5)
+
+ax.legend()
+
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
+ax.set_title(f&#x27;GAP1 CNV data&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+# Panel B: MEP2 CNV (mCitrine) — simulation envelope vs data
+ax = axes[1]
+for traj in trajs_de_mep:
+    ax.plot(generation_de, traj, lw=1.5, alpha=0.35, color=&#x27;sienna&#x27;, label=&#x27;Simulations&#x27; if traj is trajs_de_mep[0] else &#x27;&#x27;)
+for j, (rep, grp) in enumerate(de_sub.groupby(&#x27;Strain&#x27;)):
+    ax.plot(grp[&#x27;Generation&#x27;], grp[&#x27;Multicopy_mCherry&#x27;], &#x27;o-&#x27;, color=&#x27;sienna&#x27;,
+            ms=8, lw=0.25, label=&#x27;Data&#x27; if j == 0 else &#x27;&#x27;, zorder=5)
+ax.legend()
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;MEP2 CNV frequency&#x27;)
+ax.set_title(f&#x27;MEP2 CNV data&#x27;)
+ax.set_ylim(-0.02, 1.02)
+plt.suptitle(f&#x27;De WF — Model Fit  ({strain_focus})&#x27;)
+plt.tight_layout(); plt.show()</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/65a843c6-out-0.png" alt="Stored notebook figure from cell 65a843c6"><figcaption>Stored notebook output · cell 65a843c6</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-1466cfd7" data-cell-id="1466cfd7"><h2>5. Zhou et al. — Aneuploidy Stability</h2>
+<hr />
+<h3>The data: Chr5 CNV GFP fluorescence tracking</h3>
+<p>Zhou et al. tracked chromosome aneuploidy stability using fluorescent reporters.
+Cells carrying an extra Chr5 copy are identified by GFP fluorescence (AAB strain).</p>
+<ul>
+<li><strong>Sheet</strong>: Chr5 CNV GFP</li>
+<li><strong>Populations tracked</strong>: Trisomic (CNV GFP), WT (1:1 Ratio), LOH (GFP Only)</li>
+<li><strong>Time points</strong>: passages [0, 1, 3, 5, 7, 10]</li>
+</ul></section>
+<section class="lesson-cell code-cell" id="cell-705d171d" data-cell-id="705d171d"><details class="code-panel"><summary>Show the code <span>Python · cell 33</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">from evo_model import load_and_split_replicates
+
+# ── Load Chr5 CNV GFP via evo_model (correct normalization + GFP logic) ───────
+ZHOU_PASSAGES = np.array([0, 1, 3, 5, 7, 10])
+ZHOU_SHEET    = &#x27;Chr5 CNV GFP&#x27;
+ZHOU_FILE     = &#x27;data/Chr5 and Chr6 aneuploidies instability.xlsx&#x27;
+ZHOU_COLORS   = [&#x27;#67A3D8&#x27;, &#x27;grey&#x27;, &#x27;#6EC6D9&#x27;]   # [Tri, WT, LOH]
+ZHOU_LABELS   = [&#x27;Tri&#x27;, &#x27;WT&#x27;, &#x27;LOH&#x27;]
+
+rep_names, rep_data = load_and_split_replicates(
+    file_path=ZHOU_FILE, well_id_sheet=ZHOU_SHEET
+)
+# rep_data : (N_reps, 6, 3)  —  columns = [Tri, WT, LOH] at each of 6 passages
+print(f&quot;✓ Loaded {len(rep_names)} replicates × {rep_data.shape[1]} passages × {rep_data.shape[2]} genotypes&quot;)
+print(f&quot;  Replicates: {rep_names}&quot;)
+
+# ── Keep zhou_xl + zhou_tri_fracs available for the summary cell ───────────────
+zhou_xl = pd.read_excel(ZHOU_FILE, sheet_name=None)
+for sh in zhou_xl:
+    zhou_xl[sh].columns = [c.strip() for c in zhou_xl[sh].columns]
+
+def zhou_tri_fracs(df_sh):
+    &quot;&quot;&quot;Return {well_ID: (passages, tri_frac)} for a Zhou sheet (used by summary).&quot;&quot;&quot;
+    tri_col = None
+    for pop in df_sh[&#x27;Population&#x27;].unique():
+        if &#x27;CNV&#x27; in str(pop) and &#x27;Only&#x27; not in str(pop) and &#x27;:&#x27; not in str(pop):
+            tri_col = pop; break
+    wt_col  = &#x27;1:1 Ratio&#x27;
+    loh_col = next((p for p in df_sh[&#x27;Population&#x27;].unique() if &#x27;Only&#x27; in str(p)), None)
+    result  = {}
+    for well, grp in df_sh.groupby(&#x27;well_ID&#x27;):
+        piv = grp.pivot_table(index=&#x27;Passage&#x27;, columns=&#x27;Population&#x27;,
+                              values=&#x27;population fraction&#x27;, aggfunc=&#x27;mean&#x27;)
+        cols = [c for c in [tri_col, wt_col, loh_col] if c and c in piv.columns]
+        if len(cols) &lt; 2:
+            continue
+        total = piv[cols].sum(axis=1)
+        result[well] = (piv.index.values, piv[tri_col] / total)
+    return result
+
+# ── Plot ───────────────────────────────────────────────────────────────────────
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Panel A: per-replicate Tri trajectories (colored by replicate)
+
+for j in range(len(rep_names)):
+    for k, col in enumerate(ZHOU_COLORS):
+        ax.plot(ZHOU_PASSAGES, rep_data[j, :, k],
+                color=col, ms=8, lw=1, marker=&#x27;o&#x27;, zorder=5)
+ax.set_xlabel(&#x27;Passage&#x27;); ax.set_ylabel(&#x27;Trisomic fraction&#x27;)
+ax.set_title(f&#x27;{ZHOU_SHEET}  ({len(rep_names)} replicates)&#x27;)
+ax.set_ylim(-0.02, 1.1)
+
+plt.suptitle(f&#x27;Zhou et al. — Aneuploidy Stability Data&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">Error loading sheet &#x27;Chr5 CNV GFP&#x27;: Missing optional dependency &#x27;openpyxl&#x27;.  Use pip or conda to install openpyxl.</pre><pre class="cell-output error-output">TypeError: object of type &#x27;NoneType&#x27; has no len()</pre></section>
+<section class="lesson-cell code-cell" id="cell-7fd6e35c" data-cell-id="7fd6e35c"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 34</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;zhou_model.png&#x27;)
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/7fd6e35c-out-0.png" alt="Stored notebook figure from cell 7fd6e35c"><figcaption>Stored notebook output · cell 7fd6e35c</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-b4a01787" data-cell-id="b4a01787"><h3>The model: Zhou et al. aneuploidy stability WF</h3>
+<p>Three genotypes: trisomic cells lose the extra chromosome via two pathways.</p>
+<table>
+<thead>
+<tr>
+<th>Symbol</th>
+<th>Genotype</th>
+<th>Fitness</th>
+<th>Starts at</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Tri</td>
+<td>Trisomic (aneuploid)</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>w</mi><mtext>tri</mtext></msub></mrow></math></td>
+<td>~100%</td>
+</tr>
+<tr>
+<td>WT</td>
+<td>Euploid (diploid)</td>
+<td>1</td>
+<td>~0%</td>
+</tr>
+<tr>
+<td>LOH</td>
+<td>Loss of heterozygosity</td>
+<td><math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>w</mi><mtext>loh</mtext></msub></mrow></math></td>
+<td>~0%</td>
+</tr>
+</tbody>
+</table>
+<p><div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>M</mi><mo>&#x0003D;</mo><mo>&#x00028;</mo><mtable><mtr><mtd><mn>1</mn><mo>&#x02212;</mo><msub><mi>&#x003BC;</mi><mtext>tri</mtext></msub><mo>&#x02212;</mo><msub><mi>&#x003BC;</mi><mtext>loh</mtext></msub></mtd><mtd><mn>0</mn></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><msub><mi>&#x003BC;</mi><mtext>tri</mtext></msub></mtd><mtd><mn>1</mn></mtd><mtd><mn>0</mn></mtd></mtr><mtr><mtd><msub><mi>&#x003BC;</mi><mtext>loh</mtext></msub></mtd><mtd><mn>0</mn></mtd><mtd><mn>1</mn></mtd></mtr></mtable><mo>&#x00029;</mo><mo>&#x0002C;</mo><mspace width="1em" /><mi>G</mi><mo>&#x0003D;</mo><mtext>diag</mtext><mo stretchy="false">&#x00028;</mo><msub><mi>w</mi><mtext>tri</mtext></msub><mo>&#x0002C;</mo><mspace width="0.167em" /><mn>1</mn><mo>&#x0002C;</mo><mspace width="0.167em" /><msub><mi>w</mi><mtext>loh</mtext></msub><mo stretchy="false">&#x00029;</mo><mi>&#x000B7;</mi><mi>M</mi></mrow></math></div></p>
+<p>Drift: <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>n</mi><mrow><mi>t</mi><mo>&#x0002B;</mo><mn>1</mn></mrow></msub><mi>&#x0007E;</mi><mtext>Multinomial</mtext><mo stretchy="false">&#x00028;</mo><msub><mi>N</mi><mi>e</mi></msub><mo>&#x0002C;</mo><mspace width="0.278em" /><mi>G</mi><mspace width="0.167em" /><msub><mi>p</mi><mi>t</mi></msub><mo>&#x0002F;</mo><mo stretchy="false">&#x0007C;</mo><mi>G</mi><mspace width="0.167em" /><msub><mi>p</mi><mi>t</mi></msub><mo stretchy="false">&#x0007C;</mo><mo stretchy="false">&#x00029;</mo></mrow></math>, <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>N</mi><mi>e</mi></msub><mo>&#x0003D;</mo><msup><mn>10</mn><mn>5</mn></msup></mrow></math></p></section>
+<section class="lesson-cell code-cell" id="cell-5f9d90ff" data-cell-id="5f9d90ff"><details class="code-panel"><summary>Show the code <span>Python · cell 36</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">def zhou_model(mu_tri, mu_loh, w_tri, w_loh,
+               p_0=[1, 0, 0], N_e=100_000, generations=100,
+               ret_gens=None, noise=0):
+    &quot;&quot;&quot;
+    Zhou et al. aneuploidy stability WF simulator.
+
+    Three genotypes: Tri (aneuploid) → WT or LOH via chromosome loss.
+
+    Parameters (inferred via SBI/ABC)
+    ──────────────────────────────────
+    mu_tri : log10(Tri → WT transition rate per generation)
+    mu_loh : log10(Tri → LOH transition rate per generation)
+    w_tri  : trisomic fitness (linear scale, typically &lt;1 — deleterious)
+    w_loh  : LOH genotype fitness (linear scale)
+
+    Transition matrix (mutate, then select):
+        G = S @ M
+        M[0,0] = 1 - mu_tri - mu_loh  (Tri stays Tri)
+        M[1,0] = mu_tri                (Tri → WT)
+        M[2,0] = mu_loh                (Tri → LOH)
+        S = diag(w_tri, 1, w_loh)
+
+    Returns: np.ndarray shape (len(ret_gens), 3) — fractions [Tri, WT, LOH]
+    &quot;&quot;&quot;
+    if ret_gens is None:
+        ret_gens = list(10*ZHOU_PASSAGES)
+    mu_tri = 10 ** mu_tri
+    mu_loh = 10 ** mu_loh
+
+    N = np.array(np.array(p_0) * N_e, dtype=int)
+    S = np.diag([w_tri, 1.0, w_loh])
+    M = np.array([[1 - mu_tri - mu_loh, 0, 0],
+                  [mu_tri,               1, 0],
+                  [mu_loh,               0, 1]])
+    G = S @ M  # mutate then select
+
+    p = [N / N.sum()]
+    for _ in range(generations + 1):
+        N_t = G @ N
+        N_t = np.random.multinomial(N_e, N_t / N_t.sum()) / N_e
+        p.append(N_t)
+        N = np.array(N_t * N_e, dtype=int)
+
+    ret = np.array(p)[ret_gens]
+    if noise &gt; 0:
+        ret += np.random.normal(0, noise, ret.shape)
+    return ret
+
+print(&quot;✓ zhou_model defined&quot;)
+print(&quot;  Inferred parameters: mu_tri (log10), mu_loh (log10), w_tri, w_loh&quot;)
+</code></pre></details><pre class="cell-output" aria-label="Stored notebook output">✓ zhou_model defined
+  Inferred parameters: mu_tri (log10), mu_loh (log10), w_tri, w_loh</pre></section>
+<section class="lesson-cell code-cell" id="cell-2e99f96f" data-cell-id="2e99f96f"><details class="code-panel"><summary>Show the code <span>Python · cell 37</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Model fit: zhou_model vs. Chr5 CNV GFP data ──────────────────────────────
+# 1 passage = 10 generations  →  ret_gens = 10 × ZHOU_PASSAGES
+THETA_ZHOU = dict(
+    mu_tri  = np.log10(3.4e-4),   # log10 Tri→WT rate
+    mu_loh  = np.log10(5.3e-4),   # log10 Tri→LOH rate
+    w_tri   =  0.92,  # trisomic fitness
+    w_loh   =  0.986,  # LOH fitness
+)
+SIGMA_ZHOU = dict(
+    mu_tri = 0.2,
+    mu_loh = 0.2,
+    w_tri  = 0.01,
+    w_loh  = 0.01,
+)
+ZHOU_KW = dict(p_0=rep_data[:,0].mean(0), N_e=100_000, generations=100,
+               ret_gens=list((10 * ZHOU_PASSAGES).astype(int)), noise=0)
+
+
+def zhou_noisy_sims(theta, sigma, n=50):
+    results = []
+    for i in range(n):
+        rng = np.random.default_rng(i)
+        th  = {k: v + rng.normal(0, sigma.get(k, 0)) for k, v in theta.items()}
+        np.random.seed(i)
+        results.append(zhou_model(**th, **ZHOU_KW))
+    return results
+
+
+trajs_zhou = zhou_noisy_sims(THETA_ZHOU, SIGMA_ZHOU)
+
+fig, axes = plt.subplots(1, 1, figsize=(15, 6))
+
+# Panel A: all 3 genotypes — sims (thin) + data (thick), same 3 colors
+ax = axes
+for sim in trajs_zhou:
+    for k, col in enumerate(ZHOU_COLORS):
+        ax.plot(ZHOU_PASSAGES, sim[:, k], lw=1.2, alpha=0.2, color=col)
+for j in range(len(rep_names)):
+    for k, col in enumerate(ZHOU_COLORS):
+        ax.scatter(ZHOU_PASSAGES, rep_data[j, :, k],
+                color=col, s=60, lw=0.5, label=rep_names[j] if k == 0 else &#x27;&#x27;, zorder=5)
+from matplotlib.lines import Line2D
+ax.legend(handles=[
+    Line2D([0],[0], color=ZHOU_COLORS[k], lw=2.5, ms=6, marker=&#x27;o&#x27;,label=f&#x27;{ZHOU_LABELS[k]}&#x27;)
+         for k in range(3)], title=&#x27;data=dots, sims=lines&#x27;)
+ax.set_xlabel(&#x27;Passage&#x27;); ax.set_ylabel(&#x27;Population fraction&#x27;)
+ax.set_ylim(-0.02, 1.1)
+
+ax.set_title(
+    f&#x27;Zhou WF — Model Fit [{ZHOU_SHEET}]&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/2e99f96f-out-0.png" alt="Stored notebook figure from cell 2e99f96f"><figcaption>Stored notebook output · cell 2e99f96f</figcaption></figure></section>
+<section class="lesson-cell prose-cell" id="cell-49b50682" data-cell-id="49b50682"><h2>Summary</h2>
+<hr />
+<h3>Five simulators compared</h3>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>Avecilla WF</th>
+<th>Avecilla ODE</th>
+<th>Chuong WF</th>
+<th>De et al. WF</th>
+<th>Zhou WF</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Genotypes</strong></td>
+<td>3 (A/C/B)</td>
+<td>3 (A/C/B)</td>
+<td>4 (WT/CNV⁺/CNV⁻/SNV)</td>
+<td>2 (CNV/non-CNV)</td>
+<td>3 (Tri/WT/LOH)</td>
+</tr>
+<tr>
+<td><strong>Time axis</strong></td>
+<td>Generations</td>
+<td>Hours</td>
+<td>Generations</td>
+<td>Generations</td>
+<td>Passages</td>
+</tr>
+<tr>
+<td><strong>N</strong></td>
+<td>3.3 × 10⁸</td>
+<td>Continuous</td>
+<td>3.3 × 10⁸</td>
+<td>1.9 × 10⁶</td>
+<td>10⁵</td>
+</tr>
+<tr>
+<td><strong>Mutation direction</strong></td>
+<td>A → C, B</td>
+<td>A → C, B (continuous)</td>
+<td>WT → CNV⁺</td>
+<td>CNV → non-CNV</td>
+<td>Tri → WT or LOH</td>
+</tr>
+<tr>
+<td><strong>WF = ODE?</strong></td>
+<td>✓ (same θ)</td>
+<td>✓ (discrete approx.)</td>
+<td>—</td>
+<td>—</td>
+<td>—</td>
+</tr>
+<tr>
+<td><strong>Infer mutation rate via SBI?</strong></td>
+<td>✓ <div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x003B4;</mi></mrow></math></div></td>
+<td></td>
+<td>✓ <div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>&#x003B4;</mi><mi>C</mi></msub></mrow></math></div></td>
+<td>✓ <div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><mi>&#x003B4;</mi></mrow></math></div></td>
+<td>✓ <div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>&#x003BC;</mi><mtext>tri</mtext></msub></mrow></math></div>, <div class="math-scroll" role="math"><math xmlns="http://www.w3.org/1998/Math/MathML" display="block"><mrow><msub><mi>&#x003BC;</mi><mtext>loh</mtext></msub></mrow></math></div></td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h3>Fitting strategy: θ + Gaussian noise</h3>
+<p>Each simulation is fed with <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003B8;</mi><mi>i</mi></msub><mi>&#x0007E;</mi><mi>&#x1D4A9;</mi><mo stretchy="false">&#x00028;</mo><msub><mi>&#x003B8;</mi><mrow><mtext>central</mtext></mrow></msub><mo>&#x0002C;</mo><mi>&#x003C3;</mi><mo stretchy="false">&#x00029;</mo></mrow></math>,
+where <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C3;</mi></mrow></math> represents between-replicate variation in biological parameters.
+This separates two sources of variation in the data:</p>
+<ul>
+<li><strong>Drift</strong> (within-replicate stochasticity): captured by the multinomial sampling</li>
+<li><strong>Parameter variation</strong> (between-replicate differences in CNV rates, fitness): captured by <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C3;</mi></mrow></math></li>
+</ul>
+<p>The central <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003B8;</mi></mrow></math> and <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>&#x003C3;</mi></mrow></math> can be refined by matching the <strong>median</strong> and <strong>spread</strong>
+of simulations to the data. For systematic inference, use SBI — see <code>SBI_tutorial.ipynb</code>.</p></section>
+<section class="lesson-cell code-cell" id="cell-40f8e547" data-cell-id="40f8e547"><details class="code-panel"><summary>Show the code <span>Python · cell 39</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Final figure: one perturbed trajectory from each simulator ───────────────
+fig, axes = plt.subplots(1, 4, figsize=(15, 6))
+
+# 1. Avecilla WF
+ax = axes[0]
+for traj in noisy_sims(WF_Avecilla, THETA_AVE, SIGMA_AVE, n=15,
+                       extra_kw=dict(generation=np.arange(120))):
+    ax.plot(np.arange(120), traj[:, 1], lw=1.5, alpha=0.35, color=C[&#x27;avecilla_wf&#x27;])
+for j, (_, row) in enumerate(lauer_df.iterrows()):
+    ax.plot(LAUER_GEN, row.values, &#x27;o&#x27;, color=C[&#x27;avecilla_wf&#x27;], ms=6, alpha=0.7)
+ax.set_title(&#x27;1. Avecilla et al.\n\
+3-genotype, N=3.3×10⁸&#x27;)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;CNV frequency&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+
+
+# 3. Chuong WF
+ax = axes[1]
+for traj in trajs_chu[:15]:
+    ax.plot(GENERATIONS, traj, lw=1.5, alpha=0.35, color=C[&#x27;chuong&#x27;])
+for j, (_, row) in enumerate(ltr_df.iterrows()):
+    ax.plot(LTR_GEN, row.values, &#x27;o&#x27;, color=C[&#x27;chuong&#x27;], ms=6, alpha=0.6)
+ax.set_title(&#x27;2. Chuong et al.\n\
+4-genotype, N=3.3×10⁸&#x27;)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;CNV⁺ frequency&#x27;)
+ax.set_ylim(-0.02, 1.02)
+
+# 4. De et al.
+ax = axes[2]
+for traj in trajs_de_gap[:15]:
+    ax.plot(generation_de, traj, lw=1.5, alpha=0.3, color=&#x27;steelblue&#x27;)
+for traj in trajs_de_mep[:15]:
+    ax.plot(generation_de, traj, lw=1.5, alpha=0.3, color=&#x27;sienna&#x27;)
+for j, (rep, grp) in enumerate(de_sub.groupby(&#x27;Strain&#x27;)):
+    ax.scatter(grp[&#x27;Generation&#x27;], grp[&#x27;Multicopy_mCitrine &#x27;],  color=&#x27;steelblue&#x27;)
+for j, (rep, grp) in enumerate(de_sub.groupby(&#x27;Strain&#x27;)):
+    ax.scatter(grp[&#x27;Generation&#x27;], grp[&#x27;Multicopy_mCherry&#x27;], color=&#x27;sienna&#x27;)
+
+ax.set_title(&#x27;3. De et al.\n\
+2-genotype, N=1.9×10⁶&#x27;)
+ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;CNV frequency&#x27;)
+
+# 5. Zhou et al.
+
+ax = axes[3]
+
+for sim in trajs_zhou:
+    for k, col in enumerate(ZHOU_COLORS):
+        ax.plot(ZHOU_PASSAGES, sim[:, k], lw=1.2, alpha=0.2, color=col)
+for j in range(len(rep_names)):
+    for k, col in enumerate(ZHOU_COLORS):
+        ax.scatter(ZHOU_PASSAGES, rep_data[j, :, k],
+                color=col, s=60, lw=0.5, label=rep_names[j] if k == 0 else &#x27;&#x27;, zorder=5)
+
+
+ax.set_xlabel(&#x27;Passage&#x27;); ax.set_ylabel(&#x27;Population fraction&#x27;)
+ax.set_title(
+    &#x27;θ: $w_{tri}$=&#x27;+f&#x27;{THETA_ZHOU[&quot;w_tri&quot;]}, &#x27;+&#x27;log10[$μ_{tri}$]=&#x27;+f&#x27;{THETA_ZHOU[&quot;mu_tri&quot;]:.2f}\n&#x27;+\
+    &#x27;$w_{loh}$=&#x27;+f&#x27;{THETA_ZHOU[&quot;w_loh&quot;]}, &#x27;+&#x27;log10[$μ_{loh}$]=&#x27;+f&#x27;{THETA_ZHOU[&quot;mu_loh&quot;]:.2f}&#x27;)
+ax.set_ylim(-0.02, 1.1)
+
+# fracs5 = zhou_tri_fracs(zhou_xl[&#x27;Chr5 CNV GFP&#x27;])
+# for j, (well, (passes, tri)) in enumerate(fracs5.items()):
+#     ax.plot(passes, tri, &#x27;o&#x27;, color=REP_COLORS[j % 12], ms=6, alpha=0.8)
+ax.set_title(&#x27;4. Zhou et al.\n\
+3-genotype, N=10⁵&#x27;)
+ax.set_xlabel(&#x27;Passage&#x27;); ax.set_ylabel(&#x27;Frequency&#x27;)
+ax.set_ylim(-0.02, 1.1)
+
+plt.suptitle(&#x27;Four simulators — $\hat{θ}$ + Gaussian noise vs. empirical data&#x27;)
+plt.tight_layout(); plt.show()
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/40f8e547-out-0.png" alt="Stored notebook figure from cell 40f8e547"><figcaption>Stored notebook output · cell 40f8e547</figcaption></figure></section><nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">← Workshop home</a><a href="sbi.html">Next: simulation-based inference →</a></nav></article></div></main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer><script src="js/science.js" defer></script><script src="js/core.js" defer></script><script src="js/plots.js" defer></script><script src="js/evolution.js" defer></script></body></html>

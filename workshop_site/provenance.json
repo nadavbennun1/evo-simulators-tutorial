@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "generated_at_utc": "2026-08-25T11:23:22.011464+00:00",
+  "source_notebooks": {
+    "evolution_simulators.ipynb": "f5cb1f6fcb2fa5c79c9148ebe120b1571fbfca457c76e1acc6b0939fa4e7e26c",
+    "SBI_tutorial.ipynb": "fc52157969b1d9862d052e7fd8fa11e06cfcc7371998d002f011955e98360806"
+  },
+  "zhou_models": {
+    "robust_npe_seed_0.pkl": "21c69882dfae8890a06361d134b8a853fa6f51f58b0f36d5711edd30aa366d59",
+    "robust_npe_seed_1.pkl": "db89f9cceb881b1508f5f5b1f4cc17af4ce84a9e71e6b16a9bca05acdd479465",
+    "robust_npe_seed_2.pkl": "ef3611a4f532c307a29bbd831b18d5453086af4350355d30156fec6c711874c1"
+  },
+  "simulator_source": {
+    "path": "../evodesign/src/evodesign/simulators/zhou2026.py",
+    "sha256": "f13c47288242bbfb5ab5980a27bb31ea8231dfa8b3de644c090fea1b21926d67"
+  },
+  "seeds": [
+    20260825,
+    20261000
+  ],
+  "asset_generation_command": "PYTHONPATH=../evodesign/src python workshop_site/build_site.py --scientific-assets",
+  "artifacts": {
+    "assets/fallback/collective-outlier-lab.png": "604689b7879a14a06f37440ba0a09275b9497d343766d542c58af405096e5671",
+    "assets/fallback/evolution-playground.png": "88a8874b0d3f9f3cc9d8b9b1b444df4e972fa3eb05b8e6c2dea656c4b6e5557e",
+    "assets/fallback/guess-parameter.png": "ac8278e8833e7a365dcb7ec888a866bb13339c720b63c6179511ed6b89d00914",
+    "assets/fallback/ppc-detective.png": "3ff7848cf52ac6221441dfba7b9cb567afa6c0990c28495da925e3d9ed0c2576",
+    "assets/fallback/training-viewer.png": "3b518c1f8908ee2d6fecdeb95a3aa8d5fa640e284bbb4f8fbf1c88d50d49cc56",
+    "assets/fallback/zhou-schedule-designer.png": "cecf1e50b63fc8770f61c8028b6f36d3a1a9dab648038127887bc2bc34f5fa71",
+    "content_map.json": "b55418158d24b5f6514b762fa67b80cd424cbc73990004f83333a1232d720129",
+    "data/collective_lab.json": "2341d681ec728a0648868b0fb38f1798444758d78ec28d76f485e51c1bd99161",
+    "data/exercises.json": "3d81472061586685e2051f27175bc40eb97072a7403dfa9920b8216ae962d500",
+    "data/training_viewer.json": "5bd1cd4259c82da0f35200336f8025e569d5057ae41236e0f55b9aee76d2abd9",
+    "data/zhou_draws.f32": "73c9bc41ebf9b77f378a20224a41fc0d1778639d196fd58dbfc5400f6347e5a5",
+    "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
+    "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
+    "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
+    "evolution.html": "88b45cfbd6354433036287c4cedab9e83b16040c602dbc863e7f12985118ac8f",
+    "index.html": "8011101d2e2567cdc61a872c9c098ace7d6825a3e785d5f4836b7df0d5f49588",
+    "sbi.html": "f1216d69ff5ef6e0a47f1e8e9ba31b156b794003fe9e430bd4a5fa50a708beb9"
+  },
+  "scientific_caveats": [
+    "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",
+    "Training viewer is a genuine teaching-scale diagonal-Gaussian NPE, not the production Zhou ensemble.",
+    "Interactive replicate exclusion is sensitivity analysis, not a data-discarding rule."
+  ]
+}

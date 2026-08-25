@@ -1,0 +1,12 @@
+{
+  "evolution_simulators.ipynb": {
+    "3282b174": ["evolution-playground"]
+  },
+  "SBI_tutorial.ipynb": {
+    "0ba5658f": ["guess-parameter"],
+    "8d7d8c01": ["training-viewer"],
+    "zhou-flex-contract": ["zhou-schedule-designer"],
+    "928bf2bf": ["collective-outlier-lab"],
+    "ade63ee2": ["ppc-detective"]
+  }
+}
