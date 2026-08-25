@@ -99,26 +99,26 @@
       P.legend(f, [{label: "selected replicates", color: P.C.blue}, {label: "investigated replicate", color: P.C.clay}]);
     }
     function draw() {
-      const ids = chosen(), strength = +$("#contam-strength").value, epsilon = +epsilonControl.value;
+      const ids = chosen(), strength = +$("#contam-strength").value, logEpsilon = +epsilonControl.value;
       $("#contam-label").textContent = `${strength.toFixed(1)}×`;
       if (!ids.length) {
         P.frame(posteriorCanvas, 0, 1, data.grid[0], data.grid.at(-1));
         $("#collective-summary").textContent = "Select at least one replicate."; drawTrajectories(ids); return;
       }
-      const individualLogs = ids.map(i => data.grid.map((_, j) => Math.max(adjustedLogPosterior(i, j, strength), epsilon)));
-      const collective = data.grid.map((_, j) => individualLogs.reduce((sum, row) => sum + row[j], 0) - Math.max(0, ids.length - 1) * data.prior_log[j]);
-      const naive = data.grid.map((_, j) => individualLogs.reduce((sum, row) => sum + row[j], 0));
-      const dens = density(collective), naiveDensity = density(naive), individuals = individualLogs.map(density);
-      const maxDensity = Math.max(...dens, ...naiveDensity, ...individuals.flat()) * 1.08;
+      const rawIndividualLogs = ids.map(i => data.grid.map((_, j) => adjustedLogPosterior(i, j, strength)));
+      const localIndices = rawIndividualLogs.map((_, i) => i);
+      const result = S.robustCollectiveLogPosterior(rawIndividualLogs, data.prior_log, localIndices, logEpsilon);
+      const standardDensity = density(result.standard), robustDensity = density(result.robust), individuals = rawIndividualLogs.map(density);
+      const maxDensity = Math.max(...standardDensity, ...robustDensity, ...individuals.flat()) * 1.08;
       const f = P.frame(posteriorCanvas, 0, maxDensity, data.grid[0], data.grid.at(-1));
       individuals.forEach((values, k) => P.line(f, data.grid, values, data.types[ids[k]] === "outlier" ? P.C.clay : P.C.blue, 1, .3));
-      P.line(f, data.grid, naiveDensity, P.C.gold, 2, 1, [5, 3]); P.line(f, data.grid, dens, P.C.tri, 3);
+      P.line(f, data.grid, standardDensity, P.C.gold, 2.4, 1, [5, 3]); P.line(f, data.grid, robustDensity, P.C.tri, 3);
       P.line(f, [data.truth, data.truth], [0, maxDensity], P.C.ink, 1.5, 1, [4, 4]);
-      P.legend(f, [{label: "individual", color: P.C.blue}, {label: "naïve product", color: P.C.gold}, {label: "collective", color: P.C.tri}, {label: "truth", color: P.C.ink}]);
-      const cdf = []; dens.reduce((sum, value) => { cdf.push(sum + value); return sum + value; }, 0);
+      P.legend(f, [{label: "individual", color: P.C.blue}, {label: "Standard collective", color: P.C.gold}, {label: "Robust collective", color: P.C.tri}, {label: "truth", color: P.C.ink}]);
+      const cdf = []; robustDensity.reduce((sum, value) => { cdf.push(sum + value); return sum + value; }, 0);
       const total = cdf.at(-1), at = q => data.grid[cdf.findIndex(x => x >= q * total)];
-      const mean = data.grid.reduce((sum, x, j) => sum + x * dens[j], 0) / dens.reduce((a, b) => a + b, 0);
-      $("#collective-summary").textContent = `ε = ${epsilon}; ${ids.length} replicate${ids.length === 1 ? "" : "s"}. Prior-adjusted mean ${mean.toFixed(3)}; 90% interval [${at(.05).toFixed(3)}, ${at(.95).toFixed(3)}]; truth ${data.truth}. The floor is applied to the frozen per-replicate log-posterior grid.`;
+      const mean = data.grid.reduce((sum, x, j) => sum + x * robustDensity[j], 0) / robustDensity.reduce((a, b) => a + b, 0);
+      $("#collective-summary").textContent = "log ε = " + logEpsilon + "; " + ids.length + " replicate" + (ids.length === 1 ? "" : "s") + ". Robust mean " + mean.toFixed(3) + "; 90% interval [" + at(.05).toFixed(3) + ", " + at(.95).toFixed(3) + "]; truth " + data.truth + ". Gold is the fixed standard collective reference; only the green robust result responds to log ε. Exact grid evaluation—no posterior sampling occurs in this panel.";
       drawTrajectories(ids);
     }
     box.addEventListener("change", draw); investigate.addEventListener("change", draw); epsilonControl.addEventListener("change", draw); $("#contam-strength").addEventListener("input", draw);
@@ -198,21 +198,50 @@
 
     if (abcPosterior) {
       const trajectoryCanvas = $("#abc-trajectory-canvas"), generations = data.generations;
-      let lastRun = null;
+      let lastRun = null, runToken = 0;
+      const progress = $("#abc-progress"), progressLabel = $("#abc-progress-label"), milestoneRow = $("#abc-milestones"), runButton = $("#abc-run");
+      function milestoneBudgets(budget) {
+        const values = [50, 100, 250, 500, 1000, 3000, 10000].filter(value => value <= budget);
+        if (!values.includes(budget)) values.push(budget);
+        return values;
+      }
+      function updateMilestones(stages, current) {
+        milestoneRow.innerHTML = stages.map(value => '<span class="' + (value < current ? "done" : value === current ? "active" : "") + '">' + value.toLocaleString() + "</span>").join("");
+      }
       function runAbc() {
         const budget = +$("#abc-sims").value, acceptedQuantile = +$("#abc-quantile").value / 100;
         const R = S.mulberry32(+$("#abc-seed").value || 0), observed = data.guess_examples[0].trajectory;
-        const candidates = Array.from({length: budget}, () => {
-          const theta = [-2 + 2 * R(), -7 + 5 * R(), -8 + 6 * R()], trajectory = S.chuongDeterministic(theta, generations);
-          const distance = Math.sqrt(trajectory.reduce((sum, value, i) => sum + (value - observed[i]) ** 2, 0) / trajectory.length);
-          return {theta, trajectory, distance};
-        }).sort((a, b) => a.distance - b.distance);
-        const nAccepted = Math.max(3, Math.floor(budget * acceptedQuantile));
-        lastRun = {budget, acceptedQuantile, observed, accepted: candidates.slice(0, nAccepted), epsilon: candidates[nAccepted - 1].distance}; drawAbc();
+        const stages = milestoneBudgets(budget), candidates = [], token = ++runToken;
+        let nextStage = 0;
+        progress.max = budget; progress.value = 0; progressLabel.textContent = "0 / " + budget.toLocaleString();
+        runButton.textContent = "Restart progressive run"; updateMilestones(stages, 0);
+        $("#abc-summary").textContent = "Drawing parameters from the prior and running the simulator…";
+        function renderStage(count, complete = false) {
+          const ranked = candidates.slice(0, count).sort((a, b) => a.distance - b.distance);
+          const nAccepted = Math.max(3, Math.floor(count * acceptedQuantile));
+          lastRun = {budget: count, targetBudget: budget, acceptedQuantile, observed, accepted: ranked.slice(0, nAccepted), epsilon: ranked[nAccepted - 1].distance, complete};
+          updateMilestones(stages, count); drawAbc();
+        }
+        function advance() {
+          if (token !== runToken) return;
+          const stop = Math.min(budget, candidates.length + 64);
+          while (candidates.length < stop) {
+            const theta = [-2 + 2 * R(), -7 + 5 * R(), -8 + 6 * R()], trajectory = S.chuongDeterministic(theta, generations);
+            const distance = Math.sqrt(trajectory.reduce((sum, value, i) => sum + (value - observed[i]) ** 2, 0) / trajectory.length);
+            candidates.push({theta, trajectory, distance});
+          }
+          progress.value = candidates.length; progressLabel.textContent = candidates.length.toLocaleString() + " / " + budget.toLocaleString();
+          while (nextStage < stages.length && candidates.length >= stages[nextStage]) {
+            renderStage(stages[nextStage], stages[nextStage] === budget); nextStage += 1;
+          }
+          if (candidates.length < budget) requestAnimationFrame(advance);
+          else { runButton.textContent = "Run ABC progressively"; updateMilestones(stages, budget); }
+        }
+        requestAnimationFrame(advance);
       }
       function drawAbc() {
         if (!lastRun) return;
-        const {budget, acceptedQuantile, observed, accepted, epsilon} = lastRun;
+        const {budget, targetBudget, acceptedQuantile, observed, accepted, epsilon, complete} = lastRun;
         const tf = P.frame(trajectoryCanvas, 0, 1, generations[0], generations.at(-1));
         accepted.slice(0, 20).forEach(candidate => P.line(tf, generations, candidate.trajectory, P.C.orange, 1, .16));
         P.line(tf, generations, accepted[0].trajectory, P.C.orange, 2.6); P.line(tf, generations, observed, P.C.blue, 1.5); P.points(tf, generations, observed, P.C.blue, 4);
@@ -227,10 +256,10 @@
           summaries.push(`${names[parameter]} ${quantile(values, .5).toFixed(2)} [${quantile(values, .05).toFixed(2)}, ${quantile(values, .95).toFixed(2)}]`);
         });
         P.legend(pf, [{label: "ABC posterior", color: P.C.orange}, {label: "uniform prior", color: P.C.muted}, {label: "truth", color: P.C.blue}]);
-        $("#abc-summary").textContent = `${accepted.length}/${budget} simulations accepted at the ${(acceptedQuantile * 100).toFixed(0)}% quantile; ε = ${epsilon.toFixed(4)}. Posterior medians and 90% intervals: ${summaries.join("; ")}.`;
+        $("#abc-summary").textContent = (complete ? "Complete" : "Milestone") + ": " + accepted.length + "/" + budget + " simulations accepted at the " + (acceptedQuantile * 100).toFixed(0) + "% quantile; ε = " + epsilon.toFixed(4) + (complete ? "" : " (target " + targetBudget.toLocaleString() + ")") + ". Posterior medians and 90% intervals: " + summaries.join("; ") + ".";
       }
       $("#abc-quantile").addEventListener("input", event => { $("#abc-quantile-label").textContent = `${event.target.value}%`; });
-      $("#abc-run").addEventListener("click", runAbc); $("#abc-controls").addEventListener("reset", () => setTimeout(() => { $("#abc-quantile-label").textContent = "5%"; runAbc(); }));
+      $("#abc-run").addEventListener("click", runAbc); $("#abc-controls").addEventListener("reset", () => { runToken += 1; setTimeout(() => { $("#abc-quantile-label").textContent = "5%"; runAbc(); }); });
       addEventListener("resize", drawAbc); runAbc();
     }
 

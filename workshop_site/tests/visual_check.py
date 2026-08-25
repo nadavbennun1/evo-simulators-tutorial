@@ -11,6 +11,7 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.support.ui import WebDriverWait
 
 SITE = Path(__file__).resolve().parents[1]
 
@@ -41,10 +42,12 @@ def main() -> None:
         assert driver.execute_script("return document.querySelectorAll('#passage-grid input').length") == 13
         assert "ε =" in driver.find_element("id", "abc-summary").text
         driver.execute_script("document.querySelector('#abc-sims').value='10000'")
-        driver.find_element("id", "abc-run").click(); time.sleep(.5)
+        driver.find_element("id", "abc-run").click()
+        WebDriverWait(driver, 15).until(lambda d: d.find_element("id", "abc-summary").text.startswith("Complete:"))
         assert "500/10000 simulations accepted" in driver.find_element("id", "abc-summary").text
+        assert driver.find_element("id", "abc-progress").get_attribute("value") == "10000"
         driver.execute_script("document.querySelector('#coll-epsilon').value='-10'; document.querySelector('#coll-epsilon').dispatchEvent(new Event('change'))")
-        assert "ε = -10" in driver.find_element("id", "collective-summary").text
+        assert "log ε = -10" in driver.find_element("id", "collective-summary").text
         driver.find_element("css selector", 'input[name="diagnosis"][value="well-specified"]').click()
         driver.find_element("id", "ppc-reveal").click()
         assert driver.find_element("id", "ppc-summary").text.startswith("Correct.")

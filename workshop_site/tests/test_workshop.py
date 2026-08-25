@@ -124,6 +124,11 @@ def test_javascript_scientific_kernel_matches_python_and_seed_is_reproducible():
     lab = _json(DATA / "collective_lab.json")
     expected = np.sum(np.asarray(lab["replicate_log_posteriors"])[[0, 1, 2, 3]], axis=0) - 3 * np.asarray(lab["prior_log"])
     np.testing.assert_allclose(payload["collective"], expected, atol=1e-12)
+    np.testing.assert_allclose(payload["robustLoose"]["standard"], expected, atol=1e-12)
+    np.testing.assert_allclose(payload["robustTight"]["standard"], expected, atol=1e-12)
+    raw = np.asarray(lab["replicate_log_posteriors"])[[0, 1, 2, 3]]
+    expected_robust = np.maximum(raw, -10).sum(axis=0) - 3 * np.asarray(lab["prior_log"])
+    np.testing.assert_allclose(payload["robustLoose"]["robust"], expected_robust, atol=1e-12)
 
 
 def test_training_snapshots_and_ppc_quantiles():
@@ -197,6 +202,21 @@ def test_sbi_revision_contract():
     assert "10.1371/journal.pcbi.1014534" in text and "under review" not in text
     assert "P.legend" in script
     assert "Check my diagnosis" in text and "observed data" in script
+    assert "stackrel" not in text and "stackrel" not in (ROOT / "SBI_tutorial.ipynb").read_text()
+    assert "Standard collective" in text and "Robust collective" in text
+    assert "exact 1D grid" in text and "Sampling-importance-resampling" in text
+    assert 'id="abc-progress"' in text and "requestAnimationFrame" in script
+
+
+def test_foundations_primer_and_lesson_timing():
+    home = (SITE / "index.html").read_text()
+    assert "15-minute foundations primer" in home
+    assert home.count('class="primer-cell"') >= 4
+    for term in ("Effective population size", "Identifiability", "Likelihood", "ABC", "Collective posterior", "ESS"):
+        assert term in home
+    assert home.count("75 min · 15 min foundations + 60 min lesson") == 2
+    assert "Implementation notebook" in (SITE / "evolution.html").read_text()
+    assert "Implementation notebook" in (SITE / "sbi.html").read_text()
 
 
 def test_javascript_syntax():
