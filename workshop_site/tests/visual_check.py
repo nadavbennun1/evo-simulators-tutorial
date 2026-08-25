@@ -39,13 +39,29 @@ def main() -> None:
             element.screenshot(f"/tmp/workshop-{station}.png")
         assert driver.execute_script("return document.querySelector('#passage-grid input[value=\"0\"]').disabled")
         assert driver.execute_script("return document.querySelectorAll('#passage-grid input').length") == 13
+        assert "ε =" in driver.find_element("id", "abc-summary").text
+        driver.execute_script("document.querySelector('#abc-sims').value='10000'")
+        driver.find_element("id", "abc-run").click(); time.sleep(.5)
+        assert "500/10000 simulations accepted" in driver.find_element("id", "abc-summary").text
+        driver.execute_script("document.querySelector('#coll-epsilon').value='-10'; document.querySelector('#coll-epsilon').dispatchEvent(new Event('change'))")
+        assert "ε = -10" in driver.find_element("id", "collective-summary").text
+        driver.find_element("css selector", 'input[name="diagnosis"][value="well-specified"]').click()
+        driver.find_element("id", "ppc-reveal").click()
+        assert driver.find_element("id", "ppc-summary").text.startswith("Correct.")
         driver.get(f"{base}/evolution.html"); time.sleep(2)
+        assert not driver.find_element("id", "evo-composition").text
+        assert "starts empty" in driver.find_element("id", "evo-summary").text
+        driver.find_element("id", "evo-play").click(); time.sleep(.4)
+        driver.find_element("id", "evo-play").click()
+        assert driver.find_element("id", "evo-composition").text
         for station in ("evolution-playground", "dfe-example", "chuong-parameter-challenge", "zhou-model-playground"):
             element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.4)
             element.screenshot(f"/tmp/workshop-{station}.png")
         driver.find_element("id", "chuong-score").click(); time.sleep(.2)
         score = driver.find_element("id", "chuong-score-card").text
         assert "points" in score and "Parameter RMSE" in score
+        assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
+        driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         assert driver.execute_script("return document.querySelectorAll('#zhou-model-canvas').length") == 1
         print("Visual smoke check passed; screenshots written to /tmp/workshop-*.png")
     finally:

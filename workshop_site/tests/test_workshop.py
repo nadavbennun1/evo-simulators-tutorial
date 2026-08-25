@@ -179,7 +179,24 @@ def test_chapter_one_revision_contract():
     assert text.index('id="zhou-model-playground"') > text.index('data-cell-id="2e99f96f"')
     assert "color=C['avecilla_wf']" in notebook
     assert 'src="assets/chapter/chuong-fit-orange.png"' in text
-    assert "orange matches the Avecilla fit" in text
+    assert "orange predictions, blue data" in text
+    assert "color=C['chuong']" in notebook
+    assert "Error loading sheet" not in text and "NoneType" not in text
+    assert "evo-presets" in text and "<span>CNV formation log₁₀(δ<sub>C</sub>)</span>" in text
+
+
+def test_sbi_revision_contract():
+    text = (SITE / "sbi.html").read_text()
+    script = (SITE / "js/sbi.js").read_text()
+    assert "Run rejection ABC" in text
+    assert 'id="abc-quantile"' in text and 'id="abc-sims"' in text
+    assert 'id="guess-s"' not in text and 'id="guess-m"' not in text
+    assert all(f'<option value="{epsilon}"' in text for epsilon in ("0", "-10", "-100", "-1000"))
+    assert 'id="zhou-summary"' not in text
+    assert "zhou-flex-data-out" not in text and "zhou-flex-inference-out" not in text
+    assert "10.1371/journal.pcbi.1014534" in text and "under review" not in text
+    assert "P.legend" in script
+    assert "Check my diagnosis" in text and "observed data" in script
 
 
 def test_javascript_syntax():

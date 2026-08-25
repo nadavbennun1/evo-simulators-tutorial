@@ -96,6 +96,11 @@ class _MathMatch:
 
 
 def output_html(output: dict, stem: str, output_index: int) -> str:
+    # This notebook cell records a missing-optional-dependency failure rather than
+    # a scientific result. Keep its reproducible source, but do not publish the
+    # stale "Error loading sheet" / cascading NoneType output as lesson content.
+    if stem == "705d171d":
+        return ""
     data = output.get("data", {})
     pieces: list[str] = []
     if "image/png" in data:
@@ -103,7 +108,7 @@ def output_html(output: dict, stem: str, output_index: int) -> str:
             name = "chuong-fit-orange.png"
             if not (CHAPTER_ASSETS / name).exists():
                 raise RuntimeError(f"missing revised Chuong fit figure: assets/chapter/{name}")
-            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/chapter/{name}" alt="Chuong Wright-Fisher simulations and LTR data, both shown in the Avecilla orange for comparison"><figcaption>Chuong WF fit · orange matches the Avecilla fit</figcaption></figure>')
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/chapter/{name}" alt="Chuong Wright-Fisher predictions in orange and LTR observations in blue"><figcaption>Chuong WF fit · orange predictions, blue data</figcaption></figure>')
         else:
             name = f"{stem}-out-{output_index}.png"
             raw = data["image/png"]
@@ -146,7 +151,10 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
         else:
             lang = "python"
             code = html.escape(source)
-            output = "".join(output_html(dict(out), cid, j) for j, out in enumerate(cell.get("outputs", [])))
+            suppress_outputs = key == "sbi" and cid in {"zhou-flex-data", "zhou-flex-inference"}
+            output = "" if suppress_outputs else "".join(
+                output_html(dict(out), cid, j) for j, out in enumerate(cell.get("outputs", []))
+            )
             short = len(source.splitlines()) <= 9
             if short:
                 code_block = f'<div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell {index}</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></div>'
@@ -170,16 +178,16 @@ def station_markup(name: str) -> str:
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>'''
     if name == "evolution-playground":
         body = '''<h2>Predict the Avecilla evolutionary trajectory</h2><p class="prediction">Question: will the GAP1 CNV, another beneficial lineage, or drift dominate the chemostat population?</p>
-        <div class="preset-row"><button data-evo-preset="fit">Avecilla fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
+        <div class="preset-row evo-presets"><button data-evo-preset="fit">Avecilla fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
         <div class="interactive-grid"><form class="controls" id="evo-controls">
-          <label>CNV formation log₁₀(δ<sub>C</sub>) <output id="evo-delta-c-label"></output><input id="evo-delta-c" type="range" min="-7" max="-2" step="0.05" value="-4.2"></label>
-          <label>Other-beneficial log₁₀(δ<sub>B</sub>) <output id="evo-delta-b-label"></output><input id="evo-delta-b" type="range" min="-7" max="-2" step="0.05" value="-5"></label>
-          <label>CNV advantage s<sub>C</sub> <output id="evo-s-c-label"></output><input id="evo-s-c" type="range" min="0" max="0.14" step="0.002" value="0.07"></label>
-          <label>Other-beneficial advantage s<sub>B</sub> <output id="evo-s-b-label"></output><input id="evo-s-b" type="range" min="0" max="0.14" step="0.002" value="0.001"></label>
-          <label>Generations <output id="evo-duration-label"></output><input id="evo-duration" type="range" min="20" max="140" step="5" value="120"></label>
-          <label>Effective population Nₑ <select id="evo-ne"><option>1000</option><option>10000</option><option>100000</option><option>1000000</option><option selected>330000000</option></select></label>
-          <label>Replicate trajectories <input id="evo-reps" type="number" min="1" max="24" value="8"></label>
-          <label>Seed <input id="evo-seed" type="number" min="0" value="20260825"></label>
+          <label><span>CNV formation log₁₀(δ<sub>C</sub>)</span><output id="evo-delta-c-label"></output><input id="evo-delta-c" type="range" min="-7" max="-2" step="0.05" value="-4.2"></label>
+          <label><span>Other-beneficial log₁₀(δ<sub>B</sub>)</span><output id="evo-delta-b-label"></output><input id="evo-delta-b" type="range" min="-7" max="-2" step="0.05" value="-5"></label>
+          <label><span>CNV advantage s<sub>C</sub></span><output id="evo-s-c-label"></output><input id="evo-s-c" type="range" min="0" max="0.14" step="0.002" value="0.07"></label>
+          <label><span>Other-beneficial advantage s<sub>B</sub></span><output id="evo-s-b-label"></output><input id="evo-s-b" type="range" min="0" max="0.14" step="0.002" value="0.001"></label>
+          <label><span>Generations</span><output id="evo-duration-label"></output><input id="evo-duration" type="range" min="20" max="140" step="5" value="120"></label>
+          <label><span>Effective population Nₑ</span><select id="evo-ne"><option>1000</option><option>10000</option><option>100000</option><option>1000000</option><option selected>330000000</option></select></label>
+          <label><span>Replicate trajectories</span><input id="evo-reps" type="number" min="1" max="24" value="8"></label>
+          <label><span>Seed</span><input id="evo-seed" type="number" min="0" value="20260825"></label>
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
           <div class="viz"><canvas id="evo-canvas" width="760" height="440" aria-label="Population frequency trajectories"></canvas><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div></div></div>
         <div class="what-changed"><strong>What changed?</strong> <span id="evo-driver"></span></div>'''
@@ -224,7 +232,7 @@ def station_markup(name: str) -> str:
     elif name == "collective-outlier-lab":
         body = '''<h2>Collective posterior outlier laboratory</h2><p class="prediction">Question: which replicate has the most leverage on the shared estimate?</p>
         <div class="preset-row"><button data-coll-select="all">Select all</button><button data-coll-select="clean">Clean only</button><button data-coll-select="outliers">Outliers only</button><button id="coll-loo">Leave one out</button></div>
-        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Contamination strength <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
+        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Log floor ε <select id="coll-epsilon"><option value="0">0</option><option value="-10">−10</option><option value="-100">−100</option><option value="-1000" selected>−1000</option></select></label><label>Contamination strength <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
         <div class="viz"><canvas id="collective-trajectory-canvas" width="760" height="310" aria-label="Selected replicate trajectories"></canvas><canvas id="collective-posterior-canvas" width="760" height="310" aria-label="Individual, naive product, and prior-adjusted collective posterior"></canvas><p id="collective-summary" class="plot-summary" aria-live="polite"></p></div></div>
         <div class="what-changed"><strong>Scientific caveat.</strong> Exclusion here is sensitivity analysis, not automatic justification for discarding data. The browser uses Σ log pᵢ − (r−1) log p(prior), exactly as derived above.</div>'''
     elif name == "zhou-schedule-designer":
@@ -232,14 +240,14 @@ def station_markup(name: str) -> str:
         <div class="preset-row"><button data-schedule="odd">Odd passages</button><button data-schedule="even">Even passages</button><button data-schedule="early">Early only</button><button data-schedule="late">Late only</button><button data-schedule="sparse">Sparse</button><button data-schedule="full">Full schedule</button><button data-schedule="zero">Passage 0 only</button></div>
         <div class="passage-grid" id="passage-grid"></div><label class="inline-toggle"><input id="reveal-withheld" type="checkbox" checked> Reveal withheld observations</label>
         <div class="plot-pair"><canvas id="zhou-trajectory-canvas" width="720" height="380" aria-label="Latent trajectory and selected or withheld passage observations"></canvas><canvas id="zhou-posterior-canvas" width="720" height="380" aria-label="Four Zhou posterior marginals for the selected schedule"></canvas></div>
-        <div id="zhou-summary" class="parameter-summary" aria-live="polite"></div><canvas id="zhou-ppc-canvas" width="1100" height="340" aria-label="Posterior predictive intervals at observed and withheld passages"></canvas>
+        <canvas id="zhou-ppc-canvas" width="1100" height="340" aria-label="Posterior predictive intervals at observed and withheld passages"></canvas>
         <div class="button-row"><button id="zhou-reset" type="button">Reset</button></div>
         <div class="what-changed"><strong>What changed?</strong> <span id="zhou-change"></span> This is an illustrative flexibility demonstration, not a coverage study.</div>'''
     elif name == "guess-parameter":
-        body = '''<h2>Guess the parameters—then reveal uncertainty</h2><p class="prediction">Inspect the frozen trajectory. Choose plausible values; several combinations can look alike.</p>
-        <div class="interactive-grid"><form class="controls" id="guess-controls"><label>log₁₀(s) <output id="guess-s-label"></output><input id="guess-s" type="range" min="-2" max="0" step="0.05" value="-1"></label><label>log₁₀(δ) <output id="guess-m-label"></output><input id="guess-m" type="range" min="-7" max="-2" step="0.05" value="-4.5"></label><label>log₁₀(φ) <output id="guess-p0-label"></output><input id="guess-p0" type="range" min="-8" max="-2" step="0.05" value="-5"></label><button id="guess-reveal" type="button">Reveal posterior</button><button id="guess-new" type="button">Next fixed example</button><button type="reset">Reset</button></form><div class="viz"><canvas id="guess-canvas" width="760" height="430" aria-label="Hidden-parameter trajectory and posterior reveal"></canvas><p id="guess-summary" class="plot-summary"></p></div></div>'''
+        body = '''<h2>Run rejection ABC</h2><p class="prediction">Choose a simulation budget and acceptance quantile. ABC keeps the closest simulated trajectories; watch the accepted parameter cloud tighten as ε decreases.</p>
+        <div class="interactive-grid"><form class="controls" id="abc-controls"><label>Acceptance quantile <output id="abc-quantile-label">5%</output><input id="abc-quantile" type="range" min="1" max="25" step="1" value="5"></label><label>Simulation budget <select id="abc-sims"><option>250</option><option selected>1000</option><option>3000</option><option>10000</option></select></label><label>Seed <input id="abc-seed" type="number" min="0" value="20260825"></label><button id="abc-run" type="button">Run ABC</button><button type="reset">Reset</button></form><div class="viz"><canvas id="abc-trajectory-canvas" width="760" height="350" aria-label="Observed trajectory and accepted ABC simulations"></canvas><canvas id="guess-canvas" width="760" height="350" aria-label="ABC posterior marginals for selection, mutation, and initial frequency"></canvas><p id="abc-summary" class="plot-summary" aria-live="polite"></p></div></div><div class="what-changed"><strong>Read ε.</strong> The selected quantile determines the distance threshold ε. A lower quantile accepts fewer, closer simulations; a larger simulation budget resolves that posterior more smoothly.</div>'''
     else:
-        body = '''<h2>PPC mismatch detective</h2><p class="prediction">Choose a diagnosis, then inspect what posterior predictive checks can—and cannot—tell you.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> Well specified</label><label><input type="radio" name="diagnosis" value="noise"> Noise mismatch</label><label><input type="radio" name="diagnosis" value="outlier"> Contamination</label><label><input type="radio" name="diagnosis" value="support"> Support issue</label><label><input type="radio" name="diagnosis" value="structure"> Structural mismatch</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observation, posterior predictive band, and residuals"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Reveal diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary"></p><div class="what-changed"><strong>Interpret carefully.</strong> PPC tension can flag mismatch, but it rarely identifies a unique cause by itself.</div>'''
+        body = '''<h2>PPC mismatch detective</h2><p class="prediction">For each dataset, compare the orange observation with the blue posterior-predictive expectation. Choose the most plausible diagnosis, then check your answer.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> Well specified</label><label><input type="radio" name="diagnosis" value="noise"> Noise mismatch</label><label><input type="radio" name="diagnosis" value="outlier"> Contamination</label><label><input type="radio" name="diagnosis" value="support"> Support issue</label><label><input type="radio" name="diagnosis" value="structure"> Structural mismatch</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observed trajectory and posterior predictive band"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Check my diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary" aria-live="polite"></p><div class="what-changed"><strong>Interpret carefully.</strong> A PPC can show where observation and prediction disagree. It can suggest a failure mode, but the pattern rarely proves one unique cause.</div>'''
     return common_start + body + common_end
 
 
@@ -468,7 +476,7 @@ def generate_fallbacks() -> None:
       "evolution-playground":lambda ax:[ax.plot(np.arange(121),ave[:,i],color=["#607069","#e67e22","#8e44ad"][i],lw=2.5) for i in range(3)],
       "dfe-example":lambda ax:ax.fill_between(dfe_x,0,dfe_y,color="#e67e22",alpha=.32),
       "chuong-parameter-challenge":lambda ax:[ax.plot(chu_g,chu,color="#577d91",lw=2.3),ax.scatter(chu_g,np.clip(chu+np.array([.01,-.02,.015,-.01,.02,-.012,.01,-.008,.004,.006,-.003,.002]),0,1),color="#e67e22",s=28)],
-      "zhou-model-playground":lambda ax:[ax.plot(x,latent[:,i],color=colors[i],lw=2.5) for i in range(3)],
+      "zhou-model-playground":lambda ax:[ax.plot(x,latent[:,i],color=["#607069","#e67e22","#8e44ad"][i],lw=2.5) for i in range(3)],
       "zhou-schedule-designer":lambda ax:[ax.plot(x,latent[:,i],color=colors[i],lw=2) for i in range(3)],
       "training-viewer":lambda ax:ax.plot(range(101),json.loads((DATA/"training_viewer.json").read_text())["validation_loss"],color=colors[0]),
       "collective-outlier-lab":lambda ax:[ax.plot(json.loads((DATA/"collective_lab.json").read_text())["generations"],t,alpha=.7) for t in json.loads((DATA/"collective_lab.json").read_text())["trajectories"]],
@@ -480,9 +488,8 @@ def generate_fallbacks() -> None:
         ax.set_ylabel("Relative density" if name=="dfe-example" else ("Validation loss" if name=="training-viewer" else "Frequency"))
         fig.tight_layout(); fig.savefig(FALLBACK/f"{name}.png",dpi=140); plt.close(fig)
 
-    # The notebook source now deliberately uses the Avecilla orange for the Chuong fit.
-    # Render that focused output independently so an ordinary static build does not keep
-    # serving the stale blue PNG embedded in an older notebook execution.
+    # Render this focused output independently of the stale notebook PNG:
+    # predictions use Avecilla orange and observations use blue.
     theta=np.array([-.74,-4.84,-4.32]); sigma=np.array([.005,.1,.1]); chuong_trajs=[]
     legacy_state=np.random.get_state()
     try:
@@ -501,7 +508,7 @@ def generate_fallbacks() -> None:
     ltr=np.genfromtxt(ROOT/"data/ltr.csv",delimiter=",",skip_header=1,usecols=range(1,13))
     fig,ax=plt.subplots(figsize=(11,4.4))
     for i,trajectory in enumerate(chuong_trajs): ax.plot(chu_g,trajectory,lw=1.15,alpha=.22,color="#e67e22",label="Simulations" if i==0 else None)
-    for i,row in enumerate(ltr): ax.plot(chu_g,row,"o-",color="#e67e22",ms=4.8,lw=1,label="Data" if i==0 else None,zorder=5)
+    for i,row in enumerate(ltr): ax.plot(chu_g,row,"o-",color="#577d91",ms=4.8,lw=1,label="Data" if i==0 else None,zorder=5)
     ax.legend(); ax.set_xlabel("Generation"); ax.set_ylabel("GAP1 CNV⁺ frequency"); ax.set_title("Chuong WF fit vs. LTR data"); ax.set_ylim(-.02,1.02)
     fig.suptitle("Chuong WF — Model Fit"); fig.tight_layout(); fig.savefig(CHAPTER_ASSETS/"chuong-fit-orange.png",dpi=150); plt.close(fig)
 

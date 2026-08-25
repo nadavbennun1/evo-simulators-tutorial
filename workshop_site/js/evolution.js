@@ -30,7 +30,7 @@
     if (!canvas) return;
     const ids = ["delta-c", "delta-b", "s-c", "s-b", "duration", "ne", "reps", "seed"];
     const el = Object.fromEntries(ids.map(id => [id, `#evo-${id}`]).map(([id, selector]) => [id, $(selector)]));
-    let timer = null, visible = +el.duration.value, trajectories = [];
+    let timer = null, visible = 0, trajectories = [], started = false;
 
     function simulate(seed) {
       const R = S.mulberry32(seed), nEff = +el.ne.value, duration = +el.duration.value;
@@ -53,10 +53,16 @@
 
     function draw() {
       const reps = Math.max(1, Math.min(24, +el.reps.value || 1));
-      trajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i));
       const duration = +el.duration.value, show = Math.min(visible, duration);
       const f = P.frame(canvas, 0, 1, 0, duration), xs = Array.from({length: duration + 1}, (_, i) => i);
       const colors = [P.C.muted, P.C.orange, P.C.purple];
+      if (!started) {
+        $("#evo-composition").innerHTML = "";
+        $("#evo-summary").textContent = "The plot starts empty. Choose a scenario, then press Play to reveal its evolutionary trajectory.";
+        $("#evo-driver").textContent = "No trajectory has been simulated yet.";
+        return;
+      }
+      trajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i));
       trajectories.forEach((traj, r) => colors.forEach((color, state) => {
         P.line(f, xs.slice(0, show + 1), traj.slice(0, show + 1).map(x => x[state]), color, r === 0 ? 2 : 0.9, r === 0 ? 0.9 : 0.16);
       }));
@@ -75,13 +81,17 @@
       $("#evo-summary").textContent = `${reps} seeded Wright–Fisher replicate${reps > 1 ? "s" : ""}; showing generation ${show}. Median CNV frequency ${(med[1] * 100).toFixed(1)}%. For Nₑ > 10,000 the browser uses a seeded normal approximation to binomial drift.`;
     }
 
-    function labels() {
+    function labels(resetView = true) {
       $("#evo-delta-c-label").textContent = `10^${(+el["delta-c"].value).toFixed(2)}`;
       $("#evo-delta-b-label").textContent = `10^${(+el["delta-b"].value).toFixed(2)}`;
       $("#evo-s-c-label").textContent = (+el["s-c"].value).toFixed(3);
       $("#evo-s-b-label").textContent = (+el["s-b"].value).toFixed(3);
       $("#evo-duration-label").textContent = `${el.duration.value}`;
-      visible = +el.duration.value;
+      if (resetView) {
+        if (timer) clearInterval(timer);
+        timer = null; started = false; visible = 0;
+        $("#evo-play").textContent = "Play";
+      }
       draw();
     }
 
@@ -105,10 +115,11 @@
       if (timer) {
         clearInterval(timer); timer = null; event.target.textContent = "Play"; return;
       }
-      visible = 0; event.target.textContent = "Pause";
+      if (!started || visible >= +el.duration.value) visible = 0;
+      started = true; event.target.textContent = "Pause";
       timer = setInterval(() => {
         visible = Math.min(+el.duration.value, visible + 3); draw();
-        if (visible >= +el.duration.value) { clearInterval(timer); timer = null; event.target.textContent = "Play"; }
+        if (visible >= +el.duration.value) { clearInterval(timer); timer = null; event.target.textContent = "Replay"; }
       }, 120);
     });
     $("#evo-controls").addEventListener("reset", () => setTimeout(labels));
@@ -176,8 +187,9 @@
       P.line(f, generations, predicted, P.C.blue, 2.5);
       P.points(f, generations, observation, P.C.orange, 4.3);
       if (scored) P.line(f, generations, S.chuongDeterministic(truth, generations), P.C.gold, 1.7, 1, [5, 4]);
-      P.text(f, "orange = noisy observation", 60, 0.12, {color: P.C.orange, font: "bold 11px system-ui"});
-      P.text(f, "blue = current guess", 60, 0.06, {color: P.C.blue, font: "bold 11px system-ui"});
+      P.text(f, "● noisy observation", 12, 0.96, {color: P.C.orange, font: "bold 11px system-ui"});
+      P.text(f, "— current guess", 12, 0.90, {color: P.C.blue, font: "bold 11px system-ui"});
+      if (scored) P.text(f, `-- truth  s=${truth[0].toFixed(2)}  δ=${truth[1].toFixed(2)}  φ=${truth[2].toFixed(2)}`, 12, 0.84, {color: P.C.gold, font: "bold 11px system-ui"});
       ["s", "m", "p0"].forEach((name, i) => { $(`#chuong-guess-${name}-label`).textContent = values[i].toFixed(2); });
       const trajectoryRmse = Math.sqrt(predicted.reduce((sum, x, i) => sum + (x - observation[i]) ** 2, 0) / predicted.length);
       $("#chuong-challenge-summary").textContent = `Current simulated trajectory versus observation: frequency RMSE ${trajectoryRmse.toFixed(4)}. The score itself uses parameter RMSE on the shared log₁₀ scale.`;
@@ -191,7 +203,10 @@
       scored = true;
       const result = S.inverseRmseScore(guess(), truth);
       const band = result.score >= 80 ? "Excellent" : result.score >= 60 ? "Strong" : result.score >= 45 ? "Getting close" : "Try another round";
-      $("#chuong-score-card").innerHTML = `<strong>${band}: ${result.score.toFixed(1)} points</strong><br>Parameter RMSE ${result.rmse.toFixed(3)}. Truth [log₁₀(s), log₁₀(δ), log₁₀(φ)] = [${truth.map(x => x.toFixed(2)).join(", ")}].`;
+      const values = guess();
+      const names = ["log₁₀(s)", "log₁₀(δ)", "log₁₀(φ)"];
+      const breakdown = names.map((name, i) => `<span><b>${name}</b>guess ${values[i].toFixed(2)}<br>truth ${truth[i].toFixed(2)}<br>|error| ${Math.abs(values[i] - truth[i]).toFixed(2)}</span>`).join("");
+      $("#chuong-score-card").innerHTML = `<strong>${band} · ${result.score.toFixed(1)} points</strong><br>Parameter RMSE ${result.rmse.toFixed(3)}<div class="score-breakdown">${breakdown}</div>`;
       draw();
     });
     $("#chuong-new").addEventListener("click", () => { round++; newObservation(); });
@@ -210,7 +225,7 @@
       const theta = [+el["mu-wt"].value, +el["w-tri"].value, +el["w-loh"].value, +el["mu-loh"].value];
       const tri0 = +el.p0.value, p0 = [tri0, (1 - tri0) * 0.6, (1 - tri0) * 0.4];
       const trajectory = S.zhouDeterministic(theta, p0, 120).filter((_, i) => i % 10 === 0);
-      const xs = Array.from({length: 13}, (_, i) => i), colors = [P.C.tri, P.C.blue, P.C.clay], f = P.frame(canvas, 0, 1, 0, 12);
+      const xs = Array.from({length: 13}, (_, i) => i), colors = [P.C.muted, P.C.orange, P.C.purple], f = P.frame(canvas, 0, 1, 0, 12);
       colors.forEach((color, state) => P.line(f, xs, trajectory.map(x => x[state]), color, 2.7));
       ["Trisomic", "Wild type", "LOH"].forEach((name, i) => P.text(f, name, 8.4, 0.96 - i * 0.065, {color: colors[i], font: "bold 12px system-ui"}));
       const final = trajectory.at(-1);
