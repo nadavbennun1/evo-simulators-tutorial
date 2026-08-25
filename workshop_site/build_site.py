@@ -108,14 +108,16 @@ def output_html(output: dict, stem: str, output_index: int) -> str:
             name = "chuong-fit-orange.png"
             if not (CHAPTER_ASSETS / name).exists():
                 raise RuntimeError(f"missing revised Chuong fit figure: assets/chapter/{name}")
-            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/chapter/{name}" alt="Chuong Wright-Fisher predictions in orange and LTR observations in blue"><figcaption>Chuong WF fit · orange predictions, blue data</figcaption></figure>')
+            source = versioned_asset(f"assets/chapter/{name}")
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="Chuong Wright-Fisher predictions in orange and LTR observations in blue"><figcaption>Chuong WF fit · orange predictions, blue data</figcaption></figure>')
         else:
             name = f"{stem}-out-{output_index}.png"
             raw = data["image/png"]
             if isinstance(raw, list):
                 raw = "".join(raw)
             (NOTEBOOK_ASSETS / name).write_bytes(base64.b64decode(raw))
-            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/notebook/{name}" alt="Stored notebook figure from cell {stem}"><figcaption>Stored notebook output · cell {stem}</figcaption></figure>')
+            source = versioned_asset(f"assets/notebook/{name}")
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="Stored notebook figure from cell {stem}"><figcaption>Stored notebook output · cell {stem}</figcaption></figure>')
     text = output.get("text")
     if text:
         text = "".join(text) if isinstance(text, list) else str(text)
@@ -171,7 +173,7 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
 
 
 def station_markup(name: str) -> str:
-    fallback = f'assets/fallback/{name}.png'
+    fallback = versioned_asset(f'assets/fallback/{name}.png')
     common_start = f'''<section class="station answer-gated" id="{name}" data-station="{name}">
       <div class="station-kicker">Interactive station</div>'''
     common_end = f'''<div class="static-fallback"><img src="{fallback}" alt="Representative static result for {name.replace('-', ' ')}"><p>This representative result remains available when scripting is unavailable.</p></div>

@@ -161,9 +161,9 @@ ax.set_ylim(-0.02, 1.02)
 
 plt.suptitle(&#x27;Lauer et al. — Chemostat Evolution Data&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/21748f7d-out-0.png" alt="Stored notebook figure from cell 21748f7d"><figcaption>Stored notebook output · cell 21748f7d</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/21748f7d-out-0.png?v=b5414751b9c4" alt="Stored notebook figure from cell 21748f7d"><figcaption>Stored notebook output · cell 21748f7d</figcaption></figure></section>
 <section class="lesson-cell code-cell" id="cell-b09b721a" data-cell-id="b09b721a"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 4</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;avecilla_wf_model.png&#x27;)
-</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/b09b721a-out-0.png" alt="Stored notebook figure from cell b09b721a"><figcaption>Stored notebook output · cell b09b721a</figcaption></figure></section>
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/b09b721a-out-0.png?v=93cd1b1abee5" alt="Stored notebook figure from cell b09b721a"><figcaption>Stored notebook output · cell b09b721a</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-3282b174" data-cell-id="3282b174"><h3>The model: 3-genotype Wright-Fisher</h3>
 <p>Two types of beneficial mutation arise from the ancestral genotype:
 - A <strong>GAP1 CNV</strong> (amplification of the amino-acid permease gene)
@@ -215,7 +215,7 @@ plt.tight_layout(); plt.show()
           <label><span>Seed</span><input id="evo-seed" type="number" min="0" value="20260825"></label>
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
           <div class="viz"><canvas id="evo-canvas" width="760" height="440" aria-label="Population frequency trajectories"></canvas><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div></div></div>
-        <div class="what-changed"><strong>What changed?</strong> <span id="evo-driver"></span></div><div class="static-fallback"><img src="assets/fallback/evolution-playground.png" alt="Representative static result for evolution playground"><p>This representative result remains available when scripting is unavailable.</p></div>
+        <div class="what-changed"><strong>What changed?</strong> <span id="evo-driver"></span></div><div class="static-fallback"><img src="assets/fallback/evolution-playground.png?v=2ce5e694e686" alt="Representative static result for evolution playground"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell code-cell" id="cell-efcdf8fa" data-cell-id="efcdf8fa"><details class="code-panel"><summary>Show the code <span>Python · cell 6</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">def WF_Avecilla(log_delta_C, log_delta_B, s_C, s_B,
                 generation, seed=None, N=int(3.3e8)):
@@ -305,7 +305,7 @@ ax.legend(); ax.set_ylim(-0.02, 1.02)
 
 plt.suptitle(&#x27;Avecilla WF — Model Fit  (θ + Gaussian noise)&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/54e9f8de-out-0.png" alt="Stored notebook figure from cell 54e9f8de"><figcaption>Stored notebook output · cell 54e9f8de</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/54e9f8de-out-0.png?v=e09f867f38b0" alt="Stored notebook figure from cell 54e9f8de"><figcaption>Stored notebook output · cell 54e9f8de</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-629428f4" data-cell-id="629428f4"><h3>Diagnostic: does <em>one</em> selection coefficient describe the whole sweep?</h3>
 <p>The fit above gives every GAP1 CNV the same advantage <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>s</mi><mi>C</mi></msub></mrow></math>. Real CNVs are not
 interchangeable — amplicon size, copy number and breakpoint all vary — so each new CNV
@@ -333,7 +333,7 @@ trajectory.</p>
           <label>Gamma shape <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
           <button type="reset">Reset</button></form>
           <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Gamma-shaped distribution of selection coefficients"></canvas><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <div class="what-changed"><strong>Read the plot.</strong> <span id="dfe-change"></span></div><div class="static-fallback"><img src="assets/fallback/dfe-example.png" alt="Representative static result for dfe example"><p>This representative result remains available when scripting is unavailable.</p></div>
+        <div class="what-changed"><strong>Read the plot.</strong> <span id="dfe-change"></span></div><div class="static-fallback"><img src="assets/fallback/dfe-example.png?v=3b2329a0242a" alt="Representative static result for dfe example"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell code-cell" id="cell-da8788a6" data-cell-id="da8788a6"><details class="code-panel"><summary>Show the code <span>Python · cell 9</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Step 1: the same WF, but CNVs draw their fitness from a DFE ──────────────
 from scipy.stats import gamma as gamma_dist
@@ -552,7 +552,7 @@ print(f&quot;  DFE truth        : {q_d[1][0]:.3f} → {q_d[1][-1]:.3f}   &quot;
       f&quot;({q_d[1][-1] / q_d[1][0]:.1f}× rise; true mean s of the CNV pool &quot;
       f&quot;{mean_s_true[in_range][0]:.3f} → {mean_s_true[in_range][-1]:.3f})&quot;)
 print(f&quot;  Lauer data       : {q_x[1][0]:.3f} → {q_x[1][-1]:.3f}&quot;)
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/7b0a27f1-out-0.png" alt="Stored notebook figure from cell 7b0a27f1"><figcaption>Stored notebook output · cell 7b0a27f1</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">ŝ, first → last window  (median over replicates)
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/7b0a27f1-out-0.png?v=e624157beb3a" alt="Stored notebook figure from cell 7b0a27f1"><figcaption>Stored notebook output · cell 7b0a27f1</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">ŝ, first → last window  (median over replicates)
   constant-s truth : 0.068 → 0.069   (flat; true s_C = 0.07)
   DFE truth        : 0.061 → 0.092   (1.5× rise; true mean s of the CNV pool 0.065 → 0.092)
   Lauer data       : -0.019 → 0.091</pre></section>
@@ -758,7 +758,7 @@ print(f&quot;s_C = {THETA_ODE[&#x27;s_C&#x27;]}  →  r_C = {r_C_check:.4f} h⁻
       f&quot;(steady-state advantage: {(r_C_check - R_A)*D_AVE/R_A*GEN_TO_HOURS:.4f} per gen ≈ s_C)&quot;)
 print(f&quot;δ_C = 10^{THETA_ODE[&#x27;log_delta_C&#x27;]} per gen  →  &quot;
       f&quot;{10**THETA_ODE[&#x27;log_delta_C&#x27;] / GEN_TO_HOURS:.2e} h⁻¹ in ODE&quot;)
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/d29cac1e-out-0.png" alt="Stored notebook figure from cell d29cac1e"><figcaption>Stored notebook output · cell d29cac1e</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">1 WF generation = 1.5 h
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/d29cac1e-out-0.png?v=0c65dbdb9641" alt="Stored notebook figure from cell d29cac1e"><figcaption>Stored notebook output · cell d29cac1e</figcaption></figure><pre class="cell-output" aria-label="Stored notebook output">1 WF generation = 1.5 h
 s_C = 0.07  →  r_C = 0.2306 h⁻¹  (steady-state advantage: 0.0700 per gen ≈ s_C)
 δ_C = 10^-4.2 per gen  →  4.21e-05 h⁻¹ in ODE</pre></section>
 <section class="lesson-cell prose-cell" id="cell-4cd32c54" data-cell-id="4cd32c54"><h2>3. Chuong et al. — 4-Genotype Wright-Fisher</h2>
@@ -782,7 +782,7 @@ ax.set_ylim(-0.02, 1.02)
 
 ax.set_title(&#x27;LTRΔ Data (Chuong et al.)\n7 replicates&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/f8f106e5-out-0.png" alt="Stored notebook figure from cell f8f106e5"><figcaption>Stored notebook output · cell f8f106e5</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/f8f106e5-out-0.png?v=2576ca5f466e" alt="Stored notebook figure from cell f8f106e5"><figcaption>Stored notebook output · cell f8f106e5</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-f9cb77d4" data-cell-id="f9cb77d4"><h3>Why Avecilla models don't fit LTR data</h3>
 <ol>
 <li><strong>Non-zero CNV at generation 8</strong> — pre-existing CNV pool absent from Avecilla WF</li>
@@ -801,9 +801,9 @@ for j, (rep, row) in enumerate(ltr_df.iterrows()):
 
 ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;GAP1 CNV frequency&#x27;)
 ax.set_title(f&quot;WF simulations  — using Avecilla et al.&#x27;s model fit to LTRΔ data&quot;)
-ax.set_ylim(-0.02, 1.02); plt.tight_layout(); plt.show()</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/104a1da1-out-0.png" alt="Stored notebook figure from cell 104a1da1"><figcaption>Stored notebook output · cell 104a1da1</figcaption></figure></section>
+ax.set_ylim(-0.02, 1.02); plt.tight_layout(); plt.show()</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/104a1da1-out-0.png?v=6bddbfeb04d7" alt="Stored notebook figure from cell 104a1da1"><figcaption>Stored notebook output · cell 104a1da1</figcaption></figure></section>
 <section class="lesson-cell code-cell" id="cell-97c3a42c" data-cell-id="97c3a42c"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 21</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;chuong_wf_model.png&#x27;)
-</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/97c3a42c-out-0.png" alt="Stored notebook figure from cell 97c3a42c"><figcaption>Stored notebook output · cell 97c3a42c</figcaption></figure></section>
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/97c3a42c-out-0.png?v=52287becbbca" alt="Stored notebook figure from cell 97c3a42c"><figcaption>Stored notebook output · cell 97c3a42c</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-5de3ea7b" data-cell-id="5de3ea7b"><h3>The model: Chuong et al. 4-genotype Wright-Fisher</h3>
 <p>Key extension over the Avecilla WF:</p>
 <p><strong>CNV⁻ pool</strong> (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>X</mi><mrow><msup><mi>C</mi><mo>&#x02212;</mo></msup></mrow></msub></mrow></math>): pre-existing CNV cells explain plateau</p>
@@ -915,7 +915,7 @@ ax.set_ylim(-0.02, 1.02)
 
 plt.suptitle(&#x27;Chuong WF — Model Fit&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/chapter/chuong-fit-orange.png" alt="Chuong Wright-Fisher predictions in orange and LTR observations in blue"><figcaption>Chuong WF fit · orange predictions, blue data</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/chapter/chuong-fit-orange.png?v=659540158051" alt="Chuong Wright-Fisher predictions in orange and LTR observations in blue"><figcaption>Chuong WF fit · orange predictions, blue data</figcaption></figure></section>
 <section class="station answer-gated" id="chuong-parameter-challenge" data-station="chuong-parameter-challenge">
       <div class="station-kicker">Interactive station</div><h2>Infer the hidden Chuong parameters</h2><p class="prediction">A new noisy CNV-frequency observation is generated each round. Guess the three log₁₀ parameters, then score your parameter RMSE.</p>
         <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">
@@ -924,7 +924,7 @@ plt.tight_layout(); plt.show()
           <label>log₁₀(φ) <output id="chuong-guess-p0-label"></output><input id="chuong-guess-p0" type="range" min="-7" max="-3" step="0.02" value="-4.5"></label>
           <div class="button-row"><button id="chuong-score" type="button">Score guess</button><button id="chuong-new" type="button">New observation</button><button type="reset">Reset guess</button></div></form>
           <div class="viz"><canvas id="chuong-challenge-canvas" width="760" height="430" aria-label="Noisy Chuong observation and trajectory implied by the current parameter guess"></canvas><p id="chuong-challenge-summary" class="plot-summary" aria-live="polite"></p><div id="chuong-score-card" class="score-card" aria-live="polite"></div></div></div>
-        <div class="what-changed"><strong>Score.</strong> RMSE is computed directly across the three log₁₀ parameters; points = 100 / (1 + RMSE). A perfect guess earns 100.</div><div class="static-fallback"><img src="assets/fallback/chuong-parameter-challenge.png" alt="Representative static result for chuong parameter challenge"><p>This representative result remains available when scripting is unavailable.</p></div>
+        <div class="what-changed"><strong>Score.</strong> RMSE is computed directly across the three log₁₀ parameters; points = 100 / (1 + RMSE). A perfect guess earns 100.</div><div class="static-fallback"><img src="assets/fallback/chuong-parameter-challenge.png?v=7b0531c28d1d" alt="Representative static result for chuong parameter challenge"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell prose-cell" id="cell-2973e9a8" data-cell-id="2973e9a8"><h2>4. De et al. — 2-Genotype Wright-Fisher</h2>
 <hr />
@@ -979,9 +979,9 @@ ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;CNV proportion&#x27;)
 plt.suptitle(f&#x27;De et al. — CNV Reporter Data: {strain_focus}&#x27;)
 ax.legend(loc=&#x27;lower left&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/8db7a696-out-0.png" alt="Stored notebook figure from cell 8db7a696"><figcaption>Stored notebook output · cell 8db7a696</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/8db7a696-out-0.png?v=15e6bbd3ff82" alt="Stored notebook figure from cell 8db7a696"><figcaption>Stored notebook output · cell 8db7a696</figcaption></figure></section>
 <section class="lesson-cell code-cell" id="cell-35d77585" data-cell-id="35d77585"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 28</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;de_et_al_model.png&#x27;)
-</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/35d77585-out-0.png" alt="Stored notebook figure from cell 35d77585"><figcaption>Stored notebook output · cell 35d77585</figcaption></figure></section>
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/35d77585-out-0.png?v=8cb2e1327f3f" alt="Stored notebook figure from cell 35d77585"><figcaption>Stored notebook output · cell 35d77585</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-3d886968" data-cell-id="3d886968"><h3>The model: De et al. 2-genotype WF (CNV reversion)</h3>
 <p>Asks the <strong>opposite question</strong> from Chuong: <em>How fast does an existing CNV revert?</em></p>
 <table>
@@ -1066,7 +1066,7 @@ ax.set_xlabel(&#x27;Generation&#x27;); ax.set_ylabel(&#x27;MEP2 CNV frequency&#x
 ax.set_title(f&#x27;MEP2 CNV data&#x27;)
 ax.set_ylim(-0.02, 1.02)
 plt.suptitle(f&#x27;De WF — Model Fit  ({strain_focus})&#x27;)
-plt.tight_layout(); plt.show()</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/65a843c6-out-0.png" alt="Stored notebook figure from cell 65a843c6"><figcaption>Stored notebook output · cell 65a843c6</figcaption></figure></section>
+plt.tight_layout(); plt.show()</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/65a843c6-out-0.png?v=c34826137fe2" alt="Stored notebook figure from cell 65a843c6"><figcaption>Stored notebook output · cell 65a843c6</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-1466cfd7" data-cell-id="1466cfd7"><h2>5. Zhou et al. — Aneuploidy Stability</h2>
 <hr />
 <h3>The data: Chr5 CNV GFP fluorescence tracking</h3>
@@ -1134,7 +1134,7 @@ plt.suptitle(f&#x27;Zhou et al. — Aneuploidy Stability Data&#x27;)
 plt.tight_layout(); plt.show()
 </code></pre></details></section>
 <section class="lesson-cell code-cell" id="cell-7fd6e35c" data-cell-id="7fd6e35c"><div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell 34</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">show_image(&#x27;zhou_model.png&#x27;)
-</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/7fd6e35c-out-0.png" alt="Stored notebook figure from cell 7fd6e35c"><figcaption>Stored notebook output · cell 7fd6e35c</figcaption></figure></section>
+</code></pre></div><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/7fd6e35c-out-0.png?v=85e193547473" alt="Stored notebook figure from cell 7fd6e35c"><figcaption>Stored notebook output · cell 7fd6e35c</figcaption></figure></section>
 <section class="lesson-cell prose-cell" id="cell-b4a01787" data-cell-id="b4a01787"><h3>The model: Zhou et al. aneuploidy stability WF</h3>
 <p>Three genotypes: trisomic cells lose the extra chromosome via two pathways.</p>
 <table>
@@ -1272,7 +1272,7 @@ ax.set_ylim(-0.02, 1.1)
 ax.set_title(
     f&#x27;Zhou WF — Model Fit [{ZHOU_SHEET}]&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/2e99f96f-out-0.png" alt="Stored notebook figure from cell 2e99f96f"><figcaption>Stored notebook output · cell 2e99f96f</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/2e99f96f-out-0.png?v=90fc08c15104" alt="Stored notebook figure from cell 2e99f96f"><figcaption>Stored notebook output · cell 2e99f96f</figcaption></figure></section>
 <section class="station answer-gated" id="zhou-model-playground" data-station="zhou-model-playground">
       <div class="station-kicker">Interactive station</div><h2>Explore the Zhou chromosome-loss model</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
         <div class="preset-row"><button data-zhou-model-preset="fit">Zhou fit</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
@@ -1284,7 +1284,7 @@ plt.tight_layout(); plt.show()
           <label>Initial trisomic fraction <output id="zhou-model-p0-label"></output><input id="zhou-model-p0" type="range" min="0.7" max="1" step="0.01" value="0.99"></label>
           <button type="reset">Reset</button></form>
           <div class="viz"><canvas id="zhou-model-canvas" width="760" height="430" aria-label="Interactive Zhou trisomic, wild-type, and LOH trajectories"></canvas><p id="zhou-model-summary" class="plot-summary" aria-live="polite"></p><div class="composition" id="zhou-model-composition"></div></div></div>
-        <div class="what-changed"><strong>What changed?</strong> <span id="zhou-model-change"></span></div><div class="static-fallback"><img src="assets/fallback/zhou-model-playground.png" alt="Representative static result for zhou model playground"><p>This representative result remains available when scripting is unavailable.</p></div>
+        <div class="what-changed"><strong>What changed?</strong> <span id="zhou-model-change"></span></div><div class="static-fallback"><img src="assets/fallback/zhou-model-playground.png?v=6a1e65c43716" alt="Representative static result for zhou model playground"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell prose-cell" id="cell-49b50682" data-cell-id="49b50682"><h2>Summary</h2>
 <hr />
@@ -1434,4 +1434,4 @@ ax.set_ylim(-0.02, 1.1)
 
 plt.suptitle(&#x27;Four simulators — $\hat{θ}$ + Gaussian noise vs. empirical data&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/40f8e547-out-0.png" alt="Stored notebook figure from cell 40f8e547"><figcaption>Stored notebook output · cell 40f8e547</figcaption></figure></section><nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">← Workshop home</a><a href="sbi.html">Next: simulation-based inference →</a></nav></article></div></main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer><script src="js/science.js?v=e0c47785f956" defer></script><script src="js/core.js?v=f968e863c236" defer></script><script src="js/plots.js?v=5db46156cfa0" defer></script><script src="js/evolution.js?v=d10bbb3326c7" defer></script></body></html>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/40f8e547-out-0.png?v=25b86088459a" alt="Stored notebook figure from cell 40f8e547"><figcaption>Stored notebook output · cell 40f8e547</figcaption></figure></section><nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">← Workshop home</a><a href="sbi.html">Next: simulation-based inference →</a></nav></article></div></main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer><script src="js/science.js?v=e0c47785f956" defer></script><script src="js/core.js?v=f968e863c236" defer></script><script src="js/plots.js?v=5db46156cfa0" defer></script><script src="js/evolution.js?v=d10bbb3326c7" defer></script></body></html>

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-08-25T12:40:00.847771+00:00",
+  "generated_at_utc": "2026-08-25T12:42:44.729647+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "57c695ef88da94303a160f9acbba47f42f4e7b34fff9e7f00eb562e0e5359a76"
@@ -38,9 +38,9 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "a53be9580ba31839ce94208c9e0b2a4e41ac04334cb47a98bf2988cf57367c48",
+    "evolution.html": "66001070fe21d91cf3054ce34b8490a8a5ae98313071f3db74e2558f2d6756bd",
     "index.html": "e49d2f4c1b1ba015fd7f43d83ea71faf25c969b984e881e012616976665d9c23",
-    "sbi.html": "676be57152f8bbcc542e5015456f2753df4250689e26659bfee735471306a56e"
+    "sbi.html": "599e28589390035b095b2d55915875d7287f5ca8f822b759b063e8b4807970b7"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",

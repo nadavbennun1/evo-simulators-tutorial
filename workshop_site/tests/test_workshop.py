@@ -178,7 +178,7 @@ def test_chapter_one_revision_contract():
     assert text.index('id="chuong-parameter-challenge"') > text.index('data-cell-id="66cce2fa"')
     assert text.index('id="zhou-model-playground"') > text.index('data-cell-id="2e99f96f"')
     assert "color=C['avecilla_wf']" in notebook
-    assert 'src="assets/chapter/chuong-fit-orange.png"' in text
+    assert re.search(r'src="assets/chapter/chuong-fit-orange\.png\?v=[0-9a-f]{12}"', text)
     assert "orange predictions, blue data" in text
     assert "color=C['chuong']" in notebook
     assert "Error loading sheet" not in text and "NoneType" not in text
