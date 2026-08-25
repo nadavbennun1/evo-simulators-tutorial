@@ -33,6 +33,7 @@ DATA = SITE / "data"
 ASSETS = SITE / "assets"
 NOTEBOOK_ASSETS = ASSETS / "notebook"
 FALLBACK = ASSETS / "fallback"
+CHAPTER_ASSETS = ASSETS / "chapter"
 EVODESIGN_SRC = ROOT.parent / "evodesign" / "src"
 NOTEBOOKS = {
     "evolution": ROOT / "evolution_simulators.ipynb",
@@ -93,12 +94,18 @@ def output_html(output: dict, stem: str, output_index: int) -> str:
     data = output.get("data", {})
     pieces: list[str] = []
     if "image/png" in data:
-        name = f"{stem}-out-{output_index}.png"
-        raw = data["image/png"]
-        if isinstance(raw, list):
-            raw = "".join(raw)
-        (NOTEBOOK_ASSETS / name).write_bytes(base64.b64decode(raw))
-        pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/notebook/{name}" alt="Stored notebook figure from cell {stem}"><figcaption>Stored notebook output · cell {stem}</figcaption></figure>')
+        if stem == "66cce2fa":
+            name = "chuong-fit-orange.png"
+            if not (CHAPTER_ASSETS / name).exists():
+                raise RuntimeError(f"missing revised Chuong fit figure: assets/chapter/{name}")
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/chapter/{name}" alt="Chuong Wright-Fisher simulations and LTR data, both shown in the Avecilla orange for comparison"><figcaption>Chuong WF fit · orange matches the Avecilla fit</figcaption></figure>')
+        else:
+            name = f"{stem}-out-{output_index}.png"
+            raw = data["image/png"]
+            if isinstance(raw, list):
+                raw = "".join(raw)
+            (NOTEBOOK_ASSETS / name).write_bytes(base64.b64decode(raw))
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="assets/notebook/{name}" alt="Stored notebook figure from cell {stem}"><figcaption>Stored notebook output · cell {stem}</figcaption></figure>')
     text = output.get("text")
     if text:
         text = "".join(text) if isinstance(text, list) else str(text)
@@ -157,21 +164,49 @@ def station_markup(name: str) -> str:
     common_end = f'''<div class="static-fallback"><img src="{fallback}" alt="Representative static result for {name.replace('-', ' ')}"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>'''
     if name == "evolution-playground":
-        body = '''<h2>Predict the evolutionary trajectory</h2><p class="prediction">Question: which force will dominate—selection, conversion, or drift?</p>
-        <div class="preset-row"><button data-evo-preset="balanced">Balanced</button><button data-evo-preset="selection">Selection wins</button><button data-evo-preset="conversion">Fast conversion</button><button data-evo-preset="drift">Small population</button></div>
+        body = '''<h2>Predict the Avecilla evolutionary trajectory</h2><p class="prediction">Question: will the GAP1 CNV, another beneficial lineage, or drift dominate the chemostat population?</p>
+        <div class="preset-row"><button data-evo-preset="fit">Avecilla fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
         <div class="interactive-grid"><form class="controls" id="evo-controls">
-          <label>Tri → WT rate <output id="evo-mut-wt-label"></output><input id="evo-mut-wt" type="range" min="-7" max="-2" step="0.05" value="-4"></label>
-          <label>Tri → LOH rate <output id="evo-mut-loh-label"></output><input id="evo-mut-loh" type="range" min="-7" max="-2" step="0.05" value="-4.4"></label>
-          <label>Trisomic relative fitness <output id="evo-wtri-label"></output><input id="evo-wtri" type="range" min="0.85" max="1.05" step="0.002" value="0.96"></label>
-          <label>LOH relative fitness <output id="evo-wloh-label"></output><input id="evo-wloh" type="range" min="0.85" max="1.05" step="0.002" value="0.99"></label>
-          <label>Initial trisomic fraction <output id="evo-p0-label"></output><input id="evo-p0" type="range" min="0.5" max="1" step="0.01" value="0.99"></label>
-          <label>Passages <output id="evo-duration-label"></output><input id="evo-duration" type="range" min="1" max="12" step="1" value="12"></label>
-          <label>Effective population Nₑ <select id="evo-ne"><option>1000</option><option>10000</option><option selected>100000</option><option>1000000</option></select></label>
+          <label>CNV formation log₁₀(δ<sub>C</sub>) <output id="evo-delta-c-label"></output><input id="evo-delta-c" type="range" min="-7" max="-2" step="0.05" value="-4.2"></label>
+          <label>Other-beneficial log₁₀(δ<sub>B</sub>) <output id="evo-delta-b-label"></output><input id="evo-delta-b" type="range" min="-7" max="-2" step="0.05" value="-5"></label>
+          <label>CNV advantage s<sub>C</sub> <output id="evo-s-c-label"></output><input id="evo-s-c" type="range" min="0" max="0.14" step="0.002" value="0.07"></label>
+          <label>Other-beneficial advantage s<sub>B</sub> <output id="evo-s-b-label"></output><input id="evo-s-b" type="range" min="0" max="0.14" step="0.002" value="0.001"></label>
+          <label>Generations <output id="evo-duration-label"></output><input id="evo-duration" type="range" min="20" max="140" step="5" value="120"></label>
+          <label>Effective population Nₑ <select id="evo-ne"><option>1000</option><option>10000</option><option>100000</option><option>1000000</option><option selected>330000000</option></select></label>
           <label>Replicate trajectories <input id="evo-reps" type="number" min="1" max="24" value="8"></label>
           <label>Seed <input id="evo-seed" type="number" min="0" value="20260825"></label>
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
           <div class="viz"><canvas id="evo-canvas" width="760" height="440" aria-label="Population frequency trajectories"></canvas><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div></div></div>
         <div class="what-changed"><strong>What changed?</strong> <span id="evo-driver"></span></div>'''
+    elif name == "dfe-example":
+        body = '''<h2>An <em>s</em>-DFE at a glance</h2><p class="prediction">The x-axis is the selection coefficient carried by a newly formed CNV; height is its relative probability under a gamma-shaped distribution of fitness effects.</p>
+        <div class="interactive-grid"><form class="controls" id="dfe-controls">
+          <label>Mean effect s̄ <output id="dfe-mean-label"></output><input id="dfe-mean" type="range" min="0.01" max="0.09" step="0.0025" value="0.045"></label>
+          <label>Gamma shape <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
+          <button type="reset">Reset</button></form>
+          <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Gamma-shaped distribution of selection coefficients"></canvas><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
+        <div class="what-changed"><strong>Read the plot.</strong> <span id="dfe-change"></span></div>'''
+    elif name == "chuong-parameter-challenge":
+        body = '''<h2>Infer the hidden Chuong parameters</h2><p class="prediction">A new noisy CNV-frequency observation is generated each round. Guess the three log₁₀ parameters, then score your parameter RMSE.</p>
+        <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">
+          <label>log₁₀(s) <output id="chuong-guess-s-label"></output><input id="chuong-guess-s" type="range" min="-1.3" max="-0.45" step="0.01" value="-0.8"></label>
+          <label>log₁₀(δ) <output id="chuong-guess-m-label"></output><input id="chuong-guess-m" type="range" min="-6" max="-3.8" step="0.02" value="-4.8"></label>
+          <label>log₁₀(φ) <output id="chuong-guess-p0-label"></output><input id="chuong-guess-p0" type="range" min="-7" max="-3" step="0.02" value="-4.5"></label>
+          <div class="button-row"><button id="chuong-score" type="button">Score guess</button><button id="chuong-new" type="button">New observation</button><button type="reset">Reset guess</button></div></form>
+          <div class="viz"><canvas id="chuong-challenge-canvas" width="760" height="430" aria-label="Noisy Chuong observation and trajectory implied by the current parameter guess"></canvas><p id="chuong-challenge-summary" class="plot-summary" aria-live="polite"></p><div id="chuong-score-card" class="score-card" aria-live="polite"></div></div></div>
+        <div class="what-changed"><strong>Score.</strong> RMSE is computed directly across the three log₁₀ parameters; points = 100 / (1 + RMSE). A perfect guess earns 100.</div>'''
+    elif name == "zhou-model-playground":
+        body = '''<h2>Explore the Zhou chromosome-loss model</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
+        <div class="preset-row"><button data-zhou-model-preset="fit">Zhou fit</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
+        <div class="interactive-grid"><form class="controls" id="zhou-model-controls">
+          <label>Tri → WT log₁₀ rate <output id="zhou-model-mu-wt-label"></output><input id="zhou-model-mu-wt" type="range" min="-6" max="-2.5" step="0.05" value="-3.47"></label>
+          <label>Tri → LOH log₁₀ rate <output id="zhou-model-mu-loh-label"></output><input id="zhou-model-mu-loh" type="range" min="-6" max="-2.5" step="0.05" value="-3.28"></label>
+          <label>Trisomic fitness <output id="zhou-model-w-tri-label"></output><input id="zhou-model-w-tri" type="range" min="0.85" max="1.05" step="0.002" value="0.92"></label>
+          <label>LOH fitness <output id="zhou-model-w-loh-label"></output><input id="zhou-model-w-loh" type="range" min="0.85" max="1.05" step="0.002" value="0.986"></label>
+          <label>Initial trisomic fraction <output id="zhou-model-p0-label"></output><input id="zhou-model-p0" type="range" min="0.7" max="1" step="0.01" value="0.99"></label>
+          <button type="reset">Reset</button></form>
+          <div class="viz"><canvas id="zhou-model-canvas" width="760" height="430" aria-label="Interactive Zhou trisomic, wild-type, and LOH trajectories"></canvas><p id="zhou-model-summary" class="plot-summary" aria-live="polite"></p><div class="composition" id="zhou-model-composition"></div></div></div>
+        <div class="what-changed"><strong>What changed?</strong> <span id="zhou-model-change"></span></div>'''
     elif name == "training-viewer":
         body = '''<h2>100 epochs of learning</h2><p class="prediction">Prediction: when does lower validation loss begin to produce useful posterior predictions?</p>
         <div class="preset-row"><button data-epoch="0">Untrained</button><button data-epoch="5">Early</button><button data-epoch="50">Mid-training</button><button data-epoch="best">Best validation</button><button data-epoch="100">Final</button></div>
@@ -412,19 +447,58 @@ def generate_collective_and_exercises() -> None:
 
 def generate_fallbacks() -> None:
     import matplotlib.pyplot as plt
-    FALLBACK.mkdir(parents=True,exist_ok=True)
+    FALLBACK.mkdir(parents=True,exist_ok=True); CHAPTER_ASSETS.mkdir(parents=True,exist_ok=True)
     plt.rcParams.update({"figure.facecolor":"#fffdf8","axes.facecolor":"#fffdf8","axes.spines.top":False,"axes.spines.right":False})
     x=np.arange(13); colors=["#335f52","#4e7890","#b4684f"]
     z=json.loads((DATA/"zhou_manifest.json").read_text()); latent=np.array(z["latent_passages"])
+    ave_theta=np.array([-4.2,-5,.07,.001]); ave=np.array([[1.,0.,0.]])
+    for _ in range(120):
+        p=ave[-1]; selected=p*np.array([1,1+ave_theta[2],1+ave_theta[3]])
+        nxt=np.array([selected[0]*(1-10**ave_theta[0]-10**ave_theta[1]),selected[1]+selected[0]*10**ave_theta[0],selected[2]+selected[0]*10**ave_theta[1]])
+        ave=np.vstack([ave,nxt/nxt.sum()])
+    dfe_x=np.linspace(.0001,.18,240); dfe_shape=2.; dfe_scale=.045/dfe_shape
+    dfe_y=dfe_x**(dfe_shape-1)*np.exp(-dfe_x/dfe_scale); dfe_y/=dfe_y.max()
+    chu_g=np.array([8,21,29,37,50,58,66,79,87,95,108,116]); chu=wf_deterministic([-.74,-4.84,-4.32])
     figs={
-      "evolution-playground":lambda ax:[ax.plot(x,latent[:,i],color=colors[i],lw=2.5) for i in range(3)],
+      "evolution-playground":lambda ax:[ax.plot(np.arange(121),ave[:,i],color=["#607069","#e67e22","#8e44ad"][i],lw=2.5) for i in range(3)],
+      "dfe-example":lambda ax:ax.fill_between(dfe_x,0,dfe_y,color="#e67e22",alpha=.32),
+      "chuong-parameter-challenge":lambda ax:[ax.plot(chu_g,chu,color="#577d91",lw=2.3),ax.scatter(chu_g,np.clip(chu+np.array([.01,-.02,.015,-.01,.02,-.012,.01,-.008,.004,.006,-.003,.002]),0,1),color="#e67e22",s=28)],
+      "zhou-model-playground":lambda ax:[ax.plot(x,latent[:,i],color=colors[i],lw=2.5) for i in range(3)],
       "zhou-schedule-designer":lambda ax:[ax.plot(x,latent[:,i],color=colors[i],lw=2) for i in range(3)],
       "training-viewer":lambda ax:ax.plot(range(101),json.loads((DATA/"training_viewer.json").read_text())["validation_loss"],color=colors[0]),
       "collective-outlier-lab":lambda ax:[ax.plot(json.loads((DATA/"collective_lab.json").read_text())["generations"],t,alpha=.7) for t in json.loads((DATA/"collective_lab.json").read_text())["trajectories"]],
       "guess-parameter":lambda ax:ax.plot(json.loads((DATA/"exercises.json").read_text())["generations"],json.loads((DATA/"exercises.json").read_text())["guess_examples"][0]["trajectory"],color=colors[0],marker="o"),
       "ppc-detective":lambda ax:ax.plot(json.loads((DATA/"exercises.json").read_text())["generations"],json.loads((DATA/"exercises.json").read_text())["ppc_cases"][2]["observation"],color=colors[2],marker="o")}
     for name,draw in figs.items():
-        fig,ax=plt.subplots(figsize=(7,3)); draw(ax); ax.set_xlabel("Passage / generation"); ax.set_ylabel("Frequency" if name!="training-viewer" else "Validation loss"); fig.tight_layout(); fig.savefig(FALLBACK/f"{name}.png",dpi=140); plt.close(fig)
+        fig,ax=plt.subplots(figsize=(7,3)); draw(ax)
+        ax.set_xlabel("Selection coefficient s" if name=="dfe-example" else "Passage / generation")
+        ax.set_ylabel("Relative density" if name=="dfe-example" else ("Validation loss" if name=="training-viewer" else "Frequency"))
+        fig.tight_layout(); fig.savefig(FALLBACK/f"{name}.png",dpi=140); plt.close(fig)
+
+    # The notebook source now deliberately uses the Avecilla orange for the Chuong fit.
+    # Render that focused output independently so an ordinary static build does not keep
+    # serving the stale blue PNG embedded in an older notebook execution.
+    theta=np.array([-.74,-4.84,-4.32]); sigma=np.array([.005,.1,.1]); chuong_trajs=[]
+    legacy_state=np.random.get_state()
+    try:
+        for seed in range(50):
+            th=theta+np.random.default_rng(seed).normal(0,sigma); s,m,p0=10**th
+            fitness=np.array([1,1+s,1+s,1.001]); transition=np.array([[1-m-1e-5,0,0,0],[m,1,0,0],[0,0,1,0],[1e-5,0,0,1]],float)
+            evolution=transition@np.diag(fitness); n=np.array([3.3e8*(1-p0),0,3.3e8*p0,0]); values=[]
+            np.random.seed(seed)
+            for generation in range(chu_g[-1]+1):
+                if generation in chu_g: values.append(n[1]/3.3e8)
+                probability=evolution@(n/3.3e8); probability/=probability.sum()
+                n=np.random.multinomial(int(3.3e8),probability).astype(float)
+            chuong_trajs.append(values)
+    finally:
+        np.random.set_state(legacy_state)
+    ltr=np.genfromtxt(ROOT/"data/ltr.csv",delimiter=",",skip_header=1,usecols=range(1,13))
+    fig,ax=plt.subplots(figsize=(11,4.4))
+    for i,trajectory in enumerate(chuong_trajs): ax.plot(chu_g,trajectory,lw=1.15,alpha=.22,color="#e67e22",label="Simulations" if i==0 else None)
+    for i,row in enumerate(ltr): ax.plot(chu_g,row,"o-",color="#e67e22",ms=4.8,lw=1,label="Data" if i==0 else None,zorder=5)
+    ax.legend(); ax.set_xlabel("Generation"); ax.set_ylabel("GAP1 CNV⁺ frequency"); ax.set_title("Chuong WF fit vs. LTR data"); ax.set_ylim(-.02,1.02)
+    fig.suptitle("Chuong WF — Model Fit"); fig.tight_layout(); fig.savefig(CHAPTER_ASSETS/"chuong-fit-orange.png",dpi=150); plt.close(fig)
 
 
 def page_shell(title: str, eyebrow: str, active: str, content: str, scripts: list[str]) -> str:
@@ -435,7 +509,7 @@ def page_shell(title: str, eyebrow: str, active: str, content: str, scripts: lis
 
 
 def landing_page() -> str:
-    return page_shell("Evolution × inference", "An interactive scientific workshop", "home", '''<section class="landing-hero"><div><span class="method-status"><i></i>Static · reproducible · model-free at runtime</span><h2>Follow a population.<br>Then infer what moved it.</h2><p>Two authored chapters connect evolutionary simulators to simulation-based inference, with six prediction-first laboratories.</p><div class="button-row"><a class="primary-link" href="evolution.html">Begin chapter 01</a><a class="secondary-link" href="sbi.html">Jump to SBI</a></div></div><div class="hero-orbit" aria-hidden="true"><span></span><span></span><span></span><b>θ</b></div></section><section class="objectives"><p class="section-kicker">Workshop outcomes</p><h2>What you will be able to do</h2><div class="objective-grid"><article><b>01</b><h3>Read the mechanism</h3><p>Translate mutation, selection, and drift into population-frequency trajectories.</p></article><article><b>02</b><h3>Reason with uncertainty</h3><p>Compare ABC, NPE, collective evidence, and posterior predictive checks.</p></article><article><b>03</b><h3>Design observations</h3><p>See how a passage mask changes what the same experiment can identify.</p></article></div></section><section class="chapter-cards"><a href="evolution.html"><span>Chapter 01 · 50–65 min</span><h2>Evolutionary simulators</h2><p>Five models, from chemostat kinetics to chromosome stability.</p><strong>Enter the simulator chapter →</strong></a><a href="sbi.html"><span>Chapter 02 · 70–90 min</span><h2>Simulation-based inference</h2><p>ABC, NPE, schedule-aware inference, collective posteriors, and diagnostics.</p><strong>Enter the inference chapter →</strong></a></section><section class="glossary"><p class="section-kicker">Pocket glossary</p><div class="glossary-grid"><details><summary>Drift</summary><p>Random frequency change caused by finite population sampling.</p></details><details><summary>Posterior</summary><p>A probability distribution over parameters after conditioning on observations.</p></details><details><summary>Amortization</summary><p>Paying simulation and training cost once so new observations can be inferred quickly.</p></details><details><summary>PPC</summary><p>A posterior predictive check: simulate from inferred parameters and compare with observed data.</p></details></div></section>''', [])
+    return page_shell("Evolution × inference", "An interactive scientific workshop", "home", '''<section class="landing-hero"><div><span class="method-status"><i></i>Static · reproducible · model-free at runtime</span><h2>Follow a population.<br>Then infer what moved it.</h2><p>Two authored chapters connect evolutionary simulators to simulation-based inference, with nine prediction-first laboratories.</p><div class="button-row"><a class="primary-link" href="evolution.html">Begin chapter 01</a><a class="secondary-link" href="sbi.html">Jump to SBI</a></div></div><div class="hero-orbit" aria-hidden="true"><span></span><span></span><span></span><b>θ</b></div></section><section class="objectives"><p class="section-kicker">Workshop outcomes</p><h2>What you will be able to do</h2><div class="objective-grid"><article><b>01</b><h3>Read the mechanism</h3><p>Translate mutation, selection, and drift into population-frequency trajectories.</p></article><article><b>02</b><h3>Reason with uncertainty</h3><p>Compare ABC, NPE, collective evidence, and posterior predictive checks.</p></article><article><b>03</b><h3>Design observations</h3><p>See how a passage mask changes what the same experiment can identify.</p></article></div></section><section class="chapter-cards"><a href="evolution.html"><span>Chapter 01 · 50–65 min</span><h2>Evolutionary simulators</h2><p>Five models, from chemostat kinetics to chromosome stability.</p><strong>Enter the simulator chapter →</strong></a><a href="sbi.html"><span>Chapter 02 · 70–90 min</span><h2>Simulation-based inference</h2><p>ABC, NPE, schedule-aware inference, collective posteriors, and diagnostics.</p><strong>Enter the inference chapter →</strong></a></section><section class="glossary"><p class="section-kicker">Pocket glossary</p><div class="glossary-grid"><details><summary>Drift</summary><p>Random frequency change caused by finite population sampling.</p></details><details><summary>Posterior</summary><p>A probability distribution over parameters after conditioning on observations.</p></details><details><summary>Amortization</summary><p>Paying simulation and training cost once so new observations can be inferred quickly.</p></details><details><summary>PPC</summary><p>A posterior predictive check: simulate from inferred parameters and compare with observed data.</p></details></div></section>''', [])
 
 
 def build_content() -> None:
@@ -454,7 +528,7 @@ def build_content() -> None:
 
 def provenance() -> None:
     artifacts={}
-    for p in sorted([*DATA.glob("*"),*FALLBACK.glob("*"),SITE/"index.html",SITE/"evolution.html",SITE/"sbi.html",SITE/"content_map.json"]):
+    for p in sorted([*DATA.glob("*"),*FALLBACK.glob("*"),*CHAPTER_ASSETS.glob("*"),SITE/"index.html",SITE/"evolution.html",SITE/"sbi.html",SITE/"content_map.json"]):
         if p.is_file(): artifacts[str(p.relative_to(SITE))]=sha256(p)
     zhou_manifest = json.loads((DATA / "zhou_manifest.json").read_text())
     models = {}

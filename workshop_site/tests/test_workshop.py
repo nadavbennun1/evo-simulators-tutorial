@@ -29,7 +29,7 @@ def test_every_notebook_cell_is_accounted_for():
         assert all(r["reason"] for r in rows if r["status"] == "excluded")
 
 
-def test_interaction_manifest_ids_exist_and_all_six_stations_are_built():
+def test_interaction_manifest_ids_exist_and_all_nine_stations_are_built():
     manifest = _json(SITE / "interaction_manifest.json")
     found = []
     for name, placements in manifest.items():
@@ -37,7 +37,11 @@ def test_interaction_manifest_ids_exist_and_all_six_stations_are_built():
         assert set(placements) <= ids
         for stations in placements.values():
             found.extend(stations)
-    assert set(found) == {"evolution-playground", "training-viewer", "collective-outlier-lab", "zhou-schedule-designer", "guess-parameter", "ppc-detective"}
+    assert set(found) == {
+        "evolution-playground", "dfe-example", "chuong-parameter-challenge",
+        "zhou-model-playground", "training-viewer", "collective-outlier-lab",
+        "zhou-schedule-designer", "guess-parameter", "ppc-detective",
+    }
     pages = (SITE / "evolution.html").read_text() + (SITE / "sbi.html").read_text()
     assert all(f'id="{name}"' in pages for name in found)
 
@@ -70,12 +74,50 @@ def _python_zhou(theta, p0, generations=120):
     return np.asarray(out)
 
 
+def _python_avecilla(theta, generations=120):
+    delta_c, delta_b = 10 ** theta[0], 10 ** theta[1]
+    fitness = np.array([1, 1 + theta[2], 1 + theta[3]], float)
+    p = np.array([1, 0, 0], float); out = [p.copy()]
+    for _ in range(generations):
+        selected = p * fitness
+        p = np.array([
+            selected[0] * (1 - delta_c - delta_b),
+            selected[1] + selected[0] * delta_c,
+            selected[2] + selected[0] * delta_b,
+        ])
+        p /= p.sum(); out.append(p.copy())
+    return np.asarray(out)
+
+
+def _python_chuong(theta, generations=(8, 21, 29, 37, 50, 58, 66, 79, 87, 95, 108, 116)):
+    log_s, log_m, log_p0 = theta
+    s, m, p0 = 10 ** np.array([log_s, log_m, log_p0])
+    fitness = np.array([1, 1 + s, 1 + s, 1.001], float)
+    p = np.array([1 - p0, 0, p0, 0], float); out = []
+    for g in range(max(generations) + 1):
+        if g in generations: out.append(p[1])
+        selected = p * fitness
+        p = np.array([
+            selected[0] * (1 - m - 1e-5),
+            selected[1] + selected[0] * m,
+            selected[2],
+            selected[3] + selected[0] * 1e-5,
+        ])
+        p /= p.sum()
+    return np.asarray(out)
+
+
 def test_javascript_scientific_kernel_matches_python_and_seed_is_reproducible():
     result = subprocess.run(["node", str(SITE / "tests/science_checks.cjs")], check=True, capture_output=True, text=True)
     payload = json.loads(result.stdout)
     cases = [([-4, .96, .99, -4.4], [.99, .0075, .0025]), ([-3.2, 1.01, .94, -5.1], [.8, .15, .05]), ([-6, .9, 1.04, -3], [1, 0, 0])]
     for actual, (theta, p0) in zip(payload["output"], cases):
         np.testing.assert_allclose(actual, _python_zhou(theta, p0), rtol=0, atol=2e-15)
+    np.testing.assert_allclose(payload["avecilla"], _python_avecilla([-4.2, -5, .07, .001]), rtol=0, atol=2e-15)
+    np.testing.assert_allclose(payload["chuong"], _python_chuong([-.74, -4.84, -4.32]), rtol=0, atol=2e-15)
+    expected_rmse = np.sqrt(np.mean((np.array([-.8, -4.7, -4.4]) - np.array([-.74, -4.84, -4.32])) ** 2))
+    assert abs(payload["score"]["rmse"] - expected_rmse) < 1e-14
+    assert abs(payload["score"]["score"] - 100 / (1 + expected_rmse)) < 1e-12
     assert payload["reproducible"]
     assert payload["odd"] == [0, 1, 3, 5, 7, 9, 11]
     assert payload["even"] == [0, 2, 4, 6, 8, 10, 12]
@@ -109,11 +151,25 @@ def test_static_pages_are_subpath_safe_and_assets_exist():
 def test_equations_fallbacks_accessibility_and_no_obsolete_20k_claim():
     text = (SITE / "evolution.html").read_text() + (SITE / "sbi.html").read_text()
     assert "<math" in text and "aria-label=" in text
-    assert text.count("class=\"static-fallback\"") == 6
+    assert text.count("class=\"static-fallback\"") == 9
     assert ".static-fallback{display:block}" in text
     assert "20k" not in text.lower() and "20,000" not in text
     css = (SITE / "css/workshop.css").read_text()
     assert "prefers-reduced-motion" in css and "focus-visible" in css
+
+
+def test_chapter_one_revision_contract():
+    text = (SITE / "evolution.html").read_text()
+    notebook = (ROOT / "evolution_simulators.ipynb").read_text()
+    assert "Predict the Avecilla evolutionary trajectory" in text
+    assert 'id="evo-delta-c"' in text and 'id="evo-mut-wt"' not in text
+    assert "An <em>s</em>-DFE at a glance" in text
+    assert "100 / (1 + RMSE)" in text
+    assert text.index('id="chuong-parameter-challenge"') > text.index('data-cell-id="66cce2fa"')
+    assert text.index('id="zhou-model-playground"') > text.index('data-cell-id="2e99f96f"')
+    assert "color=C['avecilla_wf']" in notebook
+    assert 'src="assets/chapter/chuong-fit-orange.png"' in text
+    assert "orange matches the Avecilla fit" in text
 
 
 def test_javascript_syntax():

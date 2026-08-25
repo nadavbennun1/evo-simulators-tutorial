@@ -39,6 +39,14 @@ def main() -> None:
             element.screenshot(f"/tmp/workshop-{station}.png")
         assert driver.execute_script("return document.querySelector('#passage-grid input[value=\"0\"]').disabled")
         assert driver.execute_script("return document.querySelectorAll('#passage-grid input').length") == 13
+        driver.get(f"{base}/evolution.html"); time.sleep(2)
+        for station in ("evolution-playground", "dfe-example", "chuong-parameter-challenge", "zhou-model-playground"):
+            element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.4)
+            element.screenshot(f"/tmp/workshop-{station}.png")
+        driver.find_element("id", "chuong-score").click(); time.sleep(.2)
+        score = driver.find_element("id", "chuong-score-card").text
+        assert "points" in score and "Parameter RMSE" in score
+        assert driver.execute_script("return document.querySelectorAll('#zhou-model-canvas').length") == 1
         print("Visual smoke check passed; screenshots written to /tmp/workshop-*.png")
     finally:
         driver.quit(); server.shutdown(); server.server_close(); thread.join(timeout=3)

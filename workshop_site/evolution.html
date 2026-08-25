@@ -202,16 +202,15 @@ plt.tight_layout(); plt.show()
 <p><strong>Drift</strong> (<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>N</mi><mo>&#x0003D;</mo><mn>3.3</mn><mi>&#x000D7;</mi><msup><mn>10</mn><mn>8</mn></msup></mrow></math>):
 <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>n</mi><mrow><mi>t</mi><mo>&#x0002B;</mo><mn>1</mn></mrow></msub><mi>&#x0007E;</mi><mrow><mi mathvariant="normal">M</mi><mi mathvariant="normal">u</mi><mi mathvariant="normal">l</mi><mi mathvariant="normal">t</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">n</mi><mi mathvariant="normal">o</mi><mi mathvariant="normal">m</mi><mi mathvariant="normal">i</mi><mi mathvariant="normal">a</mi><mi mathvariant="normal">l</mi></mrow><mo stretchy="false">&#x00028;</mo><mi>N</mi><mo>&#x0002C;</mo><mspace width="0.278em" /><msup><mi>x</mi><mo>&#x0002A;</mo></msup><mo stretchy="false">&#x00029;</mo></mrow></math></p></section>
 <section class="station answer-gated" id="evolution-playground" data-station="evolution-playground">
-      <div class="station-kicker">Interactive station</div><h2>Predict the evolutionary trajectory</h2><p class="prediction">Question: which force will dominate—selection, conversion, or drift?</p>
-        <div class="preset-row"><button data-evo-preset="balanced">Balanced</button><button data-evo-preset="selection">Selection wins</button><button data-evo-preset="conversion">Fast conversion</button><button data-evo-preset="drift">Small population</button></div>
+      <div class="station-kicker">Interactive station</div><h2>Predict the Avecilla evolutionary trajectory</h2><p class="prediction">Question: will the GAP1 CNV, another beneficial lineage, or drift dominate the chemostat population?</p>
+        <div class="preset-row"><button data-evo-preset="fit">Avecilla fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
         <div class="interactive-grid"><form class="controls" id="evo-controls">
-          <label>Tri → WT rate <output id="evo-mut-wt-label"></output><input id="evo-mut-wt" type="range" min="-7" max="-2" step="0.05" value="-4"></label>
-          <label>Tri → LOH rate <output id="evo-mut-loh-label"></output><input id="evo-mut-loh" type="range" min="-7" max="-2" step="0.05" value="-4.4"></label>
-          <label>Trisomic relative fitness <output id="evo-wtri-label"></output><input id="evo-wtri" type="range" min="0.85" max="1.05" step="0.002" value="0.96"></label>
-          <label>LOH relative fitness <output id="evo-wloh-label"></output><input id="evo-wloh" type="range" min="0.85" max="1.05" step="0.002" value="0.99"></label>
-          <label>Initial trisomic fraction <output id="evo-p0-label"></output><input id="evo-p0" type="range" min="0.5" max="1" step="0.01" value="0.99"></label>
-          <label>Passages <output id="evo-duration-label"></output><input id="evo-duration" type="range" min="1" max="12" step="1" value="12"></label>
-          <label>Effective population Nₑ <select id="evo-ne"><option>1000</option><option>10000</option><option selected>100000</option><option>1000000</option></select></label>
+          <label>CNV formation log₁₀(δ<sub>C</sub>) <output id="evo-delta-c-label"></output><input id="evo-delta-c" type="range" min="-7" max="-2" step="0.05" value="-4.2"></label>
+          <label>Other-beneficial log₁₀(δ<sub>B</sub>) <output id="evo-delta-b-label"></output><input id="evo-delta-b" type="range" min="-7" max="-2" step="0.05" value="-5"></label>
+          <label>CNV advantage s<sub>C</sub> <output id="evo-s-c-label"></output><input id="evo-s-c" type="range" min="0" max="0.14" step="0.002" value="0.07"></label>
+          <label>Other-beneficial advantage s<sub>B</sub> <output id="evo-s-b-label"></output><input id="evo-s-b" type="range" min="0" max="0.14" step="0.002" value="0.001"></label>
+          <label>Generations <output id="evo-duration-label"></output><input id="evo-duration" type="range" min="20" max="140" step="5" value="120"></label>
+          <label>Effective population Nₑ <select id="evo-ne"><option>1000</option><option>10000</option><option>100000</option><option>1000000</option><option selected>330000000</option></select></label>
           <label>Replicate trajectories <input id="evo-reps" type="number" min="1" max="24" value="8"></label>
           <label>Seed <input id="evo-seed" type="number" min="0" value="20260825"></label>
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
@@ -327,6 +326,15 @@ trajectory.</p>
 </ol>
 <p>Constant-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mi>s</mi></mrow></math> data should give a <strong>flat</strong> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> at the true value; DFE data should give a
 <strong>rising</strong> <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math>. The same fit is applied to the Lauer replicates for comparison.</p></section>
+<section class="station answer-gated" id="dfe-example" data-station="dfe-example">
+      <div class="station-kicker">Interactive station</div><h2>An <em>s</em>-DFE at a glance</h2><p class="prediction">The x-axis is the selection coefficient carried by a newly formed CNV; height is its relative probability under a gamma-shaped distribution of fitness effects.</p>
+        <div class="interactive-grid"><form class="controls" id="dfe-controls">
+          <label>Mean effect s̄ <output id="dfe-mean-label"></output><input id="dfe-mean" type="range" min="0.01" max="0.09" step="0.0025" value="0.045"></label>
+          <label>Gamma shape <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
+          <button type="reset">Reset</button></form>
+          <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Gamma-shaped distribution of selection coefficients"></canvas><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
+        <div class="what-changed"><strong>Read the plot.</strong> <span id="dfe-change"></span></div><div class="static-fallback"><img src="assets/fallback/dfe-example.png" alt="Representative static result for dfe example"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell code-cell" id="cell-da8788a6" data-cell-id="da8788a6"><details class="code-panel"><summary>Show the code <span>Python · cell 9</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python"># ── Step 1: the same WF, but CNVs draw their fitness from a DFE ──────────────
 from scipy.stats import gamma as gamma_dist
 
@@ -895,9 +903,9 @@ fig, ax = plt.subplots(figsize=(15, 6))
 
 # Panel A: simulations vs data
 for traj in trajs_chu:
-    ax.plot(GENERATIONS, traj, lw=1.5, alpha=0.35, color=C[&#x27;chuong&#x27;], label=&#x27;Simulations&#x27; if traj is trajs_chu[0] else &quot;&quot;)
+    ax.plot(GENERATIONS, traj, lw=1.5, alpha=0.35, color=C[&#x27;avecilla_wf&#x27;], label=&#x27;Simulations&#x27; if traj is trajs_chu[0] else &quot;&quot;)
 for j, (strain, row) in enumerate(ltr_df.iterrows()):
-    ax.plot(LTR_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;chuong&#x27;], ms=7, lw=1,
+    ax.plot(LTR_GEN, row.values, &#x27;o-&#x27;, color=C[&#x27;avecilla_wf&#x27;], ms=7, lw=1,
             label=&#x27;Data&#x27; if j == 0 else &quot;&quot;, zorder=5)
 from matplotlib.lines import Line2D
 ax.legend()
@@ -908,7 +916,17 @@ ax.set_ylim(-0.02, 1.02)
 
 plt.suptitle(&#x27;Chuong WF — Model Fit&#x27;)
 plt.tight_layout(); plt.show()
-</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/66cce2fa-out-0.png" alt="Stored notebook figure from cell 66cce2fa"><figcaption>Stored notebook output · cell 66cce2fa</figcaption></figure></section>
+</code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/chapter/chuong-fit-orange.png" alt="Chuong Wright-Fisher simulations and LTR data, both shown in the Avecilla orange for comparison"><figcaption>Chuong WF fit · orange matches the Avecilla fit</figcaption></figure></section>
+<section class="station answer-gated" id="chuong-parameter-challenge" data-station="chuong-parameter-challenge">
+      <div class="station-kicker">Interactive station</div><h2>Infer the hidden Chuong parameters</h2><p class="prediction">A new noisy CNV-frequency observation is generated each round. Guess the three log₁₀ parameters, then score your parameter RMSE.</p>
+        <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">
+          <label>log₁₀(s) <output id="chuong-guess-s-label"></output><input id="chuong-guess-s" type="range" min="-1.3" max="-0.45" step="0.01" value="-0.8"></label>
+          <label>log₁₀(δ) <output id="chuong-guess-m-label"></output><input id="chuong-guess-m" type="range" min="-6" max="-3.8" step="0.02" value="-4.8"></label>
+          <label>log₁₀(φ) <output id="chuong-guess-p0-label"></output><input id="chuong-guess-p0" type="range" min="-7" max="-3" step="0.02" value="-4.5"></label>
+          <div class="button-row"><button id="chuong-score" type="button">Score guess</button><button id="chuong-new" type="button">New observation</button><button type="reset">Reset guess</button></div></form>
+          <div class="viz"><canvas id="chuong-challenge-canvas" width="760" height="430" aria-label="Noisy Chuong observation and trajectory implied by the current parameter guess"></canvas><p id="chuong-challenge-summary" class="plot-summary" aria-live="polite"></p><div id="chuong-score-card" class="score-card" aria-live="polite"></div></div></div>
+        <div class="what-changed"><strong>Score.</strong> RMSE is computed directly across the three log₁₀ parameters; points = 100 / (1 + RMSE). A perfect guess earns 100.</div><div class="static-fallback"><img src="assets/fallback/chuong-parameter-challenge.png" alt="Representative static result for chuong parameter challenge"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell prose-cell" id="cell-2973e9a8" data-cell-id="2973e9a8"><h2>4. De et al. — 2-Genotype Wright-Fisher</h2>
 <hr />
 <h3>The data: CNV fluorescent reporter assay</h3>
@@ -1256,6 +1274,19 @@ ax.set_title(
     f&#x27;Zhou WF — Model Fit [{ZHOU_SHEET}]&#x27;)
 plt.tight_layout(); plt.show()
 </code></pre></details><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/2e99f96f-out-0.png" alt="Stored notebook figure from cell 2e99f96f"><figcaption>Stored notebook output · cell 2e99f96f</figcaption></figure></section>
+<section class="station answer-gated" id="zhou-model-playground" data-station="zhou-model-playground">
+      <div class="station-kicker">Interactive station</div><h2>Explore the Zhou chromosome-loss model</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
+        <div class="preset-row"><button data-zhou-model-preset="fit">Zhou fit</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
+        <div class="interactive-grid"><form class="controls" id="zhou-model-controls">
+          <label>Tri → WT log₁₀ rate <output id="zhou-model-mu-wt-label"></output><input id="zhou-model-mu-wt" type="range" min="-6" max="-2.5" step="0.05" value="-3.47"></label>
+          <label>Tri → LOH log₁₀ rate <output id="zhou-model-mu-loh-label"></output><input id="zhou-model-mu-loh" type="range" min="-6" max="-2.5" step="0.05" value="-3.28"></label>
+          <label>Trisomic fitness <output id="zhou-model-w-tri-label"></output><input id="zhou-model-w-tri" type="range" min="0.85" max="1.05" step="0.002" value="0.92"></label>
+          <label>LOH fitness <output id="zhou-model-w-loh-label"></output><input id="zhou-model-w-loh" type="range" min="0.85" max="1.05" step="0.002" value="0.986"></label>
+          <label>Initial trisomic fraction <output id="zhou-model-p0-label"></output><input id="zhou-model-p0" type="range" min="0.7" max="1" step="0.01" value="0.99"></label>
+          <button type="reset">Reset</button></form>
+          <div class="viz"><canvas id="zhou-model-canvas" width="760" height="430" aria-label="Interactive Zhou trisomic, wild-type, and LOH trajectories"></canvas><p id="zhou-model-summary" class="plot-summary" aria-live="polite"></p><div class="composition" id="zhou-model-composition"></div></div></div>
+        <div class="what-changed"><strong>What changed?</strong> <span id="zhou-model-change"></span></div><div class="static-fallback"><img src="assets/fallback/zhou-model-playground.png" alt="Representative static result for zhou model playground"><p>This representative result remains available when scripting is unavailable.</p></div>
+      <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
 <section class="lesson-cell prose-cell" id="cell-49b50682" data-cell-id="49b50682"><h2>Summary</h2>
 <hr />
 <h3>Five simulators compared</h3>

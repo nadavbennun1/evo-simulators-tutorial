@@ -1,6 +1,9 @@
 {
   "evolution_simulators.ipynb": {
-    "3282b174": ["evolution-playground"]
+    "3282b174": ["evolution-playground"],
+    "629428f4": ["dfe-example"],
+    "66cce2fa": ["chuong-parameter-challenge"],
+    "2e99f96f": ["zhou-model-playground"]
   },
   "SBI_tutorial.ipynb": {
     "0ba5658f": ["guess-parameter"],
