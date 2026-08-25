@@ -143,9 +143,19 @@ def test_static_pages_are_subpath_safe_and_assets_exist():
         assert "<noscript>" in text or page.name == "index.html"
         for ref in re.findall(r'''(?:src|href)="([^"#]+)"''', text):
             if "://" not in ref and not ref.startswith("mailto:"):
-                assert (SITE / ref).exists(), f"broken link {ref} in {page.name}"
+                asset_path = ref.split("?", 1)[0]
+                assert (SITE / asset_path).exists(), f"broken link {ref} in {page.name}"
     assert not list(SITE.rglob("*.pkl"))
     assert not list(SITE.rglob("*.pickle"))
+
+
+def test_scripts_and_stylesheets_are_content_versioned():
+    for page in (SITE / "index.html", SITE / "evolution.html", SITE / "sbi.html"):
+        text = page.read_text()
+        refs = re.findall(r'''(?:src|href)="((?:css|js)/[^"?]+)\?v=([0-9a-f]{12})"''', text)
+        assert refs, f"no versioned assets in {page.name}"
+        for relative_path, version in refs:
+            assert hashlib.sha256((SITE / relative_path).read_bytes()).hexdigest().startswith(version)
 
 
 def test_equations_fallbacks_accessibility_and_no_obsolete_20k_claim():

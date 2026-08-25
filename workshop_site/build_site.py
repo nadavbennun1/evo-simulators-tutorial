@@ -50,6 +50,11 @@ def sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def versioned_asset(relative_path: str) -> str:
+    """Return a subpath-safe asset URL whose query changes with its contents."""
+    return f"{relative_path}?v={sha256(SITE / relative_path)[:12]}"
+
+
 def write_json(path: Path, payload: object) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
@@ -503,9 +508,14 @@ def generate_fallbacks() -> None:
 
 def page_shell(title: str, eyebrow: str, active: str, content: str, scripts: list[str]) -> str:
     nav=''.join(f'<a class="{"active" if active==key else ""}" href="{href}">{label}</a>' for key,href,label in [("home","index.html","Start"),("evolution","evolution.html","Evolution"),("sbi","sbi.html","SBI")])
-    script_tags=''.join(f'<script src="js/{s}.js" defer></script>' for s in scripts)
+    script_tags=''.join(f'<script src="{versioned_asset("js/" + s + ".js")}" defer></script>' for s in scripts)
+    stylesheet = versioned_asset("css/workshop.css")
+    shared_scripts = ''.join(
+        f'<script src="{versioned_asset("js/" + name + ".js")}" defer></script>'
+        for name in ("science", "core", "plots")
+    )
     chapter_header = "" if active == "home" else f'<header class="chapter-hero"><p class="eyebrow">{eyebrow}</p><h1>{html.escape(title)}</h1><p class="lede">Mechanistic evolution, uncertainty, and experimental design—kept close enough to inspect.</p></header>'
-    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{html.escape(title)}</title><link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="css/workshop.css"><noscript><style>.static-fallback{{display:block}}</style></noscript></head><body data-page="{active}"><a class="skip-link" href="#main">Skip to lesson</a><header class="site-header"><a class="wordmark" href="index.html"><span>Δ</span> Drift &amp; Design</a><nav aria-label="Workshop chapters">{nav}</nav><div class="header-actions"><button id="workshop-mode" type="button" aria-pressed="false">Workshop mode</button><button id="reset-all" type="button">Reset all</button></div></header><div class="progress-track" aria-hidden="true"><span id="reading-progress"></span></div><main id="main">{chapter_header}{content}</main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer><script src="js/science.js" defer></script><script src="js/core.js" defer></script><script src="js/plots.js" defer></script>{script_tags}</body></html>'''
+    return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{html.escape(title)}</title><link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="{stylesheet}"><noscript><style>.static-fallback{{display:block}}</style></noscript></head><body data-page="{active}"><a class="skip-link" href="#main">Skip to lesson</a><header class="site-header"><a class="wordmark" href="index.html"><span>Δ</span> Drift &amp; Design</a><nav aria-label="Workshop chapters">{nav}</nav><div class="header-actions"><button id="workshop-mode" type="button" aria-pressed="false">Workshop mode</button><button id="reset-all" type="button">Reset all</button></div></header><div class="progress-track" aria-hidden="true"><span id="reading-progress"></span></div><main id="main">{chapter_header}{content}</main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer>{shared_scripts}{script_tags}</body></html>'''
 
 
 def landing_page() -> str:
