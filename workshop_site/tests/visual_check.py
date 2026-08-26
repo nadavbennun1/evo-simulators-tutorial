@@ -47,7 +47,8 @@ def main() -> None:
         assert "500/10000 simulations accepted" in driver.find_element("id", "abc-summary").text
         assert driver.find_element("id", "abc-progress").get_attribute("value") == "10000"
         driver.execute_script("document.querySelector('#coll-epsilon').value='-10'; document.querySelector('#coll-epsilon').dispatchEvent(new Event('change'))")
-        assert "log ε = -10" in driver.find_element("id", "collective-summary").text
+        assert "log ε = -10.000" in driver.find_element("id", "coll-epsilon-value").text
+        assert "Fixed floor." in driver.find_element("id", "collective-summary").text
         driver.find_element("css selector", 'input[name="diagnosis"][value="well-specified"]').click()
         driver.find_element("id", "ppc-reveal").click()
         assert driver.find_element("id", "ppc-summary").text.startswith("Correct.")

@@ -129,6 +129,21 @@ def test_javascript_scientific_kernel_matches_python_and_seed_is_reproducible():
     raw = np.asarray(lab["replicate_log_posteriors"])[[0, 1, 2, 3]]
     expected_robust = np.maximum(raw, -10).sum(axis=0) - 3 * np.asarray(lab["prior_log"])
     np.testing.assert_allclose(payload["robustLoose"]["robust"], expected_robust, atol=1e-12)
+    assert -4 < payload["estimatedLogEpsilon"] < -1
+    assert payload["epsilonReproducible"]
+    assert abs(payload["neutralContaminantLog"] - lab["prior_log_density"]) < 1e-12
+    np.testing.assert_allclose(payload["jointEstimated"]["standard"], payload["jointFixed"]["standard"], atol=1e-12)
+    assert not np.allclose(payload["jointEstimated"]["standard"], payload["jointEstimated"]["robust"])
+    grid = np.asarray(lab["grid"])
+    def marginal_mean(log_values):
+        values = np.exp(np.asarray(log_values) - np.max(log_values))
+        return np.trapz(grid * values, grid) / np.trapz(values, grid)
+    standard_mean = marginal_mean(payload["jointEstimated"]["standard"])
+    robust_mean = marginal_mean(payload["jointEstimated"]["robust"])
+    clean_mean = marginal_mean(payload["jointClean"]["standard"])
+    assert abs(standard_mean - lab["truth"]) > .06
+    assert abs(robust_mean - lab["truth"]) < .035
+    assert abs(clean_mean - lab["truth"]) < .025
 
 
 def test_training_snapshots_and_ppc_quantiles():
@@ -204,7 +219,9 @@ def test_sbi_revision_contract():
     assert "Check my diagnosis" in text and "observed data" in script
     assert "stackrel" not in text and "stackrel" not in (ROOT / "SBI_tutorial.ipynb").read_text()
     assert "Standard collective" in text and "Robust collective" in text
-    assert "exact 1D grid" in text and "Sampling-importance-resampling" in text
+    assert "three-parameter joint posterior grid" in text and "full joint density" in text
+    assert "Sampling-importance-resampling" in text
+    assert 'value="auto:0.95" selected' in text
     assert 'id="abc-progress"' in text and "requestAnimationFrame" in script
 
 

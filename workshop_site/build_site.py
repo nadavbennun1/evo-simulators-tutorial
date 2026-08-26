@@ -234,10 +234,10 @@ def station_markup(name: str) -> str:
     elif name == "collective-outlier-lab":
         body = '''<h2>Collective posterior outlier laboratory</h2><p class="prediction">Question: which replicate has the most leverage on the shared estimate?</p>
         <div class="preset-row"><button data-coll-select="all">Select all</button><button data-coll-select="clean">Clean only</button><button data-coll-select="outliers">Outliers only</button><button id="coll-loo">Leave one out</button></div>
-        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Robustness floor, log ε <select id="coll-epsilon"><option value="0">log ε = 0</option><option value="-10">log ε = −10</option><option value="-100">log ε = −100</option><option value="-1000" selected>log ε = −1000</option></select></label><label>Contamination strength <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
+        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Robustness floor <select id="coll-epsilon"><option value="auto:0.80">Estimate from 80th percentile</option><option value="auto:0.90">Estimate from 90th percentile</option><option value="auto:0.95" selected>Estimate from 95th percentile</option><option value="auto:0.99">Estimate from 99th percentile</option><option value="0">Fixed log ε = 0</option><option value="-10">Fixed log ε = −10</option><option value="-100">Fixed log ε = −100</option><option value="-1000">Fixed log ε = −1000</option></select><output id="coll-epsilon-value">Estimating…</output></label><label>Contamination strength <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
         <div class="viz"><canvas id="collective-trajectory-canvas" width="760" height="310" aria-label="Selected replicate trajectories"></canvas><canvas id="collective-posterior-canvas" width="760" height="310" aria-label="Individual, standard collective, and robust collective posterior densities"></canvas><p id="collective-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <details class="method-note"><summary>What is evaluated—and what is sampled?</summary><p>This browser laboratory performs exact 1D grid evaluation and numerical normalization. It does not draw posterior samples. The published high-dimensional implementation uses Sampling-importance-resampling (SIR): draw proposals from the prior, weight them by the robust collective target divided by the prior, adapt a temperature toward an effective-sample-size target, then use stratified resampling and Gaussian jitter.</p></details>
-        <div class="what-changed"><strong>Scientific caveat.</strong> Exclusion here is sensitivity analysis, not automatic justification for discarding data. The gold Standard collective curve uses Σ log pᵢ − (r−1) log p(prior) and never depends on ε. The green Robust collective curve first replaces every log pᵢ with max(log ε, log pᵢ).</div>'''
+        <details class="method-note"><summary>What is evaluated—and what is sampled?</summary><p>The browser evaluates a normalized three-parameter joint posterior grid, applies the ε floor to each full joint density, aggregates, and only then marginalizes to the displayed selection axis. It does not draw posterior samples. “Estimate” follows the empirical-data heuristic: draw parameters from the prior, evaluate each selected replicate posterior, and use the chosen density percentile as log ε. The published production implementation instead samples the high-dimensional target with Sampling-importance-resampling (SIR).</p></details>
+        <div class="what-changed"><strong>Read the comparison.</strong> Gold is the Standard collective posterior and never depends on ε. Green is the Robust collective posterior using max(log ε, log pᵢ) on the joint density. Fixed log ε = −1000 intentionally reproduces the standard limit; the estimated setting should expose whether the outlier is incompatible in the full parameter space. Exclusion remains sensitivity analysis, not a data-discarding rule.</div>'''
     elif name == "zhou-schedule-designer":
         body = '''<h2>Design a Zhou passage schedule</h2><p class="prediction">Prediction: which passages constrain rates, and which constrain relative fitness?</p>
         <div class="preset-row"><button data-schedule="odd">Odd passages</button><button data-schedule="even">Even passages</button><button data-schedule="early">Early only</button><button data-schedule="late">Late only</button><button data-schedule="sparse">Sparse</button><button data-schedule="full">Full schedule</button><button data-schedule="zero">Passage 0 only</button></div>
@@ -438,16 +438,37 @@ def normal_pdf(x: np.ndarray, mean: float, sd: float) -> np.ndarray:
 
 
 def generate_collective_and_exercises() -> None:
-    rng=np.random.default_rng(SEED); grid=np.linspace(-1.8,-.35,320); truth=-.9
+    rng=np.random.default_rng(SEED); grid=np.linspace(-1.8,-.35,180); truth_theta=np.array([-.9,-5,-5.5])
     labels=["R1","R2","R3","R4","R5","R6 subtle","R7 outlier"]
-    shifts=np.array([-.02,.03,-.01,.05,-.04,.13,.42]); sds=np.array([.22,.2,.23,.19,.21,.23,.2])
-    prior=normal_pdf(grid,-1.05,.48); factors=[]; trajectories=[]
-    for i,(shift,sd) in enumerate(zip(shifts,sds)):
-        likelihood=normal_pdf(grid,truth+shift,sd)
-        post=likelihood*prior; post/=np.trapz(post,grid)
+    bounds=np.array([[-2,0],[-7,-2],[-8,-2]],float)
+    means=np.array([[-.92,-5.05,-5.45],[-.87,-4.9,-5.65],[-.91,-5.1,-5.35],
+                    [-.85,-4.95,-5.55],[-.94,-5,-5.6],[-.77,-4.65,-5],
+                    [-.48,-3.7,-6.9]])
+    sds=np.array([[.22,.55,.7],[.2,.5,.65],[.23,.58,.75],[.19,.48,.65],
+                  [.21,.52,.7],[.23,.55,.7],[.2,.45,.55]])
+    normalizers=[]; factors=[]; trajectories=[]
+    for mean,sd in zip(means,sds):
+        masses=[.5*(math.erf((hi-m)/(s*math.sqrt(2)))-math.erf((lo-m)/(s*math.sqrt(2))))
+                for (lo,hi),m,s in zip(bounds,mean,sd)]
+        normalizers.append(float(np.log(masses).sum()))
+        post=normal_pdf(grid,mean[0],sd[0]); post/=np.trapz(post,grid)
         factors.append(np.log(post+1e-30))
-        trajectories.append(np.clip(wf_deterministic([truth+shift,-5,-5.5])+rng.normal(0,.012,12),0,1).tolist())
-    write_json(DATA/"collective_lab.json",{"grid":grid.tolist(),"truth":truth,"prior_log":np.log(prior+1e-30).tolist(),"replicate_log_posteriors":np.array(factors).tolist(),"labels":labels,"types":["clean"]*5+["subtle","outlier"],"trajectories":trajectories,"generations":[8,21,29,37,50,58,66,79,87,95,108,116],"formula":"sum(log posterior_i) - (r-1) * log(prior)"})
+        trajectories.append(np.clip(wf_deterministic(mean)+rng.normal(0,.012,12),0,1).tolist())
+    selection_prior_log=np.full(len(grid),-math.log(bounds[0,1]-bounds[0,0]))
+    write_json(DATA/"collective_lab.json",{
+        "grid":grid.tolist(),"truth":float(truth_theta[0]),"truth_theta":truth_theta.tolist(),
+        "parameter_names":["log10_s","log10_delta","log10_phi"],"parameter_bounds":bounds.tolist(),
+        "posterior_means":means.tolist(),"posterior_sds":sds.tolist(),
+        "posterior_log_normalizers":normalizers,
+        "prior_log_density":float(-np.log(bounds[:,1]-bounds[:,0]).sum()),
+        "prior_log":selection_prior_log.tolist(),
+        "replicate_log_posteriors":np.array(factors).tolist(),
+        "joint_grid_shape":[len(grid),25,25],
+        "epsilon_calibration":{"method":"replicate-set prior-draw density percentile","prior_draws_per_replicate":2048,"seed":SEED,"default_quantile":.95},
+        "labels":labels,"types":["clean"]*5+["subtle","outlier"],"contaminated_index":6,"trajectories":trajectories,
+        "generations":[8,21,29,37,50,58,66,79,87,95,108,116],
+        "formula":"aggregate full joint log posterior_i, subtract (r-1) log prior, then marginalize"
+    })
     examples=[]
     for idx,t in enumerate([[-.9,-5,-5.5],[-1.18,-4.2,-6.2],[-.68,-5.7,-4.7]]):
         curve=wf_deterministic(t); draws=rng.normal(t,[.09,.45,.7],(220,3)); draws=np.clip(draws,[-2,-7,-8],[0,-2,-2])

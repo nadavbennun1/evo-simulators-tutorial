@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-08-25T14:08:40.027552+00:00",
+  "generated_at_utc": "2026-08-26T03:05:24.380554+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -22,7 +22,7 @@
   "artifacts": {
     "assets/chapter/chuong-fit-orange.png": "6595401580517f68f2b0e5bc02887fba1d4f2344bf567e41daadf5a8d5bf7fab",
     "assets/fallback/chuong-parameter-challenge.png": "7b0531c28d1de5de1cd8f8b378363cac049b7e5a30f81ba25fea3e08900d7da2",
-    "assets/fallback/collective-outlier-lab.png": "604689b7879a14a06f37440ba0a09275b9497d343766d542c58af405096e5671",
+    "assets/fallback/collective-outlier-lab.png": "ae68012c55fcdddc476dc5f711bc8670db4a54604e0c4280ef3ea89ea5cec7e2",
     "assets/fallback/dfe-example.png": "3b2329a0242afc300fedf8b1b0d8c6904a0955cb2e74a3ffe7bb5cc41912b12e",
     "assets/fallback/evolution-playground.png": "2ce5e694e686975e7d93f17e7c0b4eaafc48a6890f5ce426ce1bfb3e758eeb1e",
     "assets/fallback/guess-parameter.png": "ac8278e8833e7a365dcb7ec888a866bb13339c720b63c6179511ed6b89d00914",
@@ -31,16 +31,16 @@
     "assets/fallback/zhou-model-playground.png": "6a1e65c4371619e7b391db8d6f5c2b8601d523a51e441d2346ce745cef785632",
     "assets/fallback/zhou-schedule-designer.png": "cecf1e50b63fc8770f61c8028b6f36d3a1a9dab648038127887bc2bc34f5fa71",
     "content_map.json": "b55418158d24b5f6514b762fa67b80cd424cbc73990004f83333a1232d720129",
-    "data/collective_lab.json": "2341d681ec728a0648868b0fb38f1798444758d78ec28d76f485e51c1bd99161",
+    "data/collective_lab.json": "86a5082c129180b1080a48d69fe8963695f1ad531a334bba3a41c9e398795c96",
     "data/exercises.json": "3d81472061586685e2051f27175bc40eb97072a7403dfa9920b8216ae962d500",
     "data/training_viewer.json": "5bd1cd4259c82da0f35200336f8025e569d5057ae41236e0f55b9aee76d2abd9",
     "data/zhou_draws.f32": "73c9bc41ebf9b77f378a20224a41fc0d1778639d196fd58dbfc5400f6347e5a5",
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "46f29bdd84f97b74b5a6f390e887997266b20bd9a89e792f7690d2f956f3fc4f",
-    "index.html": "0b0d40c0a1f4b15bd8c9ccfdfe8db2317c1a1063fc97c672e7234bda25207f75",
-    "sbi.html": "db349872d711061ac68f3372174d76ee6cde5e6fe1ea5b638dd72d6552ce8b16"
+    "evolution.html": "22956bb1ef0d9f168f4e5eef21cb35ae7335bd5ef8d9cacb692497cc38a0ea57",
+    "index.html": "9b3c4177643f3816f7d3c03c47f3c60db1e9a019bbd2030f3667c03a73a02f00",
+    "sbi.html": "d8564b9c65eacfd4094b69838a2a3a6bf818b645a9030c202349afa2c3c922a9"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",

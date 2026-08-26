@@ -90,7 +90,7 @@
     }
     function adjustedLogPosterior(replicate, j, strength) {
       const base = data.replicate_log_posteriors[replicate][j];
-      return replicate === 6 ? data.prior_log[j] + strength * (base - data.prior_log[j]) : base;
+      return replicate === data.contaminated_index ? data.prior_log[j] + strength * (base - data.prior_log[j]) : base;
     }
     function drawTrajectories(ids) {
       const c = $("#collective-trajectory-canvas"), f = P.frame(c, 0, 1, 8, 116), focus = +investigate.value;
@@ -99,15 +99,17 @@
       P.legend(f, [{label: "selected replicates", color: P.C.blue}, {label: "investigated replicate", color: P.C.clay}]);
     }
     function draw() {
-      const ids = chosen(), strength = +$("#contam-strength").value, logEpsilon = +epsilonControl.value;
+      const ids = chosen(), strength = +$("#contam-strength").value, epsilonSetting = epsilonControl.value;
       $("#contam-label").textContent = `${strength.toFixed(1)}×`;
       if (!ids.length) {
         P.frame(posteriorCanvas, 0, 1, data.grid[0], data.grid.at(-1));
         $("#collective-summary").textContent = "Select at least one replicate."; drawTrajectories(ids); return;
       }
       const rawIndividualLogs = ids.map(i => data.grid.map((_, j) => adjustedLogPosterior(i, j, strength)));
-      const localIndices = rawIndividualLogs.map((_, i) => i);
-      const result = S.robustCollectiveLogPosterior(rawIndividualLogs, data.prior_log, localIndices, logEpsilon);
+      const estimated = epsilonSetting.startsWith("auto:");
+      const epsilonQuantile = estimated ? +epsilonSetting.split(":")[1] : null;
+      const logEpsilon = estimated ? S.estimateCollectiveLogEpsilon(data, ids, strength, epsilonQuantile) : +epsilonSetting;
+      const result = S.collectiveJointSelectionMarginals(data, ids, strength, logEpsilon);
       const standardDensity = density(result.standard), robustDensity = density(result.robust), individuals = rawIndividualLogs.map(density);
       const maxDensity = Math.max(...standardDensity, ...robustDensity, ...individuals.flat()) * 1.08;
       const f = P.frame(posteriorCanvas, 0, maxDensity, data.grid[0], data.grid.at(-1));
@@ -115,10 +117,15 @@
       P.line(f, data.grid, standardDensity, P.C.gold, 2.4, 1, [5, 3]); P.line(f, data.grid, robustDensity, P.C.tri, 3);
       P.line(f, [data.truth, data.truth], [0, maxDensity], P.C.ink, 1.5, 1, [4, 4]);
       P.legend(f, [{label: "individual", color: P.C.blue}, {label: "Standard collective", color: P.C.gold}, {label: "Robust collective", color: P.C.tri}, {label: "truth", color: P.C.ink}]);
-      const cdf = []; robustDensity.reduce((sum, value) => { cdf.push(sum + value); return sum + value; }, 0);
-      const total = cdf.at(-1), at = q => data.grid[cdf.findIndex(x => x >= q * total)];
-      const mean = data.grid.reduce((sum, x, j) => sum + x * robustDensity[j], 0) / robustDensity.reduce((a, b) => a + b, 0);
-      $("#collective-summary").textContent = "log ε = " + logEpsilon + "; " + ids.length + " replicate" + (ids.length === 1 ? "" : "s") + ". Robust mean " + mean.toFixed(3) + "; 90% interval [" + at(.05).toFixed(3) + ", " + at(.95).toFixed(3) + "]; truth " + data.truth + ". Gold is the fixed standard collective reference; only the green robust result responds to log ε. Exact grid evaluation—no posterior sampling occurs in this panel.";
+      const summarize = values => {
+        const cdf=[]; values.reduce((sum,value)=>{cdf.push(sum+value);return sum+value},0);
+        const total=cdf.at(-1),at=q=>data.grid[cdf.findIndex(value=>value>=q*total)];
+        return{mean:data.grid.reduce((sum,x,j)=>sum+x*values[j],0)/values.reduce((a,b)=>a+b,0),lo:at(.05),hi:at(.95)};
+      };
+      const standardSummary=summarize(standardDensity),robustSummary=summarize(robustDensity);
+      const calibrationCount=ids.length*data.epsilon_calibration.prior_draws_per_replicate;
+      $("#coll-epsilon-value").textContent = (estimated ? "Estimated " + (epsilonQuantile*100).toFixed(0) + "th percentile: " : "Using ") + "log ε = " + logEpsilon.toFixed(3);
+      $("#collective-summary").textContent = (estimated ? "Set-specific ε from " + calibrationCount.toLocaleString() + " prior-draw joint-density evaluations. " : "Fixed floor. ") + "Standard mean " + standardSummary.mean.toFixed(3) + "; robust mean " + robustSummary.mean.toFixed(3) + " with 90% interval [" + robustSummary.lo.toFixed(3) + ", " + robustSummary.hi.toFixed(3) + "]; truth " + data.truth + ". The floor acts in three dimensions before this selection marginal is drawn.";
       drawTrajectories(ids);
     }
     box.addEventListener("change", draw); investigate.addEventListener("change", draw); epsilonControl.addEventListener("change", draw); $("#contam-strength").addEventListener("input", draw);
@@ -126,7 +133,7 @@
       $$("input", box).forEach((input, i) => { input.checked = button.dataset.collSelect === "all" || (button.dataset.collSelect === "clean" && data.types[i] === "clean") || (button.dataset.collSelect === "outliers" && data.types[i] !== "clean"); }); draw();
     }));
     $("#coll-loo").addEventListener("click", () => { $$("input", box).forEach((input, i) => { input.checked = i !== leave; }); investigate.value = leave; leave = (leave + 1) % data.labels.length; draw(); });
-    $("#coll-reset").addEventListener("click", () => { $$("input", box).forEach(input => { input.checked = true; }); $("#contam-strength").value = 1; epsilonControl.value = -1000; draw(); });
+    $("#coll-reset").addEventListener("click", () => { $$("input", box).forEach(input => { input.checked = true; }); $("#contam-strength").value = 1; epsilonControl.value = "auto:0.95"; draw(); });
     addEventListener("resize", draw); draw();
   }
 
