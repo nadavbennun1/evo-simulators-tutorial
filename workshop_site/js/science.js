@@ -16,22 +16,23 @@
     return sign*y;
   }
   function normalCdf(value){return .5*(1+erf(value/Math.sqrt(2)))}
-  function contaminationLogNormalizer(model,index,strength){
-    if(strength===0)return 0;
-    const mean=model.posterior_means[index],sd=model.posterior_sds[index],bounds=model.parameter_bounds;
-    let logIntegralPower=0;
-    for(let k=0;k<3;k++){
-      const scale=sd[k]/Math.sqrt(strength);
-      const mass=Math.max(1e-300,normalCdf((bounds[k][1]-mean[k])/scale)-normalCdf((bounds[k][0]-mean[k])/scale));
-      logIntegralPower+=(1-strength)*Math.log(sd[k]*Math.sqrt(2*Math.PI))-.5*Math.log(strength)+Math.log(mass);
-    }
-    return(1-strength)*model.prior_log_density-strength*model.posterior_log_normalizers[index]+logIntegralPower;
+  function effectivePosteriorMean(model,index,strength=1){
+    const mean=model.posterior_means[index];
+    return index===model.contaminated_index?mean.map((value,k)=>model.truth_theta[k]+strength*(value-model.truth_theta[k])):mean.slice();
+  }
+  function posteriorLogNormalizer(model,index,mean){
+    if(index!==model.contaminated_index)return model.posterior_log_normalizers[index];
+    const sd=model.posterior_sds[index],bounds=model.parameter_bounds;
+    return bounds.reduce((sum,[lo,hi],k)=>{
+      const mass=Math.max(1e-300,normalCdf((hi-mean[k])/sd[k])-normalCdf((lo-mean[k])/sd[k]));
+      return sum+Math.log(mass);
+    },0);
   }
   function jointPosteriorLog(model,index,theta,strength=1){
-    const mean=model.posterior_means[index],sd=model.posterior_sds[index];
-    let value=-1.5*Math.log(2*Math.PI)-model.posterior_log_normalizers[index];
+    const mean=effectivePosteriorMean(model,index,strength),sd=model.posterior_sds[index];
+    let value=-1.5*Math.log(2*Math.PI)-posteriorLogNormalizer(model,index,mean);
     for(let k=0;k<3;k++)value-=Math.log(sd[k])+.5*((theta[k]-mean[k])/sd[k])**2;
-    return index===model.contaminated_index?model.prior_log_density+strength*(value-model.prior_log_density)-contaminationLogNormalizer(model,index,strength):value;
+    return value;
   }
   function estimateCollectiveLogEpsilon(model,indices,strength=1,q=model.epsilon_calibration.default_quantile){
     const values=[],n=model.epsilon_calibration.prior_draws_per_replicate,bounds=model.parameter_bounds;
@@ -66,5 +67,5 @@
     return{standard,robust};
   }
   function inverseRmseScore(guess,truth){const rmse=Math.sqrt(guess.reduce((sum,x,i)=>sum+(x-truth[i])**2,0)/guess.length);return{rmse,score:100/(1+rmse)}}
-  return{avecillaDeterministic,chuongDeterministic,zhouDeterministic,mulberry32,maskToPassages,collectiveLogPosterior,robustCollectiveLogPosterior,jointPosteriorLog,estimateCollectiveLogEpsilon,collectiveJointSelectionMarginals,inverseRmseScore};
+  return{avecillaDeterministic,chuongDeterministic,zhouDeterministic,mulberry32,maskToPassages,collectiveLogPosterior,robustCollectiveLogPosterior,effectivePosteriorMean,jointPosteriorLog,estimateCollectiveLogEpsilon,collectiveJointSelectionMarginals,inverseRmseScore};
 });

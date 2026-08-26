@@ -19,10 +19,15 @@ const robustTight=science.robustCollectiveLogPosterior(lab.replicate_log_posteri
 const allIndices=lab.labels.map((_,i)=>i),cleanIndices=[0,1,2,3,4];
 const estimatedLogEpsilon=science.estimateCollectiveLogEpsilon(lab,allIndices,1,.95);
 const epsilonReproducible=estimatedLogEpsilon===science.estimateCollectiveLogEpsilon(lab,allIndices,1,.95);
-const neutralContaminantLog=science.jointPosteriorLog(lab,lab.contaminated_index,lab.truth_theta,0);
+const neutralContaminantMean=science.effectivePosteriorMean(lab,lab.contaminated_index,0);
+const fullContaminantMean=science.effectivePosteriorMean(lab,lab.contaminated_index,1);
 const jointEstimated=science.collectiveJointSelectionMarginals(lab,allIndices,1,estimatedLogEpsilon);
 const jointFixed=science.collectiveJointSelectionMarginals(lab,allIndices,1,-1000);
 const jointClean=science.collectiveJointSelectionMarginals(lab,cleanIndices,1,estimatedLogEpsilon);
+const lowEpsilon=science.estimateCollectiveLogEpsilon(lab,allIndices,0,.95);
+const highEpsilon=science.estimateCollectiveLogEpsilon(lab,allIndices,1.5,.95);
+const jointLowContamination=science.collectiveJointSelectionMarginals(lab,allIndices,0,lowEpsilon);
+const jointHighContamination=science.collectiveJointSelectionMarginals(lab,allIndices,1.5,highEpsilon);
 const rngA=science.mulberry32(20260825),rngB=science.mulberry32(20260825);
 const reproducible=Array.from({length:20},()=>rngA()).every(x=>x===rngB());
-process.stdout.write(JSON.stringify({output,avecilla,chuong,score,odd,even,collective,robustLoose,robustTight,estimatedLogEpsilon,epsilonReproducible,neutralContaminantLog,jointEstimated,jointFixed,jointClean,reproducible}));
+process.stdout.write(JSON.stringify({output,avecilla,chuong,score,odd,even,collective,robustLoose,robustTight,estimatedLogEpsilon,epsilonReproducible,neutralContaminantMean,fullContaminantMean,jointEstimated,jointFixed,jointClean,jointLowContamination,jointHighContamination,reproducible}));

@@ -90,12 +90,20 @@
     }
     function adjustedLogPosterior(replicate, j, strength) {
       const base = data.replicate_log_posteriors[replicate][j];
-      return replicate === data.contaminated_index ? data.prior_log[j] + strength * (base - data.prior_log[j]) : base;
+      if (replicate !== data.contaminated_index) return base;
+      const mean = S.effectivePosteriorMean(data, replicate, strength)[0], sd = data.posterior_sds[replicate][0];
+      return -.5 * ((data.grid[j] - mean) / sd) ** 2 - Math.log(sd * Math.sqrt(2 * Math.PI));
     }
-    function drawTrajectories(ids) {
+    function drawTrajectories(ids, strength) {
       const c = $("#collective-trajectory-canvas"), f = P.frame(c, 0, 1, 8, 116), focus = +investigate.value;
-      data.trajectories.forEach((trajectory, i) => P.line(f, data.generations, trajectory, i === focus ? P.C.clay : P.C.blue, i === focus ? 3 : 1, ids.includes(i) ? .75 : .12));
-      P.line(f, data.generations, data.trajectories[focus], P.C.clay, 2.5);
+      const trajectoryAt = i => {
+        if (i !== data.contaminated_index) return data.trajectories[i];
+        const original = S.chuongDeterministic(data.posterior_means[i], data.generations);
+        const shifted = S.chuongDeterministic(S.effectivePosteriorMean(data, i, strength), data.generations);
+        return shifted.map((value, j) => Math.max(0, Math.min(1, value + data.trajectories[i][j] - original[j])));
+      };
+      data.trajectories.forEach((_, i) => P.line(f, data.generations, trajectoryAt(i), i === focus ? P.C.clay : P.C.blue, i === focus ? 3 : 1, ids.includes(i) ? .75 : .12));
+      P.line(f, data.generations, trajectoryAt(focus), P.C.clay, 2.5);
       P.legend(f, [{label: "selected replicates", color: P.C.blue}, {label: "investigated replicate", color: P.C.clay}]);
     }
     function draw() {
@@ -103,7 +111,7 @@
       $("#contam-label").textContent = `${strength.toFixed(1)}×`;
       if (!ids.length) {
         P.frame(posteriorCanvas, 0, 1, data.grid[0], data.grid.at(-1));
-        $("#collective-summary").textContent = "Select at least one replicate."; drawTrajectories(ids); return;
+        $("#collective-summary").textContent = "Select at least one replicate."; drawTrajectories(ids, strength); return;
       }
       const rawIndividualLogs = ids.map(i => data.grid.map((_, j) => adjustedLogPosterior(i, j, strength)));
       const estimated = epsilonSetting.startsWith("auto:");
@@ -125,10 +133,12 @@
       const standardSummary=summarize(standardDensity),robustSummary=summarize(robustDensity);
       const calibrationCount=ids.length*data.epsilon_calibration.prior_draws_per_replicate;
       $("#coll-epsilon-value").textContent = (estimated ? "Estimated " + (epsilonQuantile*100).toFixed(0) + "th percentile: " : "Using ") + "log ε = " + logEpsilon.toFixed(3);
-      $("#collective-summary").textContent = (estimated ? "Set-specific ε from " + calibrationCount.toLocaleString() + " prior-draw joint-density evaluations. " : "Fixed floor. ") + "Standard mean " + standardSummary.mean.toFixed(3) + "; robust mean " + robustSummary.mean.toFixed(3) + " with 90% interval [" + robustSummary.lo.toFixed(3) + ", " + robustSummary.hi.toFixed(3) + "]; truth " + data.truth + ". The floor acts in three dimensions before this selection marginal is drawn.";
-      drawTrajectories(ids);
+      const shiftedMean=S.effectivePosteriorMean(data,data.contaminated_index,strength);
+      $("#collective-summary").textContent = "R7 center (" + shiftedMean.map(value=>value.toFixed(2)).join(", ") + "). " + (estimated ? "Set-specific ε from " + calibrationCount.toLocaleString() + " prior-draw joint-density evaluations. " : "Fixed floor. ") + "Standard mean " + standardSummary.mean.toFixed(3) + "; robust mean " + robustSummary.mean.toFixed(3) + " with 90% interval [" + robustSummary.lo.toFixed(3) + ", " + robustSummary.hi.toFixed(3) + "]; truth " + data.truth + ".";
+      drawTrajectories(ids, strength);
     }
-    box.addEventListener("change", draw); investigate.addEventListener("change", draw); epsilonControl.addEventListener("change", draw); $("#contam-strength").addEventListener("input", draw);
+    box.addEventListener("change", draw); investigate.addEventListener("change", draw); epsilonControl.addEventListener("change", draw);
+    $("#contam-strength").addEventListener("input", () => { investigate.value = String(data.contaminated_index); draw(); });
     $$('[data-coll-select]').forEach(button => button.addEventListener("click", () => {
       $$("input", box).forEach((input, i) => { input.checked = button.dataset.collSelect === "all" || (button.dataset.collSelect === "clean" && data.types[i] === "clean") || (button.dataset.collSelect === "outliers" && data.types[i] !== "clean"); }); draw();
     }));
@@ -238,10 +248,15 @@
             candidates.push({theta, trajectory, distance});
           }
           progress.value = candidates.length; progressLabel.textContent = candidates.length.toLocaleString() + " / " + budget.toLocaleString();
+          let reachedMilestone = false;
           while (nextStage < stages.length && candidates.length >= stages[nextStage]) {
             renderStage(stages[nextStage], stages[nextStage] === budget); nextStage += 1;
+            reachedMilestone = true;
           }
-          if (candidates.length < budget) requestAnimationFrame(advance);
+          if (candidates.length < budget) {
+            if (reachedMilestone) setTimeout(() => requestAnimationFrame(advance), 850);
+            else requestAnimationFrame(advance);
+          }
           else { runButton.textContent = "Run ABC progressively"; updateMilestones(stages, budget); }
         }
         requestAnimationFrame(advance);

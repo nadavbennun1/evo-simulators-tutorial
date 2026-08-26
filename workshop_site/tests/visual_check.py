@@ -43,9 +43,23 @@ def main() -> None:
         assert "ε =" in driver.find_element("id", "abc-summary").text
         driver.execute_script("document.querySelector('#abc-sims').value='10000'")
         driver.find_element("id", "abc-run").click()
+        time.sleep(.4)
+        assert not driver.find_element("id", "abc-summary").text.startswith("Complete:")
         WebDriverWait(driver, 15).until(lambda d: d.find_element("id", "abc-summary").text.startswith("Complete:"))
         assert "500/10000 simulations accepted" in driver.find_element("id", "abc-summary").text
         assert driver.find_element("id", "abc-progress").get_attribute("value") == "10000"
+        driver.execute_script("document.querySelector('#coll-epsilon').value='auto:0.95'; document.querySelector('#coll-epsilon').dispatchEvent(new Event('change')); document.querySelector('#contam-strength').value='0'; document.querySelector('#contam-strength').dispatchEvent(new Event('input'))")
+        neutral_summary = driver.find_element("id", "collective-summary").text
+        neutral_posterior = driver.execute_script("return document.querySelector('#collective-posterior-canvas').toDataURL()")
+        neutral_trajectory = driver.execute_script("return document.querySelector('#collective-trajectory-canvas').toDataURL()")
+        driver.execute_script("document.querySelector('#contam-strength').value='1.5'; document.querySelector('#contam-strength').dispatchEvent(new Event('input'))")
+        displaced_summary = driver.find_element("id", "collective-summary").text
+        assert driver.find_element("id", "coll-investigate").get_attribute("value") == "6"
+        assert "R7 center (-0.90, -5.00, -5.50)" in neutral_summary
+        assert "R7 center (-0.27, -3.05, -7.60)" in displaced_summary
+        assert neutral_summary != displaced_summary
+        assert neutral_posterior != driver.execute_script("return document.querySelector('#collective-posterior-canvas').toDataURL()")
+        assert neutral_trajectory != driver.execute_script("return document.querySelector('#collective-trajectory-canvas').toDataURL()")
         driver.execute_script("document.querySelector('#coll-epsilon').value='-10'; document.querySelector('#coll-epsilon').dispatchEvent(new Event('change'))")
         assert "log ε = -10.000" in driver.find_element("id", "coll-epsilon-value").text
         assert "Fixed floor." in driver.find_element("id", "collective-summary").text
