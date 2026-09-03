@@ -131,10 +131,10 @@
         return{mean:data.grid.reduce((sum,x,j)=>sum+x*values[j],0)/values.reduce((a,b)=>a+b,0),lo:at(.05),hi:at(.95)};
       };
       const standardSummary=summarize(standardDensity),robustSummary=summarize(robustDensity);
-      const calibrationCount=ids.length*data.epsilon_calibration.prior_draws_per_replicate;
+      const calibrationCount=ids.length*data.epsilon_calibration.grid_points_per_axis**3;
       $("#coll-epsilon-value").textContent = (estimated ? "Estimated " + (epsilonQuantile*100).toFixed(0) + "th percentile: " : "Using ") + "log ε = " + logEpsilon.toFixed(3);
       const shiftedMean=S.effectivePosteriorMean(data,data.contaminated_index,strength);
-      $("#collective-summary").textContent = "R7 center (" + shiftedMean.map(value=>value.toFixed(2)).join(", ") + "). " + (estimated ? "Set-specific ε from " + calibrationCount.toLocaleString() + " prior-draw joint-density evaluations. " : "Fixed floor. ") + "Standard mean " + standardSummary.mean.toFixed(3) + "; robust mean " + robustSummary.mean.toFixed(3) + " with 90% interval [" + robustSummary.lo.toFixed(3) + ", " + robustSummary.hi.toFixed(3) + "]; truth " + data.truth + ".";
+      $("#collective-summary").textContent = "R7 center (" + shiftedMean.map(value=>value.toFixed(2)).join(", ") + "). " + (estimated ? "Set-specific ε from " + calibrationCount.toLocaleString() + " deterministic prior-grid evaluations. " : "Fixed floor. ") + "Standard mean " + standardSummary.mean.toFixed(3) + "; robust mean " + robustSummary.mean.toFixed(3) + " with 90% interval [" + robustSummary.lo.toFixed(3) + ", " + robustSummary.hi.toFixed(3) + "]; truth " + data.truth + ".";
       drawTrajectories(ids, strength);
     }
     box.addEventListener("change", draw); investigate.addEventListener("change", draw); epsilonControl.addEventListener("change", draw);

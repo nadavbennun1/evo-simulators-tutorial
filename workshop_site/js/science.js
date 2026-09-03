@@ -34,20 +34,17 @@
     for(let k=0;k<3;k++)value-=Math.log(sd[k])+.5*((theta[k]-mean[k])/sd[k])**2;
     return value;
   }
-  function estimateCollectiveLogEpsilon(model,indices,strength=1,q=model.epsilon_calibration.default_quantile){
-    const values=[],n=model.epsilon_calibration.prior_draws_per_replicate,bounds=model.parameter_bounds;
-    indices.forEach(index=>{
-      const random=mulberry32(model.epsilon_calibration.seed+104729*(index+1));
-      for(let draw=0;draw<n;draw++){
-        const theta=bounds.map(([lo,hi])=>lo+(hi-lo)*random());
-        values.push(jointPosteriorLog(model,index,theta,strength));
-      }
-    });
+  function estimateCollectiveLogEpsilon(model,indices,strength=1,q=model.epsilon_calibration.default_quantile,n=model.epsilon_calibration.grid_points_per_axis){
+    const values=[],bounds=model.parameter_bounds;
+    const axes=bounds.map(([lo,hi])=>Array.from({length:n},(_,i)=>lo+(i+.5)*(hi-lo)/n));
+    indices.forEach(index=>axes[0].forEach(x=>axes[1].forEach(y=>axes[2].forEach(z=>{
+      values.push(jointPosteriorLog(model,index,[x,y,z],strength));
+    }))));
     values.sort((a,b)=>a-b);
     return values[Math.floor(q*(values.length-1))];
   }
-  function collectiveJointSelectionMarginals(model,indices,strength,logEpsilon){
-    const [,,nyz]=model.joint_grid_shape,bounds=model.parameter_bounds;
+  function collectiveJointSelectionMarginals(model,indices,strength,logEpsilon,nyz=model.joint_grid_shape[2]){
+    const bounds=model.parameter_bounds;
     const ys=Array.from({length:nyz},(_,i)=>bounds[1][0]+i*(bounds[1][1]-bounds[1][0])/(nyz-1));
     const zs=Array.from({length:nyz},(_,i)=>bounds[2][0]+i*(bounds[2][1]-bounds[2][0])/(nyz-1));
     const standard=[],robust=[],correction=Math.max(0,indices.length-1)*model.prior_log_density;

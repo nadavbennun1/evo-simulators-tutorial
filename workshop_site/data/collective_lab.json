@@ -1754,9 +1754,8 @@
     25
   ],
   "epsilon_calibration": {
-    "method": "replicate-set prior-draw density percentile",
-    "prior_draws_per_replicate": 2048,
-    "seed": 20260825,
+    "method": "replicate-set midpoint prior-grid density percentile",
+    "grid_points_per_axis": 17,
     "default_quantile": 0.95
   },
   "labels": [

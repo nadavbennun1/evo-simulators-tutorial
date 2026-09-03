@@ -130,6 +130,7 @@ def test_javascript_scientific_kernel_matches_python_and_seed_is_reproducible():
     expected_robust = np.maximum(raw, -10).sum(axis=0) - 3 * np.asarray(lab["prior_log"])
     np.testing.assert_allclose(payload["robustLoose"]["robust"], expected_robust, atol=1e-12)
     assert -4 < payload["estimatedLogEpsilon"] < -1
+    assert abs(payload["estimatedLogEpsilon"] - payload["fineGridLogEpsilon"]) < .015
     assert payload["epsilonReproducible"]
     np.testing.assert_allclose(payload["neutralContaminantMean"], lab["truth_theta"], atol=1e-12)
     np.testing.assert_allclose(payload["fullContaminantMean"], lab["posterior_means"][lab["contaminated_index"]], atol=1e-12)
@@ -141,9 +142,11 @@ def test_javascript_scientific_kernel_matches_python_and_seed_is_reproducible():
         return np.trapz(grid * values, grid) / np.trapz(values, grid)
     standard_mean = marginal_mean(payload["jointEstimated"]["standard"])
     robust_mean = marginal_mean(payload["jointEstimated"]["robust"])
+    fine_robust_mean = marginal_mean(payload["jointFineGrid"]["robust"])
     clean_mean = marginal_mean(payload["jointClean"]["standard"])
     assert abs(standard_mean - lab["truth"]) > .06
     assert abs(robust_mean - lab["truth"]) < .035
+    assert abs(robust_mean - fine_robust_mean) < .003
     assert abs(clean_mean - lab["truth"]) < .025
     low_standard = marginal_mean(payload["jointLowContamination"]["standard"])
     high_standard = marginal_mean(payload["jointHighContamination"]["standard"])
