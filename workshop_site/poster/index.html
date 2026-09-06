@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#829ead">
+  <title>Interactive poster · Simulation-Based Inference for Microbial Evolution</title>
+  <meta name="description" content="An interactive companion to the MMPC poster: learn SBI, run rejection ABC, and explore Candida and MS2 case studies.">
+  <link rel="icon" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="poster.css">
+  <noscript><style>.needs-js{display:none!important}.noscript-note{display:block!important}</style></noscript>
+</head>
+<body>
+  <a class="skip-link" href="#main">Skip to the interactive poster</a>
+  <header class="topbar">
+    <a class="brand" href="#top" aria-label="Interactive poster home">
+      <span class="brand-mark" aria-hidden="true">θ</span>
+      <span>Interactive poster</span>
+    </a>
+    <nav aria-label="Page sections">
+      <a href="#sbi">SBI</a>
+      <a href="#abc">Try ABC</a>
+      <a href="#cases">Case studies</a>
+    </nav>
+  </header>
+
+  <main id="main">
+    <section class="hero" id="top">
+      <div class="hero-copy">
+        <p class="eyebrow">MMPC · University of Minnesota</p>
+        <h1>Simulation-Based Inference<br>for Microbial Evolution</h1>
+        <p class="lede">Move through the inference idea, fit a model yourself, and then open the biology behind the <em>Candida albicans</em> and MS2 examples.</p>
+        <p class="authors">Nadav Ben Nun · Xin Zhou · Yael Maoz · Adi Stern · Anna Selmecki · Yoav Ram</p>
+        <div class="hero-actions">
+          <a class="button primary" href="#sbi">Start with SBI <span aria-hidden="true">↓</span></a>
+          <a class="button secondary" href="#cases">Choose a case study</a>
+        </div>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="organism candida-cell"><i></i><i></i><i></i></div>
+        <svg viewBox="0 0 360 210">
+          <path class="hero-line" d="M18 168 C66 168 65 92 112 92 S160 142 201 114 S256 35 342 40"/>
+          <path class="hero-dots" d="M18 168 C66 168 65 92 112 92 S160 142 201 114 S256 35 342 40"/>
+        </svg>
+        <div class="organism phage"><span></span><i></i><b></b></div>
+        <div class="theta-chip">p(θ | data)</div>
+      </div>
+    </section>
+
+    <section class="section sbi-section" id="sbi">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">01 · Why SBI?</p>
+          <h2>The forward story is clear. The inverse is not.</h2>
+        </div>
+        <p>We can observe evolution and encode a precise mechanism, yet still be unable to evaluate how probable those observations are under each parameter setting.</p>
+      </div>
+
+      <div class="why-sbi-argument">
+        <article class="ingredient-card data-ingredient">
+          <header><span class="mini-label">What we measure</span><b>x<sub>observed</sub></b></header>
+          <svg viewBox="0 0 520 280" role="img" aria-label="Two observed allele-frequency trajectories through time">
+            <line x1="58" y1="23" x2="58" y2="228" class="why-axis"/>
+            <line x1="58" y1="228" x2="493" y2="228" class="why-axis"/>
+            <path d="M58 216 C123 211 155 196 202 173 S281 111 340 79 S432 42 492 35" class="data-line blue-line"/>
+            <path d="M58 220 C116 214 163 204 205 178 S283 126 339 82 S429 47 492 28" class="data-line terra-line"/>
+            <g class="data-points"><circle cx="58" cy="220" r="6"/><circle cx="157" cy="203" r="6"/><circle cx="249" cy="148" r="6"/><circle cx="340" cy="82" r="6"/><circle cx="425" cy="48" r="6"/></g>
+            <text x="276" y="267">Time</text><text x="18" y="132" transform="rotate(-90 18 132)">Allele frequency</text>
+          </svg>
+          <p>Replicate trajectories, sampled sparsely and with process and measurement noise.</p>
+        </article>
+
+        <div class="likelihood-knot" aria-label="The likelihood is unavailable">
+          <span aria-hidden="true">?</span>
+          <small>The bottleneck</small>
+          <b>p(x<sub>observed</sub> | θ)</b>
+          <em>cannot be evaluated</em>
+        </div>
+
+        <article class="ingredient-card model-ingredient">
+          <header><span class="mini-label">What we believe</span><b>simulate ✓</b></header>
+          <div class="why-state-model" role="img" aria-label="A mechanistic model with ancestral, mutant, and loss states connected by rates mu and rho">
+            <span class="why-state state-a">A</span>
+            <i class="why-edge edge-mu"><small>μ</small></i>
+            <span class="why-state state-m">M</span>
+            <i class="why-edge edge-rho"><small>ρ</small></i>
+            <span class="why-state state-l">L</span>
+          </div>
+          <p>States, transition rates, fitness effects, drift, and observation rules define θ → simulated data.</p>
+        </article>
+
+        <div class="computable-question">
+          <span>SBI changes the question</span>
+          <strong>Which simulated worlds resemble the experiment?</strong>
+          <i aria-hidden="true">→</i>
+        </div>
+      </div>
+
+      <div class="story-intro">
+        <div><p class="eyebrow">The workaround</p><h3>SBI in one glance</h3></div>
+        <p>Simulate forward, learn the inverse relationship, then condition on the observed experiment.</p>
+      </div>
+
+      <div class="story-shell needs-js" id="sbi-story">
+        <div class="story-tabs" role="tablist" aria-label="SBI steps">
+          <button type="button" role="tab" aria-selected="true" data-story-step="0"><b>1</b><span>Mechanistic model</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="1"><b>2</b><span>Simulated world</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="2"><b>3</b><span>Neural model</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="3"><b>4</b><span>Posterior</span></button>
+        </div>
+
+        <div class="story-stage">
+          <div class="story-copy" aria-live="polite">
+            <p class="story-number" id="story-number">STEP 01</p>
+            <h3 id="story-title">Write the biological rules</h3>
+            <p id="story-text">States and arrows encode the events we believe can happen. Unknown rates and fitness effects become parameters θ.</p>
+            <button class="play-button" id="story-play" type="button" aria-pressed="false"><span aria-hidden="true">▶</span> Play the four steps</button>
+          </div>
+
+          <div class="story-visual" data-active-step="0">
+            <div class="story-panel state-panel" data-panel="0" aria-label="State diagram from ancestral to mutant and loss states">
+              <span class="state-node ancestral">A</span>
+              <span class="state-arrow arrow-one"><i></i><small>mutation μ</small></span>
+              <span class="state-node mutant">M</span>
+              <span class="state-arrow arrow-two"><i></i><small>loss ρ</small></span>
+              <span class="state-node loss">L</span>
+              <span class="fitness-tag">fitness: 1, 1+s, 1−c</span>
+            </div>
+
+            <div class="story-panel simulated-panel" data-panel="1" aria-label="Simulated allele-frequency trajectories through time">
+              <canvas id="story-trajectories" width="720" height="380"></canvas>
+            </div>
+
+            <div class="story-panel neural-panel" data-panel="2" aria-label="Neural density estimator connecting simulated data and parameters">
+              <div class="training-pairs"><span>θ₁</span><span>x₁(t)</span><span>θ₂</span><span>x₂(t)</span><span>⋮</span><span>⋮</span></div>
+              <svg viewBox="0 0 270 180" role="img" aria-label="Stylized neural network">
+                <g class="net-lines"></g>
+                <g class="net-nodes"></g>
+              </svg>
+              <div class="network-output"><small>learn</small><b>q<sub>φ</sub>(θ | x)</b></div>
+            </div>
+
+            <div class="story-panel posterior-panel" data-panel="3" aria-label="Posterior probability density over a parameter">
+              <svg viewBox="0 0 650 330" role="img" aria-labelledby="posterior-title">
+                <title id="posterior-title">Posterior density over parameter theta</title>
+                <defs>
+                  <linearGradient id="posterior-fill" x1="0" x2="1">
+                    <stop offset="0" stop-color="#829ead" stop-opacity=".16"/>
+                    <stop offset="1" stop-color="#c96b4b" stop-opacity=".68"/>
+                  </linearGradient>
+                </defs>
+                <line x1="62" y1="270" x2="610" y2="270" class="axis"/>
+                <path class="prior-curve" d="M65 251 C160 212 260 204 342 218 S505 242 608 251"/>
+                <path class="posterior-area" d="M65 270 C190 270 220 263 273 219 C314 185 328 65 377 55 C433 44 446 194 490 229 C526 258 560 268 608 270 Z"/>
+                <path class="posterior-curve" d="M65 270 C190 270 220 263 273 219 C314 185 328 65 377 55 C433 44 446 194 490 229 C526 258 560 268 608 270"/>
+                <line x1="385" y1="55" x2="385" y2="270" class="posterior-guide"/>
+                <text x="386" y="39" text-anchor="middle">plausible θ</text>
+                <text x="337" y="314" text-anchor="middle">parameter θ</text>
+                <text x="103" y="211">prior</text>
+                <text x="454" y="102">posterior</text>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p class="noscript-note">This explanation is interactive when JavaScript is enabled.</p>
+    </section>
+
+    <section class="section abc-section" id="abc">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">02 · Try it</p>
+          <h2>Fit an evolution model with ABC</h2>
+        </div>
+        <p>The observation is fixed. Draw many candidate parameters, simulate each candidate, and retain only the trajectories closest to the data.</p>
+      </div>
+
+      <div class="abc-shell needs-js">
+        <aside class="abc-controls">
+          <div class="observation-card">
+            <span class="mini-label">Observed system</span>
+            <b>A beneficial allele rises</b>
+            <p>Infer its selection coefficient <em>s</em> and mutation rate μ.</p>
+          </div>
+          <label for="abc-sims"><span>Simulation budget</span><output id="abc-sims-out">2,000</output></label>
+          <input id="abc-sims" type="range" min="400" max="6000" step="400" value="2000">
+          <label for="abc-accept"><span>Keep closest</span><output id="abc-accept-out">2%</output></label>
+          <input id="abc-accept" type="range" min="1" max="10" step="1" value="2">
+          <button class="button primary run-button" id="abc-run" type="button">Run rejection ABC</button>
+          <button class="text-button" id="abc-reset" type="button">Reset example</button>
+          <div class="progress-box" aria-live="polite">
+            <div><span id="abc-progress-label">Ready</span><span id="abc-progress-count">0 / 2,000</span></div>
+            <progress id="abc-progress" max="2000" value="0">0%</progress>
+          </div>
+        </aside>
+
+        <div class="abc-results">
+          <article class="plot-card trajectory-card">
+            <div class="plot-heading"><div><span class="mini-label">Data space</span><h3>Which simulations look like the observation?</h3></div><div class="plot-key"><span class="key-observed">Observed</span><span class="key-accepted">Accepted</span><span class="key-proposed">Proposed</span></div></div>
+            <canvas id="abc-trajectories" width="900" height="470" aria-label="Observed and simulated allele-frequency trajectories"></canvas>
+          </article>
+          <article class="plot-card posterior-card">
+            <div class="plot-heading"><div><span class="mini-label">Parameter space</span><h3>The accepted cloud approximates the posterior</h3></div></div>
+            <canvas id="abc-posterior" width="900" height="470" aria-label="Accepted selection coefficient and mutation-rate parameter pairs"></canvas>
+          </article>
+          <div class="abc-summary" id="abc-summary" aria-live="polite">
+            <span><small>Accepted</small><b>—</b></span>
+            <span><small>Posterior median s</small><b>—</b></span>
+            <span><small>Posterior median log₁₀ μ</small><b>—</b></span>
+            <p>Run the simulator to turn prior guesses into a posterior approximation.</p>
+          </div>
+        </div>
+      </div>
+      <p class="noscript-note">Enable JavaScript to run the ABC simulation.</p>
+    </section>
+
+    <section class="section cases-section" id="cases">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">03 · Apply it</p>
+          <h2>Choose a microbial case study</h2>
+        </div>
+        <p>The same inference logic answers two very different biological questions. Choose one to reveal its model, experimental context, and results.</p>
+      </div>
+
+      <div class="case-picker needs-js" role="tablist" aria-label="Case-study selector">
+        <button type="button" class="case-choice active" data-case="candida" role="tab" aria-selected="true">
+          <span class="case-icon yeast-icon" aria-hidden="true"><i></i><i></i></span>
+          <span><small>Chromosome dynamics</small><b><em>Candida albicans</em></b></span>
+          <span class="case-arrow" aria-hidden="true">→</span>
+        </button>
+        <button type="button" class="case-choice" data-case="ms2" role="tab" aria-selected="false">
+          <span class="case-icon virus-icon" aria-hidden="true"><i></i><b></b></span>
+          <span><small>Public-goods dynamics</small><b>MS2 bacteriophage</b></span>
+          <span class="case-arrow" aria-hidden="true">→</span>
+        </button>
+      </div>
+
+      <div class="case-experience needs-js" id="case-experience" data-case="candida">
+        <div class="case-intro">
+          <div>
+            <p class="mini-label" id="case-kicker">CANDIDA · ANEUPLOIDY REVERSION</p>
+            <h3 id="case-title">Which routes return an aneuploid population to euploidy?</h3>
+          </div>
+          <p id="case-context">Replicate populations begin with an extra chromosome copy. The model separates direct chromosome loss from loss of heterozygosity, while allowing each state to grow at a different rate.</p>
+        </div>
+
+        <div class="case-grid">
+          <article class="case-model-card">
+            <div class="card-heading"><span class="mini-label">MOVING MODEL</span><button id="case-play" class="text-button" type="button" aria-pressed="false">Pause animation</button></div>
+            <div class="case-model" id="case-model" aria-live="polite"></div>
+            <div class="model-stepper" id="model-stepper" aria-label="Model explanation steps"></div>
+          </article>
+          <article class="case-result-card">
+            <div class="card-heading"><span class="mini-label">WHAT THE DATA SAY</span><span class="result-tag" id="result-tag">MAP estimates</span></div>
+            <div class="result-chart" id="result-chart"></div>
+            <div class="result-explanation" id="result-explanation"></div>
+          </article>
+        </div>
+
+        <div class="case-takeaway">
+          <span>Inference question</span>
+          <p id="case-question">Which chromosome-specific reversion rates and relative fitnesses can jointly explain the observed frequency trajectories?</p>
+        </div>
+      </div>
+      <p class="noscript-note">Enable JavaScript to switch between and animate the case studies.</p>
+    </section>
+  </main>
+
+  <footer>
+    <p><strong>Simulation-Based Inference for Microbial Evolution</strong><br>Interactive companion to the MMPC poster</p>
+    <p>Built as a self-contained, browser-based explainer. No data leave your device.</p>
+  </footer>
+
+  <script src="../js/science.js" defer></script>
+  <script src="poster.js" defer></script>
+</body>
+</html>

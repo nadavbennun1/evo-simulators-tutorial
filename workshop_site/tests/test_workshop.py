@@ -179,6 +179,27 @@ def test_static_pages_are_subpath_safe_and_assets_exist():
     assert not list(SITE.rglob("*.pickle"))
 
 
+def test_dedicated_interactive_poster_route_and_components():
+    page = SITE / "poster" / "index.html"
+    text = page.read_text()
+    script = (page.parent / "poster.js").read_text()
+    assert page.exists()
+    assert all(f'id="{section}"' in text for section in ("sbi", "abc", "cases"))
+    assert all(f'id="{control}"' in text for control in (
+        "story-play", "abc-run", "abc-progress", "abc-trajectories",
+        "abc-posterior", "case-experience", "case-play",
+    ))
+    assert all(f'data-case="{case}"' in text for case in ("candida", "ms2"))
+    assert "Run rejection ABC" in text and "Choose a microbial case study" in text
+    assert "why-sbi-argument" in text and "SBI changes the question" in text
+    assert "The forward story is clear. The inverse is not." in text
+    assert "requestAnimationFrame" in script and "caseStudies" in script
+    assert not re.search(r'''(?:src|href)=["']/''', text)
+    for ref in re.findall(r'''(?:src|href)="([^"#]+)"''', text):
+        if "://" not in ref and not ref.startswith("mailto:"):
+            assert (page.parent / ref.split("?", 1)[0]).resolve().exists(), f"broken poster link {ref}"
+
+
 def test_scripts_and_stylesheets_are_content_versioned():
     for page in (SITE / "index.html", SITE / "evolution.html", SITE / "sbi.html"):
         text = page.read_text()
@@ -247,5 +268,6 @@ def test_foundations_primer_and_lesson_timing():
 
 
 def test_javascript_syntax():
-    for script in (SITE / "js").glob("*.js"):
+    scripts = list((SITE / "js").glob("*.js")) + [SITE / "poster" / "poster.js"]
+    for script in scripts:
         subprocess.run(["node", "--check", str(script)], check=True, capture_output=True)
