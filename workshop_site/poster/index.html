@@ -131,24 +131,25 @@
               <div class="network-output"><small>learn</small><b>q<sub>φ</sub>(θ | x)</b></div>
             </div>
 
-            <div class="story-panel posterior-panel" data-panel="2" aria-label="Posterior probability density over a parameter">
+            <div class="story-panel posterior-panel" data-panel="2" aria-label="Two-dimensional posterior density with four negatively correlated KDE contour levels">
+              <div class="posterior-plot-heading" aria-hidden="true">
+                <span>JOINT POSTERIOR</span>
+                <strong>Which parameter pairs remain plausible?</strong>
+              </div>
               <svg viewBox="0 0 650 330" role="img" aria-labelledby="posterior-title">
-                <title id="posterior-title">Posterior density over parameter theta</title>
-                <defs>
-                  <linearGradient id="posterior-fill" x1="0" x2="1">
-                    <stop offset="0" stop-color="#829ead" stop-opacity=".16"/>
-                    <stop offset="1" stop-color="#c96b4b" stop-opacity=".68"/>
-                  </linearGradient>
-                </defs>
-                <line x1="62" y1="270" x2="610" y2="270" class="axis"/>
-                <path class="prior-curve" d="M65 251 C160 212 260 204 342 218 S505 242 608 251"/>
-                <path class="posterior-area" d="M65 270 C190 270 220 263 273 219 C314 185 328 65 377 55 C433 44 446 194 490 229 C526 258 560 268 608 270 Z"/>
-                <path class="posterior-curve" d="M65 270 C190 270 220 263 273 219 C314 185 328 65 377 55 C433 44 446 194 490 229 C526 258 560 268 608 270"/>
-                <line x1="385" y1="55" x2="385" y2="270" class="posterior-guide"/>
-                <text x="386" y="39" text-anchor="middle">plausible θ</text>
-                <text x="337" y="314" text-anchor="middle">parameter θ</text>
-                <text x="103" y="211">prior</text>
-                <text x="454" y="102">posterior</text>
+                <title id="posterior-title">Four unfilled KDE contours showing a negatively correlated joint posterior over parameters theta one and theta two</title>
+                <line x1="78" y1="278" x2="610" y2="278" class="axis"/>
+                <line x1="78" y1="278" x2="78" y2="37" class="axis"/>
+                <g class="kde-contours" transform="rotate(28 350 158)">
+                  <ellipse cx="350" cy="158" rx="214" ry="77"/>
+                  <ellipse cx="350" cy="158" rx="171" ry="59"/>
+                  <ellipse cx="350" cy="158" rx="127" ry="42"/>
+                  <ellipse cx="350" cy="158" rx="80" ry="25"/>
+                </g>
+                <circle cx="350" cy="158" r="5" class="posterior-mode"/>
+                <text x="344" y="320" text-anchor="middle" class="axis-label">parameter θ₁</text>
+                <text x="24" y="158" text-anchor="middle" transform="rotate(-90 24 158)" class="axis-label">parameter θ₂</text>
+                <text x="476" y="75" text-anchor="middle" class="tradeoff-label">negative correlation</text>
               </svg>
             </div>
           </div>

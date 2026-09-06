@@ -81,11 +81,11 @@
   function dot(ctx,x,y,r,color,alpha=1){ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore()}
 
   const story={
-    titles:["Generate possible worlds","Learn the inverse map","Read uncertainty, not only a point"],
+    titles:["Generate possible worlds","Learn the inverse map","Read the joint posterior"],
     texts:[
       "Draw θ from the prior, run the mechanistic model, and repeat. Each parameter setting produces a possible evolutionary trajectory.",
       "Train a conditional density estimator on paired parameters and simulations. It learns which θ are compatible with a trajectory.",
-      "Give the observed data to the trained model. The posterior shows the parameter values that remain plausible and how uncertain they are."
+      "Give the observed data to the trained model. Four KDE levels show which pairs of parameters remain plausible; their tilt reveals a negative trade-off."
     ]
   };
   let storyStep=0,storyTimer=null;

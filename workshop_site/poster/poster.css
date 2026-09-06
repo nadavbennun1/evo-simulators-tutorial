@@ -193,7 +193,20 @@ h1 br{display:block}
 .network-output{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:110px;border-radius:24px;background:var(--terra);color:#fff;box-shadow:0 15px 35px rgba(143,65,46,.23)}
 .network-output small{text-transform:uppercase;letter-spacing:.12em;font-size:.68rem}.network-output b{font-family:Georgia,serif;font-size:1.5rem;font-style:italic}
 .net-link{stroke:rgba(56,89,107,.22);stroke-width:1.5}.net-node{fill:var(--blue);stroke:#fff;stroke-width:4;filter:drop-shadow(0 5px 7px rgba(24,55,67,.17))}.net-node.hot{fill:var(--terra)}
-.posterior-panel svg{width:100%;max-height:430px;overflow:visible}.posterior-panel .axis{stroke:var(--blue-dark);stroke-width:2}.posterior-panel .prior-curve{fill:none;stroke:var(--blue);stroke-width:3;stroke-dasharray:8 8}.posterior-area{fill:url(#posterior-fill)}.posterior-curve{fill:none;stroke:var(--terra);stroke-width:6;stroke-linecap:round}.posterior-guide{stroke:var(--terra-dark);stroke-width:1.5;stroke-dasharray:5 6}.posterior-panel text{fill:var(--muted);font-size:17px;font-weight:700}
+.posterior-panel{grid-template-rows:auto minmax(0,1fr);align-content:center;gap:12px}
+.posterior-plot-heading{width:min(100%,650px);margin:0 auto -4px}
+.posterior-plot-heading span{display:block;color:#a64135;font-size:.72rem;font-weight:850;letter-spacing:.15em}
+.posterior-plot-heading strong{display:block;margin-top:5px;color:var(--blue-deep);font-family:Georgia,serif;font-size:clamp(1.25rem,2vw,1.8rem);font-weight:500}
+.posterior-panel svg{width:100%;max-height:390px;overflow:visible}
+.posterior-panel .axis{stroke:var(--blue-dark);stroke-width:2;stroke-linecap:round}
+.kde-contours ellipse{fill:none;stroke:#a64135;stroke-width:3.2;vector-effect:non-scaling-stroke}
+.kde-contours ellipse:nth-child(1){opacity:.40;stroke-width:2}
+.kde-contours ellipse:nth-child(2){opacity:.58;stroke-width:2.3}
+.kde-contours ellipse:nth-child(3){opacity:.78;stroke-width:2.7}
+.kde-contours ellipse:nth-child(4){stroke:#7b3048;stroke-width:3.3}
+.posterior-mode{fill:#4e814b;stroke:#fff;stroke-width:3}
+.posterior-panel .axis-label{fill:var(--muted);font-size:16px;font-weight:750}
+.posterior-panel .tradeoff-label{fill:#4e814b;font-size:15px;font-weight:800}
 
 .abc-shell{display:grid;grid-template-columns:300px minmax(0,1fr);gap:24px;max-width:1480px;margin:auto}
 .abc-controls{padding:26px;border:1px solid rgba(255,255,255,.13);border-radius:var(--radius);background:rgba(255,255,255,.055);align-self:start}
