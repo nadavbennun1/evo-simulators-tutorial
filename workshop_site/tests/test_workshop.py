@@ -193,6 +193,9 @@ def test_dedicated_interactive_poster_route_and_components():
     assert "Run rejection ABC" in text and "Choose a microbial case study" in text
     assert "why-sbi-argument" in text and "SBI changes the question" in text
     assert "The forward story is clear. The inverse is not." in text
+    assert 'href="#sbi-story"' in text and "Play the three steps" in text
+    assert text.count('data-story-step="') == 3
+    assert "Write the biological rules" not in script and "Play the four steps" not in script
     assert "requestAnimationFrame" in script and "caseStudies" in script
     assert not re.search(r'''(?:src|href)=["']/''', text)
     for ref in re.findall(r'''(?:src|href)="([^"#]+)"''', text):

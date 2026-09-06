@@ -81,10 +81,9 @@
   function dot(ctx,x,y,r,color,alpha=1){ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore()}
 
   const story={
-    titles:["Write the biological rules","Let evolution unfold on screen","Learn the inverse map","Read uncertainty, not only a point"],
+    titles:["Generate possible worlds","Learn the inverse map","Read uncertainty, not only a point"],
     texts:[
-      "States and arrows encode the events we believe can happen. Unknown rates and fitness effects become parameters θ.",
-      "Draw θ, run the model, and watch allele frequencies change through time. Repeat to create many possible worlds.",
+      "Draw θ from the prior, run the mechanistic model, and repeat. Each parameter setting produces a possible evolutionary trajectory.",
       "Train a conditional density estimator on paired parameters and simulations. It learns which θ are compatible with a trajectory.",
       "Give the observed data to the trained model. The posterior shows the parameter values that remain plausible and how uncertain they are."
     ]
@@ -114,16 +113,16 @@
   }
 
   function setStoryStep(next){
-    storyStep=(next+4)%4;
+    storyStep=(next+3)%3;
     document.querySelectorAll("[data-story-step]").forEach((button,i)=>{button.setAttribute("aria-selected",String(i===storyStep));button.tabIndex=i===storyStep?0:-1});
     const visual=document.querySelector(".story-visual");if(visual)visual.dataset.activeStep=String(storyStep);
     const number=document.getElementById("story-number"),title=document.getElementById("story-title"),text=document.getElementById("story-text");
     if(number)number.textContent=`STEP 0${storyStep+1}`;if(title)title.textContent=story.titles[storyStep];if(text)text.textContent=story.texts[storyStep];
-    if(storyStep===1)drawStoryTrajectories();
+    if(storyStep===0)drawStoryTrajectories();
   }
   function stopStory(){
     if(storyTimer)root.clearInterval(storyTimer);storyTimer=null;
-    const play=document.getElementById("story-play");if(play){play.setAttribute("aria-pressed","false");play.innerHTML='<span aria-hidden="true">▶</span> Play the four steps'}
+    const play=document.getElementById("story-play");if(play){play.setAttribute("aria-pressed","false");play.innerHTML='<span aria-hidden="true">▶</span> Play the three steps'}
   }
   function toggleStory(){
     const play=document.getElementById("story-play");

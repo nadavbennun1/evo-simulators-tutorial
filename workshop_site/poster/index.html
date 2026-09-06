@@ -90,11 +90,11 @@
           <p>States, transition rates, fitness effects, drift, and observation rules define θ → simulated data.</p>
         </article>
 
-        <div class="computable-question">
+        <a class="computable-question" href="#sbi-story">
           <span>SBI changes the question</span>
           <strong>Which simulated worlds resemble the experiment?</strong>
           <i aria-hidden="true">→</i>
-        </div>
+        </a>
       </div>
 
       <div class="story-intro">
@@ -104,35 +104,25 @@
 
       <div class="story-shell needs-js" id="sbi-story">
         <div class="story-tabs" role="tablist" aria-label="SBI steps">
-          <button type="button" role="tab" aria-selected="true" data-story-step="0"><b>1</b><span>Mechanistic model</span></button>
-          <button type="button" role="tab" aria-selected="false" data-story-step="1"><b>2</b><span>Simulated world</span></button>
-          <button type="button" role="tab" aria-selected="false" data-story-step="2"><b>3</b><span>Neural model</span></button>
-          <button type="button" role="tab" aria-selected="false" data-story-step="3"><b>4</b><span>Posterior</span></button>
+          <button type="button" role="tab" aria-selected="true" data-story-step="0"><b>1</b><span>Simulated worlds</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="1"><b>2</b><span>Learn the inverse</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="2"><b>3</b><span>Posterior</span></button>
         </div>
 
         <div class="story-stage">
           <div class="story-copy" aria-live="polite">
             <p class="story-number" id="story-number">STEP 01</p>
-            <h3 id="story-title">Write the biological rules</h3>
-            <p id="story-text">States and arrows encode the events we believe can happen. Unknown rates and fitness effects become parameters θ.</p>
-            <button class="play-button" id="story-play" type="button" aria-pressed="false"><span aria-hidden="true">▶</span> Play the four steps</button>
+            <h3 id="story-title">Generate possible worlds</h3>
+            <p id="story-text">Draw θ from the prior, run the mechanistic model, and repeat. Each parameter setting produces a possible evolutionary trajectory.</p>
+            <button class="play-button" id="story-play" type="button" aria-pressed="false"><span aria-hidden="true">▶</span> Play the three steps</button>
           </div>
 
           <div class="story-visual" data-active-step="0">
-            <div class="story-panel state-panel" data-panel="0" aria-label="State diagram from ancestral to mutant and loss states">
-              <span class="state-node ancestral">A</span>
-              <span class="state-arrow arrow-one"><i></i><small>mutation μ</small></span>
-              <span class="state-node mutant">M</span>
-              <span class="state-arrow arrow-two"><i></i><small>loss ρ</small></span>
-              <span class="state-node loss">L</span>
-              <span class="fitness-tag">fitness: 1, 1+s, 1−c</span>
-            </div>
-
-            <div class="story-panel simulated-panel" data-panel="1" aria-label="Simulated allele-frequency trajectories through time">
+            <div class="story-panel simulated-panel" data-panel="0" aria-label="Simulated allele-frequency trajectories through time">
               <canvas id="story-trajectories" width="720" height="380"></canvas>
             </div>
 
-            <div class="story-panel neural-panel" data-panel="2" aria-label="Neural density estimator connecting simulated data and parameters">
+            <div class="story-panel neural-panel" data-panel="1" aria-label="Neural density estimator connecting simulated data and parameters">
               <div class="training-pairs"><span>θ₁</span><span>x₁(t)</span><span>θ₂</span><span>x₂(t)</span><span>⋮</span><span>⋮</span></div>
               <svg viewBox="0 0 270 180" role="img" aria-label="Stylized neural network">
                 <g class="net-lines"></g>
@@ -141,7 +131,7 @@
               <div class="network-output"><small>learn</small><b>q<sub>φ</sub>(θ | x)</b></div>
             </div>
 
-            <div class="story-panel posterior-panel" data-panel="3" aria-label="Posterior probability density over a parameter">
+            <div class="story-panel posterior-panel" data-panel="2" aria-label="Posterior probability density over a parameter">
               <svg viewBox="0 0 650 330" role="img" aria-labelledby="posterior-title">
                 <title id="posterior-title">Posterior density over parameter theta</title>
                 <defs>
