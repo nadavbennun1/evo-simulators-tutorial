@@ -2,7 +2,7 @@
   "use strict";
 
   const Science=root.WorkshopScience;
-  const COLORS={blue:"#829ead",blueDark:"#38596b",blueDeep:"#183743",terra:"#c96b4b",terraDark:"#8f412e",grid:"#d8dfdf",muted:"#60727a",paper:"#fffefa"};
+  const COLORS={blue:"#4e814b",blueDark:"#31583b",blueDeep:"#203628",terra:"#a64135",terraDark:"#7b3048",grid:"#d7d1c7",muted:"#6b6761",paper:"#ffffff"};
   const ABC_BOUNDS={s:[0,.14],logMu:[-6,-2.8]};
   const ABC_TRUTH={s:.055,logMu:-4.15};
   const ABC_TIMES=Array.from({length:11},(_,i)=>i*10);
@@ -186,49 +186,68 @@
 
   const caseStudies={
     candida:{
-      kicker:"CANDIDA · ANEUPLOIDY REVERSION",
-      title:"Which routes return an aneuploid population to euploidy?",
-      context:"Replicate populations begin with an extra chromosome copy. The model separates direct chromosome loss from loss of heterozygosity, while allowing each state to grow at a different rate.",
-      question:"Which chromosome-specific reversion rates and relative fitnesses can jointly explain the observed frequency trajectories?",
-      tag:"MAP estimates",
-      steps:["Begin with a mostly aneuploid population.","Direct chromosome loss produces the euploid wild-type state.","A second route creates loss of heterozygosity; selection then reshapes all three frequencies."],
-      labels:["Chr4","Chr5","Chr6","Chr7"],
-      valuesA:[.00009824,.00039690,.00139748,.00179746],
-      valuesB:[.00015012,.00033596,.00097374,.00211214],
-      max:.00225,
-      series:["BFP","GFP"],
+      kicker:"CANDIDA ALBICANS · ANEUPLOIDY REVERSION",
+      title:"Why do some extra chromosomes persist?",
+      context:"Naïve trisomic cells were isolated and followed through serial passage. Their trajectories reflect two processes at once: chromosomes are lost, while the resulting genotypes grow at different rates.",
+      question:"The same visible trajectory can arise from different combinations of chromosome loss and selection. SBI estimates both together instead of treating disappearance as the mutation rate.",
+      takeawayLabel:"What SBI resolves",
+      tag:"Collective posterior medians",
+      source:null,
+      resultType:"candida-rates",
+      steps:["Begin with a sorted population enriched for one trisomic haplotype.","Chromosome loss can restore heterozygous disomy at rate μHET.","A second route produces homozygous disomy at rate μLOH; genotype fitness reshapes all three trajectories."],
+      rates:[
+        {label:"Chr4",abb:.00009824,aab:.00015012},
+        {label:"Chr5",abb:.00039690,aab:.00033596},
+        {label:"Chr6",abb:.00139748,aab:.00097374},
+        {label:"Chr7",abb:.00179746,aab:.00211214}
+      ],
+      legend:["ABB haplotype","AAB haplotype"],
       findings:[
-        ["~16× range","The inferred HET→WT rate spans roughly sixteen-fold from chromosome 4 to chromosome 7."],
-        ["Replicates agree","BFP and GFP estimates preserve the same broad chromosome ordering despite experimental variation."]
+        [">20× rate span","Chromosome-loss estimates cover more than an order of magnitude across chromosome–haplotype backgrounds."],
+        ["Rate is not fate","Chr6 ABB remains common despite a high inferred loss rate because trisomy carries a growth advantage in that background."]
       ]
     },
     ms2:{
-      kicker:"MS2 · PUBLIC-GOODS DYNAMICS",
-      title:"When can one phage genome rescue another?",
-      context:"At low multiplicity of infection (MOI), a mutation largely experiences its own fitness effect. At high MOI, genomes share a host cell, so gene products can complement recessive defects.",
-      question:"Can one mechanistic model explain how mutation effects change between mostly single infection and frequent coinfection?",
-      tag:"Collective posterior MAP",
-      steps:["At low MOI, most cells receive one genome and mutation effects are directly exposed.","At high MOI, multiple genomes often share the same host cell.","Shared gene products can complement recessive defects, changing which mutants persist."],
-      labels:["mat","cp","lys","rep"],
-      valuesA:[.80988,.69413,.71437,.77031],
-      valuesB:[.24056,.34552,.91594,.31331],
-      max:1,
-      series:["Low-MOI nonsynonymous fitness","High-MOI recessive probability"],
+      kicker:"MS2 BACTERIOPHAGE · PUBLIC-GOODS DYNAMICS",
+      title:"Which viral proteins can rescue neighboring genomes?",
+      context:"Low MOI exposes a mutant to its own fitness cost. High MOI frequently places mutant and functional genomes in the same cell, where diffusible products may mask that cost.",
+      question:"Low-MOI evolution anchors intrinsic mutation and fitness effects. The high-MOI stage then asks how often each protein’s defect is masked specifically during coinfection.",
+      takeawayLabel:"Inference logic",
+      tag:"High-MOI MAP + 95% HDI",
+      source:{href:"https://www.biorxiv.org/content/10.64898/2026.07.02.736036v1",label:"Read the MS2 preprint ↗"},
+      resultType:"ms2-intervals",
+      steps:["At MOI 0.1, coinfection is rare and deleterious effects are directly exposed.","At MOI 10, multiple genomes frequently occupy the same host cell.","A functional genome can supply a missing product in trans, allowing a recessive defective genome to persist."],
+      intervals:[
+        {label:"Maturation",estimate:.240,low:.163,high:.350,control:.190},
+        {label:"Coat",estimate:.345,low:.191,high:.389,control:.161},
+        {label:"Lysis",estimate:.915,low:.871,high:.994,control:.277},
+        {label:"Replicase",estimate:.313,low:.245,high:.338,control:.012}
+      ],
+      legend:["High-MOI MAP + 95% HDI","Largest low-MOI control upper HDI"],
       findings:[
-        ["Gene-specific costs","At low MOI, inferred nonsynonymous fitness differs across the four MS2 genes."],
-        ["Lysis stands out","At high MOI, lysis mutations have the strongest inferred recessive/complementable signal (≈0.92)."]
+        ["Lysis stands apart","Its inferred masking probability is about 0.92, consistent with a product shared across the infected cell."],
+        ["Sharing is a continuum","Coat and replicase show intermediate signals; maturation has the weakest support relative to controls."]
       ]
     }
   };
   let currentCase="candida",caseStep=0,caseTimer=null;
   function caseModelMarkup(name){
-    if(name==="candida")return '<div class="candida-diagram"><span class="candida-state aneu">Aneu</span><i class="candida-edge one"></i><span class="candida-state">WT</span><i class="candida-edge two"></i><span class="candida-state loh">LOH</span><b class="traveller"></b></div><p class="model-caption"></p>';
+    if(name==="candida")return '<div class="candida-diagram"><span class="candida-state aneu">Tri</span><i class="candida-edge one"></i><small class="candida-rate rate-one">μ<sub>HET</sub></small><span class="candida-state het">HET</span><i class="candida-edge two"></i><small class="candida-rate rate-two">μ<sub>LOH</sub></small><span class="candida-state loh">LOH</span><b class="traveller"></b></div><p class="model-caption"></p>';
     return '<div class="ms2-diagram"><div class="moi-world low"><strong>Low MOI</strong><span class="host-cell"></span><i class="phage-dot"></i></div><div class="moi-world high"><strong>High MOI</strong><span class="host-cell"></span><i class="phage-dot"></i><i class="phage-dot"></i><i class="phage-dot"></i><span class="public-good"></span></div></div><p class="model-caption"></p>';
   }
   function resultMarkup(study){
-    const bars=study.labels.map((label,i)=>`<div class="bar-group"><i class="bar" style="--value:${study.valuesA[i]/study.max}"><em>${study.valuesA[i]<.01?study.valuesA[i].toExponential(1):study.valuesA[i].toFixed(2)}</em></i><i class="bar alt" style="--value:${study.valuesB[i]/study.max}"><em>${study.valuesB[i]<.01?study.valuesB[i].toExponential(1):study.valuesB[i].toFixed(2)}</em></i><span>${label}</span></div>`).join("");
-    const top=study.max<.01?study.max.toExponential(1):study.max.toFixed(1),mid=study.max<.01?(study.max/2).toExponential(1):(study.max/2).toFixed(1);
-    return `<div class="bar-chart"><div class="bar-axis"><span>${top}</span><span>${mid}</span><span>0</span></div><div class="bar-groups">${bars}</div></div>`;
+    if(study.resultType==="candida-rates"){
+      const left=130,right=700,width=right-left,top=45,rowGap=62,min=-4.2,max=-2.5;
+      const x=value=>left+(Math.log10(value)-min)/(max-min)*width;
+      const ticks=[[-4,"10⁻⁴"],[-3.5,"3×10⁻⁴"],[-3,"10⁻³"],[-2.5,"3×10⁻³"]];
+      const grid=ticks.map(([value,label])=>{const at=left+(value-min)/(max-min)*width;return `<line x1="${at}" y1="24" x2="${at}" y2="282"/><text x="${at}" y="310" text-anchor="middle">${label}</text>`}).join("");
+      const rows=study.rates.map((row,i)=>{const y=top+i*rowGap;return `<text class="row-label" x="108" y="${y+6}" text-anchor="end">${row.label}</text><line class="row-rule" x1="${left}" y1="${y}" x2="${right}" y2="${y}"/><circle class="estimate abb" cx="${x(row.abb)}" cy="${y-8}" r="8"/><circle class="estimate aab" cx="${x(row.aab)}" cy="${y+8}" r="8"/>`}).join("");
+      return `<svg class="study-result-svg" viewBox="0 0 760 350" role="img" aria-label="Posterior median chromosome-loss rates for ABB and AAB haplotypes across chromosomes 4 through 7"><g class="result-grid">${grid}${rows}</g><text class="axis-title" x="415" y="342" text-anchor="middle">μHET per generation · logarithmic scale</text></svg>`;
+    }
+    const left=155,right=700,width=right-left,top=45,rowGap=62;
+    const ticks=[0,.5,1].map(value=>{const at=left+width*value;return `<line x1="${at}" y1="24" x2="${at}" y2="282"/><text x="${at}" y="310" text-anchor="middle">${value}</text>`}).join("");
+    const rows=study.intervals.map((row,i)=>{const y=top+i*rowGap;return `<text class="row-label" x="133" y="${y+6}" text-anchor="end">${row.label}</text><line class="row-rule" x1="${left}" y1="${y}" x2="${right}" y2="${y}"/><line class="hdi" x1="${left+width*row.low}" y1="${y}" x2="${left+width*row.high}" y2="${y}"/><circle class="estimate" cx="${left+width*row.estimate}" cy="${y}" r="8"/><line class="control-mark" x1="${left+width*row.control}" y1="${y-12}" x2="${left+width*row.control}" y2="${y+12}"/><text class="value-label" x="${Math.min(724,left+width*row.high+11)}" y="${y+5}">${row.estimate.toFixed(2)}</text>`}).join("");
+    return `<svg class="study-result-svg" viewBox="0 0 760 350" role="img" aria-label="High-MOI posterior estimates and low-MOI controls for protein-specific masking probability"><g class="result-grid">${ticks}${rows}</g><text class="axis-title" x="425" y="342" text-anchor="middle">probability a deleterious mutation is masked during coinfection</text></svg>`;
   }
   function setCaseStep(next){
     const study=caseStudies[currentCase];caseStep=(next+study.steps.length)%study.steps.length;
@@ -246,12 +265,13 @@
   function selectCase(name){
     currentCase=name;caseStep=0;const study=caseStudies[name],experience=document.getElementById("case-experience");experience.dataset.case=name;
     document.querySelectorAll("[data-case].case-choice").forEach(button=>{const active=button.dataset.case===name;button.classList.toggle("active",active);button.setAttribute("aria-selected",String(active));button.tabIndex=active?0:-1});
-    document.getElementById("case-kicker").textContent=study.kicker;document.getElementById("case-title").textContent=study.title;document.getElementById("case-context").textContent=study.context;document.getElementById("case-question").textContent=study.question;document.getElementById("result-tag").textContent=study.tag;
+    document.getElementById("case-kicker").textContent=study.kicker;document.getElementById("case-title").textContent=study.title;document.getElementById("case-context").textContent=study.context;document.getElementById("case-question").textContent=study.question;document.getElementById("case-takeaway-label").textContent=study.takeawayLabel;document.getElementById("result-tag").textContent=study.tag;
+    const source=document.getElementById("case-source");if(study.source){source.hidden=false;source.href=study.source.href;source.textContent=study.source.label}else{source.hidden=true}
     document.getElementById("case-model").innerHTML=caseModelMarkup(name);
     const stepper=document.getElementById("model-stepper");stepper.innerHTML=study.steps.map((_,i)=>`<button type="button" data-model-step="${i}" aria-label="Show model step ${i+1}"></button>`).join("");
     stepper.querySelectorAll("button").forEach(button=>button.addEventListener("click",()=>{setCaseStep(Number(button.dataset.modelStep));if(caseTimer)startCaseAnimation()}));
     document.getElementById("result-chart").innerHTML=resultMarkup(study);
-    document.getElementById("result-explanation").innerHTML=`<div class="chart-legend"><span>${study.series[0]}</span><span>${study.series[1]}</span></div>${study.findings.map(([title,text])=>`<div class="finding"><b>${title}</b><p>${text}</p></div>`).join("")}`;
+    document.getElementById("result-explanation").innerHTML=`<div class="chart-legend"><span>${study.legend[0]}</span><span>${study.legend[1]}</span></div>${study.findings.map(([title,text])=>`<div class="finding"><b>${title}</b><p>${text}</p></div>`).join("")}`;
     setCaseStep(0);startCaseAnimation();
   }
 
