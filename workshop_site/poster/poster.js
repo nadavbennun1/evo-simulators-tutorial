@@ -83,7 +83,7 @@
   const story={
     titles:["Draw parameters and simulate","Learn from paired examples","Infer the joint posterior"],
     texts:[
-      "Draw θ from the prior, send each draw through the mechanistic model, and repeat. Each training example contains both the parameter value and its simulated evolutionary trajectory.",
+      "Draw θ from the prior and send it down through the mechanistic model to generate x. The separate diagonal arrows show the complete training pair: both θᵢ and xᵢ enter the neural estimator.",
       "Feed the paired parameter draw θᵢ and simulation xᵢ into a conditional density estimator. The network learns which parameter values are compatible with a trajectory.",
       "Pass the observed experiment to the trained estimator to infer a joint posterior. Four KDE levels show which parameter pairs remain plausible; their tilt reveals a negative trade-off."
     ]

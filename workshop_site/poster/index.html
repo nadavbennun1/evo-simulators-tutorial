@@ -8,7 +8,7 @@
   <title>Interactive poster · Simulation-Based Inference for Microbial Evolution</title>
   <meta name="description" content="An interactive companion to the MMPC poster: learn SBI, try ABC, explore collective and schedule-flexible inference, and open the Candida and MS2 case studies.">
   <link rel="icon" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="poster.css?v=20260907a">
+  <link rel="stylesheet" href="poster.css?v=74e55d94efbd">
   <noscript><style>.needs-js{display:none!important}.noscript-note{display:block!important}</style></noscript>
 </head>
 <body>
@@ -31,11 +31,14 @@
       <div class="hero-copy">
         <p class="eyebrow">MMPC · University of Minnesota</p>
         <h1>Simulation-Based Inference<br>for Microbial Evolution</h1>
-        <p class="lede">Move through the inference idea, fit a model yourself, and then open the biology behind the <em>Candida albicans</em> and MS2 examples.</p>
+        <p class="lede">This is the poster you can run: animate the SBI logic, fit an evolution model yourself, stress-test richer inference, and then open the biology behind the <em>Candida albicans</em> and MS2 studies.</p>
         <p class="authors">Nadav Ben Nun · Xin Zhou · Yael Maoz · Adi Stern · Anna Selmecki · Yoav Ram</p>
+        <ul class="experience-list" aria-label="Interactive experiences on this page">
+          <li>Animate SBI</li><li>Try ABC</li><li>Challenge the extensions</li><li>Explore both studies</li>
+        </ul>
         <div class="hero-actions">
           <a class="button primary" href="#sbi">Start with SBI <span aria-hidden="true">↓</span></a>
-          <a class="button secondary" href="#cases">Choose a case study</a>
+          <a class="button secondary" href="#abc">Run the ABC lab</a>
         </div>
       </div>
       <div class="hero-visual" aria-hidden="true">
@@ -100,7 +103,7 @@
 
       <div class="story-intro">
         <div><p class="eyebrow">The workaround</p><h3>SBI in one glance</h3></div>
-        <p>Draw from the prior, simulate forward, learn from paired examples, then infer from the observed experiment.</p>
+        <p>Follow the complete flow, then play each inference step at your own pace.</p>
       </div>
 
       <div class="story-shell needs-js" id="sbi-story">
@@ -119,22 +122,11 @@
           </div>
 
           <div class="story-visual" data-active-step="0">
-            <div class="story-panel sampling-panel" data-panel="0" aria-label="Prior parameter draws feeding simulated allele-frequency trajectories">
-              <div class="story-prior-mini">
-                <span class="mini-label">PRIOR DRAWS</span>
-                <svg viewBox="0 0 240 220" role="img" aria-label="Prior density with five parameter draws">
-                  <line x1="28" y1="184" x2="222" y2="184" class="sampling-axis"/>
-                  <line x1="28" y1="184" x2="28" y2="24" class="sampling-axis"/>
-                  <path d="M31 181 C62 177 76 147 93 101 C108 60 126 38 145 59 C167 83 172 146 219 180" class="prior-density"/>
-                  <g class="prior-draws"><line x1="77" y1="184" x2="77" y2="139"/><line x1="105" y1="184" x2="105" y2="76"/><line x1="134" y1="184" x2="134" y2="49"/><line x1="160" y1="184" x2="160" y2="88"/><line x1="188" y1="184" x2="188" y2="154"/></g>
-                  <text x="125" y="214">parameter θ</text>
-                </svg>
-              </div>
-              <span class="sampling-arrow" aria-hidden="true">→</span>
-              <div class="story-simulations">
-                <span class="mini-label">SIMULATED HISTORIES</span>
-                <canvas id="story-trajectories" width="720" height="380"></canvas>
-              </div>
+            <div class="story-panel sampling-panel" data-panel="0" aria-label="Prior above simulated histories, with parameter draws and simulations entering the neural estimator and producing a posterior">
+              <figure class="story-pipeline-figure">
+                <img src="assets/sbi_pipeline.png?v=de7eee4f866d" alt="SBI flow: prior draws point down to simulated evolutionary histories; separate diagonal arrows carry parameters and simulations into the network; the observed experiment then produces a negatively correlated joint posterior">
+                <figcaption>The parameter draw generates a simulated history; the pair (θᵢ, xᵢ) trains the estimator.</figcaption>
+              </figure>
             </div>
 
             <div class="story-panel neural-panel" data-panel="1" aria-label="Neural density estimator connecting simulated data and parameters">
@@ -244,8 +236,8 @@
             <a href="../sbi.html#collective-outlier-lab">Stress-test a collective posterior <span aria-hidden="true">↗</span></a>
           </div>
           <figure>
-            <img src="assets/collective_extension.png?v=08ee2a17ee57" alt="Replicate trajectories leading to individual posterior distributions, a robust collective posterior, and posterior predictive trajectories">
-            <figcaption>Replicates → individual posteriors → robust pooling → predictive check</figcaption>
+            <img src="assets/collective_extension.png?v=f1d48b55625d" alt="The supplied five-panel collective-posterior figure: replicate trajectories, individual posteriors, naive pooling, robust collective pooling, and predictive checks">
+            <figcaption>The original collective-posterior figure: individual posteriors → naive pooling → robust pooling → predictive checks</figcaption>
           </figure>
         </article>
 
@@ -253,13 +245,13 @@
           <div class="extension-copy">
             <p class="mini-label">FLEXIBLE NPE</p>
             <h3>Reuse one estimator across supported sampling schedules</h3>
-            <p>During training, each trajectory is shown through many passage masks. At inference, measurements travel with the mask, depth, and initial composition, so “not measured” remains distinct from zero.</p>
-            <p class="extension-boundary">Gain: supported subsets of passages 0–12 can be analyzed without retraining; this is not extrapolation to a new assay or an unseen time horizon.</p>
+            <p><strong>The time-unifying embedding is the key.</strong> It receives every observation with its passage time, state frequencies, mask, and depth, then compresses a variable schedule into one fixed-length representation for the shared NPE.</p>
+            <p class="extension-boundary"><strong>Training cost:</strong> 200,000 simulated trajectories become 800,000 schedule-varied views per estimator. The payoff is fast inference—one forward pass for any supported subset of passages 0–12, without retraining.</p>
             <a href="../sbi.html#zhou-schedule-designer">Design a passage schedule <span aria-hidden="true">↗</span></a>
           </div>
           <figure>
-            <img src="assets/flexible_extension.png?v=7b72e6e56991" alt="Odd, even, and sparse passage schedules encoded for one neural posterior estimator and producing schedule-aware posterior distributions">
-            <figcaption>Measurements + mask + depth → one estimator → schedule-aware posterior</figcaption>
+            <img src="assets/flexible_extension.png?v=d7323b15cf75" alt="Two increasingly irregular passage schedules feeding time, frequency, mask, and depth tokens into a time-unifying embedding, followed by one NPE and two schedule-aware posteriors">
+            <figcaption>Irregular observations at their actual times → time-unifying embedding → one NPE → posterior</figcaption>
           </figure>
         </article>
       </div>
@@ -325,6 +317,6 @@
   </footer>
 
   <script src="../js/science.js" defer></script>
-  <script src="poster.js?v=20260907a" defer></script>
+  <script src="poster.js?v=befe0421529f" defer></script>
 </body>
 </html>
