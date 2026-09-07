@@ -6,9 +6,9 @@
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#829ead">
   <title>Interactive poster · Simulation-Based Inference for Microbial Evolution</title>
-  <meta name="description" content="An interactive companion to the MMPC poster: learn SBI, run rejection ABC, and explore Candida and MS2 case studies.">
+  <meta name="description" content="An interactive companion to the MMPC poster: learn SBI, try ABC, explore collective and schedule-flexible inference, and open the Candida and MS2 case studies.">
   <link rel="icon" href="../assets/favicon.svg">
-  <link rel="stylesheet" href="poster.css?v=20260906b">
+  <link rel="stylesheet" href="poster.css?v=20260907a">
   <noscript><style>.needs-js{display:none!important}.noscript-note{display:block!important}</style></noscript>
 </head>
 <body>
@@ -21,6 +21,7 @@
     <nav aria-label="Page sections">
       <a href="#sbi">SBI</a>
       <a href="#abc">Try ABC</a>
+      <a href="#extensions">Extensions</a>
       <a href="#cases">Case studies</a>
     </nav>
   </header>
@@ -99,41 +100,59 @@
 
       <div class="story-intro">
         <div><p class="eyebrow">The workaround</p><h3>SBI in one glance</h3></div>
-        <p>Simulate forward, learn the inverse relationship, then condition on the observed experiment.</p>
+        <p>Draw from the prior, simulate forward, learn from paired examples, then infer from the observed experiment.</p>
       </div>
 
       <div class="story-shell needs-js" id="sbi-story">
         <div class="story-tabs" role="tablist" aria-label="SBI steps">
-          <button type="button" role="tab" aria-selected="true" data-story-step="0"><b>1</b><span>Simulated worlds</span></button>
-          <button type="button" role="tab" aria-selected="false" data-story-step="1"><b>2</b><span>Learn the inverse</span></button>
-          <button type="button" role="tab" aria-selected="false" data-story-step="2"><b>3</b><span>Posterior</span></button>
+          <button type="button" role="tab" aria-selected="true" data-story-step="0"><b>01</b><span>Draw + simulate</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="1"><b>02</b><span>Learn from pairs</span></button>
+          <button type="button" role="tab" aria-selected="false" data-story-step="2"><b>03</b><span>Infer posterior</span></button>
         </div>
 
         <div class="story-stage">
           <div class="story-copy" aria-live="polite">
             <p class="story-number" id="story-number">STEP 01</p>
-            <h3 id="story-title">Generate possible worlds</h3>
-            <p id="story-text">Draw θ from the prior, run the mechanistic model, and repeat. Each parameter setting produces a possible evolutionary trajectory.</p>
+            <h3 id="story-title">Draw parameters and simulate</h3>
+            <p id="story-text">Draw θ from the prior, send each draw through the mechanistic model, and repeat. The result is a training pair: a parameter value and its simulated evolutionary trajectory.</p>
             <button class="play-button" id="story-play" type="button" aria-pressed="false"><span aria-hidden="true">▶</span> Play the three steps</button>
           </div>
 
           <div class="story-visual" data-active-step="0">
-            <div class="story-panel simulated-panel" data-panel="0" aria-label="Simulated allele-frequency trajectories through time">
-              <canvas id="story-trajectories" width="720" height="380"></canvas>
+            <div class="story-panel sampling-panel" data-panel="0" aria-label="Prior parameter draws feeding simulated allele-frequency trajectories">
+              <div class="story-prior-mini">
+                <span class="mini-label">PRIOR DRAWS</span>
+                <svg viewBox="0 0 240 220" role="img" aria-label="Prior density with five parameter draws">
+                  <line x1="28" y1="184" x2="222" y2="184" class="sampling-axis"/>
+                  <line x1="28" y1="184" x2="28" y2="24" class="sampling-axis"/>
+                  <path d="M31 181 C62 177 76 147 93 101 C108 60 126 38 145 59 C167 83 172 146 219 180" class="prior-density"/>
+                  <g class="prior-draws"><line x1="77" y1="184" x2="77" y2="139"/><line x1="105" y1="184" x2="105" y2="76"/><line x1="134" y1="184" x2="134" y2="49"/><line x1="160" y1="184" x2="160" y2="88"/><line x1="188" y1="184" x2="188" y2="154"/></g>
+                  <text x="125" y="214">parameter θ</text>
+                </svg>
+              </div>
+              <span class="sampling-arrow" aria-hidden="true">→</span>
+              <div class="story-simulations">
+                <span class="mini-label">SIMULATED HISTORIES</span>
+                <canvas id="story-trajectories" width="720" height="380"></canvas>
+              </div>
             </div>
 
             <div class="story-panel neural-panel" data-panel="1" aria-label="Neural density estimator connecting simulated data and parameters">
-              <div class="training-pairs"><span>θ₁</span><span>x₁(t)</span><span>θ₂</span><span>x₂(t)</span><span>⋮</span><span>⋮</span></div>
+              <div class="network-feeds">
+                <span><small>prior draw</small>θᵢ</span>
+                <span><small>simulation</small>xᵢ(t)</span>
+                <em>paired training example</em>
+              </div>
               <svg viewBox="0 0 270 180" role="img" aria-label="Stylized neural network">
                 <g class="net-lines"></g>
                 <g class="net-nodes"></g>
               </svg>
-              <div class="network-output"><small>learn</small><b>q<sub>φ</sub>(θ | x)</b></div>
+              <div class="network-output"><small>learn density</small><b>q<sub>φ</sub>(θ | x)</b></div>
             </div>
 
             <div class="story-panel posterior-panel" data-panel="2" aria-label="Two-dimensional posterior density with four negatively correlated KDE contour levels">
               <div class="posterior-plot-heading" aria-hidden="true">
-                <span>JOINT POSTERIOR</span>
+                <span>INFER JOINT POSTERIOR</span>
                 <strong>Which parameter pairs remain plausible?</strong>
               </div>
               <svg viewBox="0 0 650 330" role="img" aria-labelledby="posterior-title">
@@ -207,10 +226,49 @@
       <p class="noscript-note">Enable JavaScript to run the ABC simulation.</p>
     </section>
 
+    <section class="section extensions-section" id="extensions">
+      <div class="section-heading split-heading">
+        <div>
+          <p class="eyebrow">03 · Extend it</p>
+          <h2>What SBI gains when experiments get complicated</h2>
+        </div>
+        <p>Basic NPE handles one fixed observation. These extensions let us combine replicate evidence robustly and reuse one estimator across supported sampling schedules.</p>
+      </div>
+
+      <div class="extension-grid">
+        <article class="extension-card collective-extension">
+          <div class="extension-copy">
+            <p class="mini-label">ROBUST COLLECTIVE POSTERIOR</p>
+            <h3>Combine replicate evidence without letting one outlier dominate</h3>
+            <p>Individual posteriors contain repeated prior information. Collective inference corrects that duplication, pools the replicate evidence, and can soften an incompatible trajectory before testing the result with predictive checks.</p>
+            <a href="../sbi.html#collective-outlier-lab">Stress-test a collective posterior <span aria-hidden="true">↗</span></a>
+          </div>
+          <figure>
+            <img src="assets/collective_extension.png?v=08ee2a17ee57" alt="Replicate trajectories leading to individual posterior distributions, a robust collective posterior, and posterior predictive trajectories">
+            <figcaption>Replicates → individual posteriors → robust pooling → predictive check</figcaption>
+          </figure>
+        </article>
+
+        <article class="extension-card flexible-extension">
+          <div class="extension-copy">
+            <p class="mini-label">FLEXIBLE NPE</p>
+            <h3>Reuse one estimator across supported sampling schedules</h3>
+            <p>During training, each trajectory is shown through many passage masks. At inference, measurements travel with the mask, depth, and initial composition, so “not measured” remains distinct from zero.</p>
+            <p class="extension-boundary">Gain: supported subsets of passages 0–12 can be analyzed without retraining; this is not extrapolation to a new assay or an unseen time horizon.</p>
+            <a href="../sbi.html#zhou-schedule-designer">Design a passage schedule <span aria-hidden="true">↗</span></a>
+          </div>
+          <figure>
+            <img src="assets/flexible_extension.png?v=7b72e6e56991" alt="Odd, even, and sparse passage schedules encoded for one neural posterior estimator and producing schedule-aware posterior distributions">
+            <figcaption>Measurements + mask + depth → one estimator → schedule-aware posterior</figcaption>
+          </figure>
+        </article>
+      </div>
+    </section>
+
     <section class="section cases-section" id="cases">
       <div class="section-heading split-heading">
         <div>
-          <p class="eyebrow">03 · Apply it</p>
+          <p class="eyebrow">04 · Apply it</p>
           <h2>Choose a microbial case study</h2>
         </div>
         <p>The same inference logic answers two very different biological questions. Choose one to reveal its model, experimental context, and results.</p>
@@ -233,7 +291,7 @@
         <div class="case-intro">
           <div>
             <p class="mini-label" id="case-kicker">CANDIDA · ANEUPLOIDY REVERSION</p>
-            <h3 id="case-title">Which routes return an aneuploid population to euploidy?</h3>
+            <h3 id="case-title">Haplotype-specific aneuploidy formation and reversion</h3>
           </div>
           <p id="case-context">Replicate populations begin with an extra chromosome copy. The model separates direct chromosome loss from loss of heterozygosity, while allowing each state to grow at a different rate.</p>
         </div>
@@ -267,6 +325,6 @@
   </footer>
 
   <script src="../js/science.js" defer></script>
-  <script src="poster.js?v=20260906b" defer></script>
+  <script src="poster.js?v=20260907a" defer></script>
 </body>
 </html>

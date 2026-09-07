@@ -184,7 +184,7 @@ def test_dedicated_interactive_poster_route_and_components():
     text = page.read_text()
     script = (page.parent / "poster.js").read_text()
     assert page.exists()
-    assert all(f'id="{section}"' in text for section in ("sbi", "abc", "cases"))
+    assert all(f'id="{section}"' in text for section in ("sbi", "abc", "extensions", "cases"))
     assert all(f'id="{control}"' in text for control in (
         "story-play", "abc-run", "abc-progress", "abc-trajectories",
         "abc-posterior", "case-experience", "case-play",
@@ -195,6 +195,10 @@ def test_dedicated_interactive_poster_route_and_components():
     assert "The forward story is clear. The inverse is not." in text
     assert 'href="#sbi-story"' in text and "Play the three steps" in text
     assert text.count('data-story-step="') == 3
+    assert "Draw + simulate" in text and "Infer posterior" in text
+    assert "collective_extension.png" in text and "flexible_extension.png" in text
+    assert "Combine replicate evidence without letting one outlier dominate" in text
+    assert "Reuse one estimator across supported sampling schedules" in text
     assert "Write the biological rules" not in script and "Play the four steps" not in script
     assert "requestAnimationFrame" in script and "caseStudies" in script
     assert not re.search(r'''(?:src|href)=["']/''', text)

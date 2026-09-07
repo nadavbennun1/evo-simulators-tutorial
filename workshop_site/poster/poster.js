@@ -81,11 +81,11 @@
   function dot(ctx,x,y,r,color,alpha=1){ctx.save();ctx.globalAlpha=alpha;ctx.fillStyle=color;ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();ctx.restore()}
 
   const story={
-    titles:["Generate possible worlds","Learn the inverse map","Read the joint posterior"],
+    titles:["Draw parameters and simulate","Learn from paired examples","Infer the joint posterior"],
     texts:[
-      "Draw θ from the prior, run the mechanistic model, and repeat. Each parameter setting produces a possible evolutionary trajectory.",
-      "Train a conditional density estimator on paired parameters and simulations. It learns which θ are compatible with a trajectory.",
-      "Give the observed data to the trained model. Four KDE levels show which pairs of parameters remain plausible; their tilt reveals a negative trade-off."
+      "Draw θ from the prior, send each draw through the mechanistic model, and repeat. Each training example contains both the parameter value and its simulated evolutionary trajectory.",
+      "Feed the paired parameter draw θᵢ and simulation xᵢ into a conditional density estimator. The network learns which parameter values are compatible with a trajectory.",
+      "Pass the observed experiment to the trained estimator to infer a joint posterior. Four KDE levels show which parameter pairs remain plausible; their tilt reveals a negative trade-off."
     ]
   };
   let storyStep=0,storyTimer=null;
@@ -187,7 +187,7 @@
   const caseStudies={
     candida:{
       kicker:"CANDIDA ALBICANS · ANEUPLOIDY REVERSION",
-      title:"Why do some extra chromosomes persist?",
+      title:"Haplotype-specific aneuploidy formation and reversion",
       context:"Naïve trisomic cells were isolated and followed through serial passage. Their trajectories reflect two processes at once: chromosomes are lost, while the resulting genotypes grow at different rates.",
       question:"The same visible trajectory can arise from different combinations of chromosome loss and selection. SBI estimates both together instead of treating disappearance as the mutation rate.",
       takeawayLabel:"What SBI resolves",
@@ -209,7 +209,7 @@
     },
     ms2:{
       kicker:"MS2 BACTERIOPHAGE · PUBLIC-GOODS DYNAMICS",
-      title:"Which viral proteins can rescue neighboring genomes?",
+      title:"Inferring viral proteins that act as public goods during coinfection",
       context:"Low MOI exposes a mutant to its own fitness cost. High MOI frequently places mutant and functional genomes in the same cell, where diffusible products may mask that cost.",
       question:"Low-MOI evolution anchors intrinsic mutation and fitness effects. The high-MOI stage then asks how often each protein’s defect is masked specifically during coinfection.",
       takeawayLabel:"Inference logic",
