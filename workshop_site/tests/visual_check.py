@@ -53,6 +53,9 @@ def main() -> None:
         outline_finale = driver.find_element("css selector", ".chapter-walkthrough .story-slide:nth-child(4)")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", outline_finale)
         outline_finale.screenshot("/tmp/workshop-sbi-outline-finale.png")
+        for number in (2, 3):
+            slide = driver.find_element("css selector", f".chapter-walkthrough .story-slide:nth-child({number})")
+            slide.screenshot(f"/tmp/workshop-sbi-outline-{number}.png")
         for station in ("guess-parameter", "training-viewer", "zhou-schedule-designer", "collective-outlier-lab", "ppc-detective"):
             element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.5)
             element.screenshot(f"/tmp/workshop-{station}.png")

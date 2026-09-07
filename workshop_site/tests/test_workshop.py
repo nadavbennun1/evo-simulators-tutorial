@@ -270,6 +270,7 @@ def test_foundations_primer_is_one_continuous_lesson():
     assert 'class="primer-story"' in home and 'class="concept-notes"' in home
     assert 'class="sampling-diagram"' in home and 'class="equation-fraction"' in home
     assert "complete genotype-frequency history" in home
+    assert '<span>p(x<sub>obs</sub>)</span>' in home
     assert "∝" not in home
     assert "<details" not in home
     for term in ("Effective population size", "Identifiability", "Likelihood", "ABC", "Collective posterior", "ESS"):
@@ -308,11 +309,15 @@ def test_presentation_revision_contract():
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
     assert "Posterior prediction of CNV-lineage diversity" in sbi
-    assert "exponential" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
+    assert "Effective diversity" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
     assert 'loading="eager"' in sbi and 'class="diversity-rank"' in sbi
     assert 'class="inverse-process-diagram"' in sbi and 'id="inverse-example"' in sbi
+    assert 'class="mini-posterior-density"' in home and 'class="mini-posterior-density"' in sbi
+    assert "typeset-story-equation" in sbi
     assert "Several mechanisms can match the sampled trajectory" in sbi
+    assert "ten equally abundant lineages" in sbi and 'class="diversity-calculation"' in sbi
+    assert "<strong>Important:</strong> inference is not finished" in sbi
     assert "∝" not in evolution + sbi
     assert "MathJax" in sbi and "mml-chtml.js" in sbi
     assert '<p><div class="math-scroll"' not in evolution + sbi
