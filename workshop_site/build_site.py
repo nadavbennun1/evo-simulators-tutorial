@@ -162,7 +162,7 @@ def output_html(output: dict, stem: str, output_index: int, figures_only: bool =
             if not (CHAPTER_ASSETS / name).exists():
                 raise RuntimeError(f"missing revised Chuong fit figure: assets/chapter/{name}")
             source = versioned_asset(f"assets/chapter/{name}")
-            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="Chuong Wright-Fisher predictions in orange and LTR observations in blue"><figcaption>Chuong WF fit · orange predictions, blue data</figcaption></figure>')
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="Four-state Wright-Fisher predictions in orange and LTR deletion observations in blue"><figcaption>Four-state Wright–Fisher fit · orange predictions, blue observations</figcaption></figure>')
         else:
             name = f"{stem}-out-{output_index}.png"
             raw = data["image/png"]
@@ -207,7 +207,7 @@ def curated_markdown(key: str, cid: str, source: str) -> str | None:
     if cid in {"9bb0927d", "46c3d4e4", "4f69d96e"}:
         return None
     replacements = {
-        "cd6f3ea8": fr'''## A CNV race inside a chemostat
+        "cd6f3ea8": fr'''## Copy-number-variant dynamics in a glutamine-limited chemostat
 
 In the glutamine-limited populations of {paper("avecilla")}, *GAP1* copy-number
 variants repeatedly rise from rarity. That movie contains three evolutionary forces:
@@ -216,7 +216,7 @@ their next generation.
 
 Nine replicate trajectories let us ask a mechanistic question: can one compact simulator
 turn formation rate, fitness advantage, and population size into the observed sweep?''',
-        "3282b174": r'''## The Avecilla simulator: three forces, three genotypes
+        "3282b174": r'''## A three-genotype mutation–selection–drift model
 
 An ancestral cell can form a *GAP1* CNV at rate $\delta_C$ or another beneficial mutation
 at rate $\delta_B$. Relative fitnesses are $1$, $1+s_C$, and $1+s_B$.
@@ -236,7 +236,9 @@ large-effect mutations occur.
 For CNVs this matters because breakpoint, copy number, and amplicon size differ among lineages.
 If new CNVs draw $s_k$ from a gamma DFE, their contribution is reweighted by selection:
 
-$$\Pr(k\mid\mathrm{CNV\ at\ }t)\propto \Pr(k\mid\mathrm{new\ CNV})\,(1+s_k)^t$$
+$$\Pr(k\mid\mathrm{{CNV\ at\ }}t)=
+\frac{{\Pr(k\mid\mathrm{{new\ CNV}})(1+s_k)^t}}
+{{\sum_j\Pr(j\mid\mathrm{{new\ CNV}})(1+s_j)^t}}$$
 
 The DFE itself stays fixed, but the CNV-bearing population becomes enriched for its upper tail.
 That creates a testable prediction: a constant-$s$ fit applied to successive windows should
@@ -251,7 +253,7 @@ clonal interference, and an incorrectly fixed $\delta_C$ can create related patt
 
 For inference, fit DFE parameters directly or use the windowed-$\hat{s}$ trend as a posterior
 predictive diagnostic of the simpler model.''',
-        "6ec896e6": r'''## Continuous culture changes the clock, not the evolutionary cast
+        "6ec896e6": r'''## Continuous-culture dynamics
 
 A chemostat has overlapping generations and nutrient-limited growth. The corresponding ODE
 tracks ancestral, CNV, and other-beneficial cells together with substrate $S$:
@@ -285,7 +287,7 @@ The mismatch is biological, not merely cosmetic: batch culture changes the drift
 the earliest observation already contains information about cells present before the measured
 sweep. Adding the CNV⁻ state lets initial frequency $\varphi$ explain that early mass while
 $\delta$ controls de novo formation and $s$ controls the later rise.''',
-        "5de3ea7b": r'''## The Chuong simulator: formation, standing variation, and competition
+        "5de3ea7b": r'''## A four-state model of CNV formation and competition
 
 The population has WT, newly formed CNV⁺, pre-existing CNV⁻, and an SNV competitor. The first
 three inferred parameters are $\theta=(\log_{10}s,\log_{10}\delta,\log_{10}\varphi)$.
@@ -296,12 +298,12 @@ n_{t+1}\sim\mathrm{Multinomial}\!\left(N_e,\frac{M\,\mathrm{diag}(w)p_t}{|M\,\ma
 
 The extra state changes what the early trajectory means, while the same mutation–selection–drift
 grammar still drives the simulator.''',
-        "2973e9a8": fr'''## Reverse the arrow: when does an amplification disappear?
+        "2973e9a8": fr'''## Copy-number reversion after selection is removed
 
 {paper("de")} moved CNV strains from the environment that selected the amplification into rich
 medium and followed fluorescent reporters through 1:64 serial transfers. Here the CNV begins
 common; fitter single-copy revertants may arise and replace it.''',
-        "3d886968": r'''## The De simulator: a two-state reversion model
+        "3d886968": r'''## A two-state model of CNV reversion
 
 The transition direction is now CNV $\rightarrow$ non-CNV at rate $\delta$. If revertants have
 fitness $1+s$, their frequency can rise through formation and selection together:
@@ -316,7 +318,7 @@ are essential for separating reversion rate from fitness advantage.''',
 The Zhou model follows trisomic cells as they resolve either to wild type or to loss of
 heterozygosity (LOH). The observation is now a three-part composition, so every passage reports
 which route gained population share.''',
-        "b4a01787": r'''## The Zhou simulator: competing chromosome-loss routes
+        "b4a01787": r'''## A three-state model of competing chromosome-loss routes
 
 Trisomic cells move to WT at rate $\mu_{WT}$ or LOH at rate $\mu_{LOH}$; the three states then
 compete with relative fitnesses $(w_{Tri},1,w_{LOH})$.
@@ -344,29 +346,30 @@ variation, while multinomial sampling produces within-replicate drift. These are
 justifications of each simulator—not the inference target of this lesson. Chapter 2 develops the
 systematic inference workflow.
 </details>''',
-        "fa1ab176": fr'''## Trajectories are answers; what was the question?
+        "fa1ab176": fr'''## Inferring parameters from stochastic trajectories
 
-The *GAP1* frequencies from {paper("chuong")} are snapshots of a hidden process. We want the
-selection coefficient $s$, formation rate $\delta$, and initial CNV fraction $\varphi$, but many
-parameter combinations can draw similar curves.
+The *GAP1* frequencies from {paper("chuong")} are discrete observations of an evolving population.
+The targets are the selection coefficient $s$, formation rate $\delta$, and initial CNV fraction
+$\varphi$. Distinct parameter combinations can produce similar frequency trajectories.
 
-$$p(\theta\mid x_{{obs}})\propto p(x_{{obs}}\mid\theta)p(\theta)$$
+$$p(\theta\mid x_{{obs}})=
+\frac{{p(x_{{obs}}\mid\theta)p(\theta)}}
+{{\int_\Theta p(x_{{obs}}\mid\vartheta)p(\vartheta)\,d\vartheta}}$$
 
-The simulator can generate $x$ for any $\theta$, yet its likelihood is not available in closed
-form. SBI turns that apparent dead end into a workflow: simulate possible worlds, retain or learn
-the parameter patterns that produce observations like ours, then challenge the result with new
-simulations.''',
-        "f992e16d": r'''## ABC: audition many possible worlds
+The simulator can generate $x$ for any $\theta$, but its likelihood cannot be evaluated in closed
+form. SBI approximates the posterior from simulated parameter–data pairs. Posterior-predictive
+simulations then evaluate whether the fitted model reproduces relevant features of the data.''',
+        "f992e16d": r'''## Rejection ABC approximates the posterior
 
-Approximate Bayesian computation draws $\theta$ from the prior, simulates a trajectory, and asks
-how far it lies from the observation:
+Approximate Bayesian computation draws $\theta$ from the prior, simulates a trajectory, and computes
+its distance from the observation:
 
 $$\theta\ \text{is accepted when}\ d(x_{sim},x_{obs})\leq\varepsilon_{ABC}$$
 
 The threshold $\varepsilon_{ABC}$ is a tolerance in **data space**. Smaller values make accepted
 simulations more observation-like but demand a larger simulation budget. The progressive station
 shows that trade-off rather than hiding it behind one final posterior.''',
-        "8d7d8c01": r'''## NPE: teach a network to return a posterior
+        "8d7d8c01": r'''## Neural posterior estimation learns a conditional density
 
 Neural posterior estimation first creates simulated pairs
 $(\theta_i,x_i)\sim p(\theta)p(x\mid\theta)$. A conditional density estimator learns
@@ -397,28 +400,32 @@ Odd and even passages expose different stochastic snapshots, so their posteriors
 identical. Agreement means the conclusion is stable for this example; disagreement identifies
 where another measurement could be valuable. Flexibility preserves the information the experiment
 collected—it does not manufacture information that was never observed.''',
-        "928bf2bf": fr'''## Replicates should agree without letting one dominate
+        "928bf2bf": fr'''## Combining replicate-specific posteriors
 
 Each independent replicate gives an individual posterior $p_i(\theta\mid x_i)$. Multiplying them
 directly counts the shared prior $r$ times. The standard collective removes those extra copies:
 
-$$p(\theta\mid x_1,\ldots,x_r)\propto
-\frac{{\prod_{{i=1}}^r p_i(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}.$$
+$$p(\theta\mid x_{{1:r}})=
+\frac{{\dfrac{{\prod_{{i=1}}^r p_i(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}}}
+{{\displaystyle\int_\Theta
+\dfrac{{\prod_{{i=1}}^r p_i(\vartheta\mid x_i)}}{{p(\vartheta)^{{r-1}}}}\,d\vartheta}}.$$
 
 <figure class="paper-figure">
   <img loading="lazy" src="{versioned_asset('assets/chapter/collective-figure-1.png')}" alt="Five-stage collective posterior workflow from empirical trajectories through individual and robust collective posteriors to posterior predictive checks">
   <figcaption>From replicate trajectories to individual posteriors, a robust collective posterior, and predictive checks. {paper_html("collective")} · Fig. 1, CC BY 4.0.</figcaption>
 </figure>
 
-### What ε protects
+### Role of the density floor ε
 
 An outlying replicate can assign vanishing density to the region supported by all others. In a
 product, that one near-zero factor can overwhelm the consensus. The robust method replaces each
 individual density with a floor,
 
 $$p_\epsilon(\theta\mid x_i)=\max\!\left[p_i(\theta\mid x_i),\epsilon\right],$$
-$$p_\epsilon(\theta\mid x_1,\ldots,x_r)\propto
-\frac{{\prod_i p_\epsilon(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}.$$
+$$p_\epsilon(\theta\mid x_{{1:r}})=
+\frac{{\dfrac{{\prod_{{i=1}}^r p_\epsilon(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}}}
+{{\displaystyle\int_\Theta
+\dfrac{{\prod_{{i=1}}^r p_\epsilon(\vartheta\mid x_i)}}{{p(\vartheta)^{{r-1}}}}\,d\vartheta}}.$$
 
 This ε is a **minimum posterior density**, not the ABC distance tolerance. As $\epsilon\to0$ the
 robust result approaches the standard collective. Raising ε limits how strongly unsupported tails
@@ -458,10 +465,10 @@ for sensitivity analysis.
 
 def mechanism_code(stem: str, source: str, cell_index: int) -> str:
     titles = {
-        "efcdf8fa": "Avecilla · three competing genotypes",
-        "6cfee4f5": "Chuong · standing variation plus new CNVs",
-        "2539f7c5": "De · CNV reversion",
-        "5f9d90ff": "Zhou · two chromosome-loss routes",
+        "efcdf8fa": "Three competing genotypes",
+        "6cfee4f5": "Standing variation and de novo CNV formation",
+        "2539f7c5": "CNV reversion",
+        "5f9d90ff": "Two chromosome-loss routes",
     }
     snippets = {
         "efcdf8fa": [("Parameters become rates", "delta_C = 10 ** log_delta_C\ndelta_B = 10 ** log_delta_B"), ("Selection becomes weights", "w = [1, 1 + s_C, 1 + s_B]"), ("Mutation becomes a matrix", "E = M @ np.diag(w)"), ("Drift becomes a draw", "n = np.random.multinomial(N, p)")],
@@ -482,7 +489,7 @@ def chapter_walkthrough(chapter: str) -> str:
         <article class="story-slide story-goal"><div class="story-copy"><span>04</span><h2>Mechanistic predictions</h2><p>Perturb rates, fitnesses, and effective population size; compare trajectories.</p></div><div class="trajectory-cartoon" aria-hidden="true"><i></i><b></b><em></em><span>frequency</span><small>time</small></div></article>'''
     else:
         slides = '''
-        <article class="story-slide"><div class="story-copy"><span>01</span><h2>The inverse problem</h2><p>Different parameter combinations can generate similar trajectories.</p></div><div class="inverse-cartoon" role="img" aria-label="One observed trajectory linked to three distinct parameter hypotheses"><div class="inverse-observation"><i></i><b></b><em></em></div><strong>?</strong><ul><li>high <i>s</i>, low δ</li><li>moderate <i>s</i>, moderate δ</li><li>standing variation φ</li></ul></div></article>
+        <article class="story-slide"><div class="story-copy"><span>01</span><h2>The inverse problem</h2><p>Use an observed trajectory to infer a distribution over the parameters that could have generated it.</p></div><svg class="inverse-process-diagram" viewBox="0 0 560 270" role="img" aria-label="Forward simulation maps parameters to synthetic data; inference maps observed data to a posterior distribution"><defs><marker id="inverse-arrow" markerWidth="8" markerHeight="8" refX="7" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z"/></marker></defs><text class="row-title" x="12" y="28">Forward model</text><rect class="parameter-node" x="20" y="48" width="90" height="56" rx="12"/><text x="65" y="82" text-anchor="middle">parameters θ</text><line class="diagram-arrow" x1="118" y1="76" x2="174" y2="76"/><rect class="simulator-node" x="182" y="48" width="92" height="56" rx="12"/><text x="228" y="82" text-anchor="middle">simulator</text><line class="diagram-arrow" x1="282" y1="76" x2="334" y2="76"/><g class="trajectory-node"><line x1="342" y1="104" x2="532" y2="104"/><line x1="342" y1="104" x2="342" y2="43"/><path d="M348 99 C392 98 401 90 426 72 S472 48 526 46"/></g><text class="row-title" x="12" y="151">Inverse problem</text><g class="data-node"><line x1="20" y1="231" x2="164" y2="231"/><line x1="20" y1="231" x2="20" y2="169"/><circle cx="38" cy="225" r="5"/><circle cx="66" cy="219" r="5"/><circle cx="94" cy="199" r="5"/><circle cx="124" cy="180" r="5"/><circle cx="153" cy="174" r="5"/></g><line class="diagram-arrow" x1="174" y1="200" x2="218" y2="200"/><rect class="inference-node" x="226" y="172" width="80" height="56" rx="12"/><text x="266" y="205" text-anchor="middle">SBI</text><line class="diagram-arrow" x1="314" y1="200" x2="360" y2="200"/><g class="posterior-node"><line x1="368" y1="231" x2="532" y2="231"/><path d="M374 230 C407 229 414 178 447 178 C480 178 488 230 526 230 Z"/></g><text x="450" y="163" text-anchor="middle">posterior p(θ | x<tspan baseline-shift="sub" font-size="10">obs</tspan>)</text></svg></article>
         <article class="story-slide"><div class="story-copy"><span>02</span><h2>Rejection ABC</h2><p>Retain parameters whose simulations are closest to the observation.</p><div class="story-equation">θ ~ prior → xsim ~ simulator → d(xsim, xobs) ≤ εABC</div></div><div class="abc-cartoon"><span>prior</span><i>simulate</i><b>compare</b><em>keep</em></div></article>
         <article class="story-slide"><div class="story-copy"><span>03</span><h2>Neural posterior estimation</h2><p>Learn a conditional density from simulated parameter–trajectory pairs.</p><div class="story-equation">qφ(θ | x) ≈ p(θ | x)</div></div><div class="network-cartoon" aria-hidden="true"><div><i></i><i></i><i></i></div><b></b><div><i></i><i></i><i></i><i></i></div><b></b><div><i></i><i></i></div></div></article>
         <article class="story-slide story-goal"><div class="story-copy"><span>04</span><h2>Prediction and model checking</h2><p>Propagate posterior uncertainty into trajectories and derived biological quantities.</p></div><div class="predictive-cartoon" role="img" aria-label="Posterior density flows through a simulator into a predictive trajectory band"><div class="mini-posterior"><i></i></div><b>→</b><div class="mini-simulator">simulate</div><b>→</b><div class="mini-predictive"><i></i><span></span><em></em><strong></strong></div></div></article>'''
@@ -520,10 +527,19 @@ because drift is strongest when the culture is smallest.
     return f'<section class="lesson-cell prose-cell ne-section" id="effective-population-size">{math_to_html(source)}</section>'
 
 
+def inverse_problem_figure() -> str:
+    """A focused identifiability figure for the opening of the SBI lesson."""
+    return '''<section class="lesson-cell inverse-example" id="inverse-example" data-cell-id="cdda66b7">
+      <div class="inverse-example-copy"><p class="section-kicker">Identifiability</p><h2>Several mechanisms can match the sampled trajectory</h2><p>The colored curves come from different combinations of selection, formation rate, and initial CNV frequency. At the measured generations, all three remain plausible. Inference must therefore preserve their joint uncertainty rather than select one curve by eye.</p><div class="hypothesis-key"><span class="hypothesis-a"><b>A</b> faster formation, weaker selection</span><span class="hypothesis-b"><b>B</b> intermediate rates</span><span class="hypothesis-c"><b>C</b> slower formation, stronger selection</span><span class="observed-key"><b></b> observed frequencies</span></div></div>
+      <svg class="overlap-figure" viewBox="0 0 720 390" role="img" aria-label="Three parameter combinations produce similar CNV frequency trajectories at the observed generations"><line class="axis" x1="72" y1="320" x2="682" y2="320"/><line class="axis" x1="72" y1="320" x2="72" y2="38"/><text class="axis-label" x="380" y="375" text-anchor="middle">Generation</text><text class="axis-label y-label" x="18" y="180" text-anchor="middle">CNV frequency</text><path class="curve-a" d="M75 312 C170 311 247 294 316 239 S408 95 520 65 S628 58 676 57"/><path class="curve-b" d="M75 313 C176 312 250 299 318 243 S410 104 520 69 S628 60 676 59"/><path class="curve-c" d="M75 314 C182 313 256 302 322 247 S415 112 522 73 S630 62 676 61"/><g class="observed-points"><circle cx="112" cy="311" r="7"/><circle cx="182" cy="306" r="7"/><circle cx="252" cy="288" r="7"/><circle cx="322" cy="242" r="7"/><circle cx="392" cy="155" r="7"/><circle cx="462" cy="91" r="7"/><circle cx="542" cy="67" r="7"/><circle cx="622" cy="59" r="7"/></g><text class="tick-label" x="72" y="342">0</text><text class="tick-label" x="676" y="342" text-anchor="end">120</text><text class="tick-label" x="56" y="320" text-anchor="end">0</text><text class="tick-label" x="56" y="48" text-anchor="end">1</text></svg>
+      <p class="concept-caption"><strong>Same observations, different parameters.</strong> This overlap is the inferential problem that ABC and NPE must represent.</p>
+    </section>'''
+
+
 def posterior_prediction_section() -> str:
     """Connect parameter inference to a derived biological prediction."""
     figure_url = versioned_asset("assets/chapter/chuong-diversity-figure-3b.jpg")
-    source = fr'''## A posterior can predict more than the fitted trajectory
+    source = fr'''## Posterior prediction of CNV-lineage diversity
 
 Parameter estimation is often only an intermediate step. Posterior prediction propagates every
 plausible parameter value through the simulator and then calculates a quantity that was not used
@@ -534,6 +550,13 @@ as the inference target.
 In {paper("chuong")}, CNV-frequency trajectories constrain formation rate and selection. The fitted
 model is then used to ask a different biological question: **how many effectively distinct CNV
 lineages should coexist through time?**
+
+<figure class="diversity-prediction-figure">
+  <img loading="eager" fetchpriority="high" width="1000" height="961" src="{figure_url}" alt="Chuong Figure 3B showing posterior predictions of CNV Shannon diversity through time for wild type, LTR deletion, ARS deletion, and ALL deletion strains">
+  <figcaption>The vertical axis is logarithmic and reports the effective number of CNV lineages; curves show the posterior mean. {paper_html("chuong")} · Fig. 3B.</figcaption>
+</figure>
+
+<div class="diversity-rank" aria-label="Predicted final diversity rank"><span class="diversity-wt">WT <b>highest</b></span><i>›</i><span class="diversity-ltr">LTRΔ</span><i>›</i><span class="diversity-all">ALLΔ</span><i>›</i><span class="diversity-ars">ARSΔ <b>lowest</b></span></div>
 
 ### Calculation
 
@@ -554,11 +577,7 @@ ranges from about $1.6\times10^4$ lineages for ARSΔ to $3.2\times10^5$ for wild
 order **WT > LTRΔ > ALLΔ > ARSΔ**, mirroring inferred CNV formation rates. Because this model omits
 competition, clonal interference, and recurrent formation, the absolute values are likely
 overestimates; the between-strain comparison is the more defensible prediction.
-
-<figure class="diversity-prediction-figure">
-  <img loading="lazy" src="{figure_url}" alt="Chuong Figure 3B showing posterior predictions of CNV Shannon diversity through time for wild type, LTR deletion, ARS deletion, and ALL deletion strains">
-  <figcaption>Posterior prediction of effective CNV-lineage diversity; curves show the posterior mean. {paper_html("chuong")} · Fig. 3B.</figcaption>
-</figure>'''
+'''
     return f'<section class="lesson-cell prose-cell prediction-box" id="posterior-predictions">{math_to_html(source)}</section>'
 
 
@@ -591,6 +610,9 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
                 open_attr = " open" if cid != "88e4194b" else ""
                 blocks.append(f'<section class="purposeful-code lesson-cell" id="{anchor}" data-cell-id="{cid}"><p class="section-kicker">Code worth keeping</p><h2>{labels[cid]}</h2><details class="code-panel"{open_attr}><summary>Python implementation <span>notebook cell {index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></details></section>')
                 status, reason = ("included", "") if open_attr else ("deliberately_collapsed", "training implementation is available on demand")
+            elif key == "sbi" and cid == "cdda66b7":
+                blocks.append(inverse_problem_figure())
+                status, reason = "included", "notebook output replaced by a focused identifiability diagram"
             elif (key == "evolution" and cid in EVOLUTION_OUTPUT_ONLY) or (key == "sbi" and cid in SBI_OUTPUT_ONLY):
                 output = "".join(output_html(dict(out), cid, j, figures_only=True) for j, out in enumerate(cell.get("outputs", [])))
                 story = OUTPUT_STORIES.get(cid, "")
@@ -622,8 +644,8 @@ def station_markup(name: str) -> str:
     common_end = f'''<div class="static-fallback"><img src="{fallback}" alt="Representative static result for {name.replace('-', ' ')}"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>'''
     if name == "evolution-playground":
-        body = '''<h2>Predict the Avecilla evolutionary trajectory</h2><p class="prediction">Question: will the GAP1 CNV, another beneficial lineage, or drift dominate the chemostat population?</p>
-        <div class="preset-row evo-presets"><button data-evo-preset="fit">Avecilla fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
+        body = '''<h2>Predict a three-genotype chemostat trajectory</h2><p class="prediction">Question: will the GAP1 CNV, another beneficial lineage, or drift dominate the population?</p>
+        <div class="preset-row evo-presets"><button data-evo-preset="fit">Published fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
         <div class="interactive-grid"><form class="controls" id="evo-controls">
           <label><span>CNV formation log₁₀(δ<sub>C</sub>)</span><output id="evo-delta-c-label"></output><input id="evo-delta-c" type="range" min="-7" max="-2" step="0.05" value="-4.2"></label>
           <label><span>Other-beneficial log₁₀(δ<sub>B</sub>)</span><output id="evo-delta-b-label"></output><input id="evo-delta-b" type="range" min="-7" max="-2" step="0.05" value="-5"></label>
@@ -644,17 +666,17 @@ def station_markup(name: str) -> str:
           <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Gamma-shaped distribution of selection coefficients"></canvas><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
         <div class="what-changed"><strong>Evolutionary consequence.</strong> <span id="dfe-change"></span></div>'''
     elif name == "chuong-parameter-challenge":
-        body = '''<h2>Infer the hidden Chuong parameters</h2><p class="prediction">A new noisy CNV-frequency observation is generated each round. Guess the three log₁₀ parameters, then score your parameter RMSE.</p>
+        body = '''<h2>Infer selection, formation, and initial frequency</h2><p class="prediction">Each round generates a synthetic CNV-frequency dataset. Estimate log₁₀(s), log₁₀(δ), and log₁₀(φ); the score is determined by parameter RMSE.</p>
         <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">
           <label>log₁₀(s) <output id="chuong-guess-s-label"></output><input id="chuong-guess-s" type="range" min="-1.3" max="-0.45" step="0.01" value="-0.8"></label>
           <label>log₁₀(δ) <output id="chuong-guess-m-label"></output><input id="chuong-guess-m" type="range" min="-6" max="-3.8" step="0.02" value="-4.8"></label>
           <label>log₁₀(φ) <output id="chuong-guess-p0-label"></output><input id="chuong-guess-p0" type="range" min="-7" max="-3" step="0.02" value="-4.5"></label>
           <div class="button-row"><button id="chuong-score" type="button">Score guess</button><button id="chuong-new" type="button">New observation</button><button type="reset">Reset guess</button></div></form>
-          <div class="viz"><canvas id="chuong-challenge-canvas" width="760" height="430" aria-label="Noisy Chuong observation and trajectory implied by the current parameter guess"></canvas><p id="chuong-challenge-summary" class="plot-summary" aria-live="polite"></p><div id="chuong-score-card" class="score-card" aria-live="polite"></div></div></div>
+          <div class="viz"><canvas id="chuong-challenge-canvas" width="760" height="430" aria-label="Synthetic CNV-frequency observations and trajectory implied by the current parameter estimate"></canvas><p id="chuong-challenge-summary" class="plot-summary" aria-live="polite"></p><div id="chuong-score-card" class="score-card" aria-live="polite"></div></div></div>
         <div class="what-changed"><strong>Score.</strong> RMSE is computed directly across the three log₁₀ parameters; points = 100 / (1 + RMSE). A perfect guess earns 100.</div>'''
     elif name == "zhou-model-playground":
-        body = '''<h2>Explore the Zhou chromosome-loss model</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
-        <div class="preset-row"><button data-zhou-model-preset="fit">Zhou fit</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
+        body = '''<h2>Explore competing chromosome-loss routes</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
+        <div class="preset-row"><button data-zhou-model-preset="fit">Published fit</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
         <div class="interactive-grid"><form class="controls" id="zhou-model-controls">
           <label>Tri → WT log₁₀ rate <output id="zhou-model-mu-wt-label"></output><input id="zhou-model-mu-wt" type="range" min="-6" max="-2.5" step="0.05" value="-3.47"></label>
           <label>Tri → LOH log₁₀ rate <output id="zhou-model-mu-loh-label"></output><input id="zhou-model-mu-loh" type="range" min="-6" max="-2.5" step="0.05" value="-3.28"></label>
@@ -674,14 +696,14 @@ def station_markup(name: str) -> str:
         <p class="plot-summary" id="training-summary" aria-live="polite"></p>
         <div class="what-changed"><strong>What changed?</strong> Lower loss improves the learned conditional density on average; a useful PPC is related evidence, not a calibration guarantee.</div>'''
     elif name == "collective-outlier-lab":
-        body = '''<h2>Collective posterior outlier laboratory</h2><p class="prediction">Question: which replicate has the most leverage on the shared estimate?</p>
+        body = '''<h2>Sensitivity to an outlying replicate</h2><p class="prediction">Question: which replicate has the most leverage on the collective posterior?</p>
         <div class="preset-row"><button data-coll-select="all">Select all</button><button data-coll-select="clean">Clean only</button><button data-coll-select="outliers">Outliers only</button><button id="coll-loo">Leave one out</button></div>
         <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Robustness floor <select id="coll-epsilon"><option value="auto:0.80">Estimate from 80th percentile</option><option value="auto:0.90">Estimate from 90th percentile</option><option value="auto:0.95" selected>Estimate from 95th percentile</option><option value="auto:0.99">Estimate from 99th percentile</option><option value="0">Fixed log₁₀ ε = 0</option><option value="-10">Fixed log₁₀ ε = −10</option><option value="-100">Fixed log₁₀ ε = −100</option><option value="-1000">Fixed log₁₀ ε = −1000</option></select><output id="coll-epsilon-value">Estimating…</output></label><label>R7 displacement from consensus <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
         <div class="viz"><canvas id="collective-trajectory-canvas" width="760" height="310" aria-label="Selected replicate trajectories"></canvas><canvas id="collective-posterior-canvas" width="760" height="310" aria-label="Individual, standard collective, and robust collective posterior densities"></canvas><p id="collective-summary" class="plot-summary" aria-live="polite"></p></div></div>
         <details class="method-note"><summary>What is evaluated—and what is sampled?</summary><p>The browser evaluates a normalized three-parameter joint posterior grid, applies the ε floor to each full joint density, aggregates, and only then marginalizes to the displayed selection axis. It does not draw posterior samples. To estimate ε deterministically, a uniform midpoint grid discretizes the prior, each selected replicate posterior is evaluated at every grid point, and the chosen density percentile is used. This is a grid approximation to the published prior-draw heuristic; the published production implementation samples the high-dimensional collective target with Sampling-importance-resampling (SIR). Fixed controls report log₁₀ ε, matching the paper; calculations convert these values to natural-log density internally.</p></details>
         <div class="what-changed"><strong>Move R7, then compare.</strong> At 0×, R7 is centered on the shared truth; increasing displacement moves its trajectory and its posterior center in all three parameters. The gold Standard collective should follow R7, while the green Robust collective should resist it. Fixed log₁₀ ε = −1000 intentionally removes that resistance. Exclusion remains sensitivity analysis, not a data-discarding rule.</div>'''
     elif name == "zhou-schedule-designer":
-        body = '''<h2>Design a Zhou passage schedule</h2><p class="prediction">Prediction: which passages constrain rates, and which constrain relative fitness?</p>
+        body = '''<h2>Design a passage schedule</h2><p class="prediction">Prediction: which passages constrain transition rates, and which constrain relative fitness?</p>
         <div class="preset-row"><button data-schedule="odd">Odd passages</button><button data-schedule="even">Even passages</button><button data-schedule="early">Early only</button><button data-schedule="late">Late only</button><button data-schedule="sparse">Sparse</button><button data-schedule="full">Full schedule</button><button data-schedule="zero">Passage 0 only</button></div>
         <div class="passage-grid" id="passage-grid"></div><label class="inline-toggle"><input id="reveal-withheld" type="checkbox" checked> Reveal withheld observations</label>
         <div class="plot-pair"><canvas id="zhou-trajectory-canvas" width="720" height="380" aria-label="Latent trajectory and selected or withheld passage observations"></canvas><canvas id="zhou-posterior-canvas" width="720" height="380" aria-label="Four Zhou posterior marginals for the selected schedule"></canvas></div>
@@ -691,7 +713,7 @@ def station_markup(name: str) -> str:
         body = '''<h2>Run rejection ABC</h2><p class="prediction">Choose a simulation budget and acceptance quantile. ABC keeps the closest simulated trajectories; watch the accepted parameter cloud tighten as ε decreases.</p>
         <div class="interactive-grid"><form class="controls" id="abc-controls"><label>Acceptance quantile <output id="abc-quantile-label">5%</output><input id="abc-quantile" type="range" min="1" max="25" step="1" value="5"></label><label>Simulation budget <select id="abc-sims"><option>250</option><option selected>1000</option><option>3000</option><option>10000</option></select></label><label>Seed <input id="abc-seed" type="number" min="0" value="20260825"></label><button id="abc-run" type="button">Run ABC progressively</button><button type="reset">Reset</button><label class="progress-label" for="abc-progress">Simulation progress <output id="abc-progress-label">0 / 1000</output></label><progress id="abc-progress" max="1000" value="0"></progress><div id="abc-milestones" class="milestone-row" aria-label="ABC simulation milestones"></div></form><div class="viz"><canvas id="abc-trajectory-canvas" width="760" height="350" aria-label="Observed trajectory and accepted ABC simulations"></canvas><canvas id="guess-canvas" width="760" height="350" aria-label="ABC posterior marginals for selection, mutation, and initial frequency"></canvas><p id="abc-summary" class="plot-summary" aria-live="polite"></p></div></div>'''
     else:
-        body = '''<h2>PPC mismatch detective</h2><p class="prediction">Compare the orange observation with the blue posterior-predictive expectation and choose the most plausible biological or measurement explanation.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> This culture looks plausible</label><label><input type="radio" name="diagnosis" value="noise"> Measurements are noisier than assumed</label><label><input type="radio" name="diagnosis" value="outlier"> One time point may be contaminated</label><label><input type="radio" name="diagnosis" value="support"> Biology lies outside the training range</label><label><input type="radio" name="diagnosis" value="structure"> The simulator misses a biological process</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observed trajectory and posterior predictive band"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Check my diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary" aria-live="polite"></p><div class="what-changed"><strong>Interpret carefully.</strong> A PPC localizes tension between observation and prediction. It can suggest a failure mode, but the pattern rarely proves one unique cause.</div>'''
+        body = '''<h2>Diagnose posterior-predictive mismatch</h2><p class="prediction">Compare the orange observations with the blue posterior-predictive distribution and select the most plausible biological or measurement explanation.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> This culture looks plausible</label><label><input type="radio" name="diagnosis" value="noise"> Measurements are noisier than assumed</label><label><input type="radio" name="diagnosis" value="outlier"> One time point may be contaminated</label><label><input type="radio" name="diagnosis" value="support"> Biology lies outside the training range</label><label><input type="radio" name="diagnosis" value="structure"> The simulator misses a biological process</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observed trajectory and posterior predictive band"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Check my diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary" aria-live="polite"></p><div class="what-changed"><strong>Interpret carefully.</strong> A PPC localizes tension between observation and prediction. It can suggest a failure mode, but the pattern rarely proves one unique cause.</div>'''
     return common_start + body + common_end
 
 
@@ -998,8 +1020,8 @@ def landing_page() -> str:
     <section class="primer-journey" id="foundations-primer"><header class="primer-heading"><div><p class="section-kicker">Foundations</p><h2>One population, one continuous inference story</h2><p>Follow a CNV from its first appearance to a testable posterior prediction.</p></div><span class="time-badge">15 minutes</span></header><div class="primer-story">
       <article class="primer-step"><div class="step-marker">01</div><div class="step-copy"><p class="scene-label">Begin with a culture</p><h3>A population is a changing composition</h3><p>Each colored cell represents a <strong>genotype</strong>, a heritable state. Its <strong>frequency</strong> is its fraction of the population, and all state frequencies sum to one.</p><dl class="concept-notes"><div><dt>Mutation rate</dt><dd>Probability per generation that one state produces another.</dd></div><div><dt>Fitness and <em>s</em></dt><dd>Expected reproductive success; <em>s</em> measures advantage relative to a reference.</dd></div></dl></div><div class="primer-illustration population-sketch" role="img" aria-label="A mostly ancestral population changes into a mixture of three genotypes"><div class="dot-row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b></b></div><span>generations</span><div class="dot-row late"><i></i><i></i><b></b><b></b><em></em><em></em><b></b><em></em></div></div></article>
       <article class="primer-step"><div class="step-marker">02</div><div class="step-copy"><p class="scene-label">Advance one generation</p><h3>Mechanism sets the expectation; drift selects one future</h3><p>A Wright–Fisher simulator applies mutation and selection, normalizes the expected frequencies, and samples a finite next generation. <strong>Genetic drift</strong> is this sampling variation.</p><div class="primer-equation">p<sub>t</sub> → mutation → selection → Multinomial(N<sub>e</sub>, p*)</div><dl class="concept-notes"><div><dt>Effective population size, N<sub>e</sub></dt><dd>The idealized size producing the experiment’s drift variance—not necessarily its census.</dd></div><div><dt>Simulator</dt><dd>An executable generative model from parameters and random draws to synthetic data.</dd></div></dl></div><div class="force-cartoon primer-force" aria-hidden="true"><div>mutation<small>states appear</small></div><b>→</b><div>selection<small>growth differs</small></div><b>→</b><div>drift<small>sample N<sub>e</sub></small></div></div></article>
-      <article class="primer-step"><div class="step-marker">03</div><div class="step-copy"><p class="scene-label">Measure the experiment</p><h3>The latent process and the observed trajectory are different objects</h3><p>The simulator produces a continuous biological history. The assay records selected <strong>passages</strong> and adds <strong>observation noise</strong>. Independent <strong>replicates</strong> share conditions but not the same stochastic history.</p><div class="primer-flow" role="img" aria-label="Parameters flow through a simulator to a latent trajectory and noisy observations"><span><b>θ</b><small>parameters</small></span><i>→</i><span><b>Simulator</b><small>latent process</small></span><i>→</i><span><b>x(t)</b><small>trajectory</small></span><i>→</i><span><b>x<sub>obs</sub></b><small>sampled passages</small></span></div><dl class="concept-notes"><div><dt>Summary statistic</dt><dd>A chosen compression of the trajectory.</dd></div><div><dt>Distance</dt><dd>A discrepancy between simulated and observed summaries.</dd></div></dl></div><div class="observation-cartoon" aria-hidden="true"><div class="latent-line"><i></i></div><div class="sample-dots"><i></i><i></i><i></i><i></i><i></i></div><span>latent process</span><b>observations</b></div></article>
-      <article class="primer-step"><div class="step-marker">04</div><div class="step-copy"><p class="scene-label">Run the inverse problem</p><h3>Bayes converts parameter uncertainty before data into uncertainty after data</h3><p>The <strong>prior</strong> assigns plausibility before the observation. The <strong>likelihood</strong> scores the observation under each parameter value. Their product, after normalization, is the <strong>posterior</strong>.</p><div class="primer-equation">p(θ | x<sub>obs</sub>) ∝ p(x<sub>obs</sub> | θ) p(θ)</div><dl class="concept-notes"><div><dt>Identifiability</dt><dd>Whether distinct parameter values make distinguishable predictions.</dd></div><div><dt>Credible interval</dt><dd>An interval containing a stated fraction of posterior probability, conditional on model and prior.</dd></div></dl></div><svg class="density-sketch" viewBox="0 0 620 150" role="img" aria-label="A broad prior and a likelihood combine into a narrower posterior"><path d="M20 126 C100 126 125 35 210 35 C295 35 315 126 390 126" class="prior"/><path d="M180 126 C245 126 270 54 330 54 C390 54 410 126 470 126" class="likelihood"/><path d="M205 126 C255 126 276 25 322 25 C368 25 382 126 430 126" class="posterior"/><text x="76" y="28">prior</text><text x="390" y="50">likelihood</text><text x="285" y="18">posterior</text><line x1="20" y1="127" x2="590" y2="127"/></svg></article>
+      <article class="primer-step"><div class="step-marker">03</div><div class="step-copy"><p class="scene-label">Measure the experiment</p><h3>The population changes between measurements</h3><p>The green curve is the complete genotype-frequency history generated by the model. The experiment observes only selected passages. Orange points can deviate from the curve because sequencing and sampling add measurement error.</p><div class="primer-flow" role="img" aria-label="Parameters pass through an evolutionary simulator to generate a complete frequency history, from which selected passages are measured"><span><b>θ</b><small>parameters</small></span><i>→</i><span><b>Simulator</b><small>evolution</small></span><i>→</i><span><b>x(t)</b><small>full history</small></span><i>→</i><span><b>x<sub>obs</sub></b><small>measured passages</small></span></div><dl class="concept-notes"><div><dt>Unobserved state</dt><dd>The full population history between the measured passages.</dd></div><div><dt>Observation model</dt><dd>How biological frequencies become noisy measurements.</dd></div></dl></div><svg class="sampling-diagram" viewBox="0 0 560 285" role="img" aria-label="A continuous population-frequency curve sampled at five passages with noisy observed points"><line class="axis" x1="58" y1="232" x2="535" y2="232"/><line class="axis" x1="58" y1="232" x2="58" y2="30"/><path class="true-history" d="M62 222 C145 221 188 208 235 170 S307 74 378 52 S474 43 530 42"/><g class="sampling-guides"><line x1="120" y1="232" x2="120" y2="215"/><line x1="215" y1="232" x2="215" y2="182"/><line x1="310" y1="232" x2="310" y2="90"/><line x1="405" y1="232" x2="405" y2="48"/><line x1="500" y1="232" x2="500" y2="42"/></g><g class="measured-points"><circle cx="120" cy="217" r="7"/><circle cx="215" cy="190" r="7"/><circle cx="310" cy="101" r="7"/><circle cx="405" cy="57" r="7"/><circle cx="500" cy="36" r="7"/></g><text class="axis-label" x="300" y="274" text-anchor="middle">Generation</text><text class="axis-label y-label" x="15" y="132" text-anchor="middle">Genotype frequency</text><line class="legend-history" x1="292" y1="20" x2="330" y2="20"/><text x="338" y="24">complete history</text><circle class="legend-point" cx="432" cy="20" r="6"/><text x="444" y="24">measurements</text></svg></article>
+      <article class="primer-step"><div class="step-marker">04</div><div class="step-copy"><p class="scene-label">Run the inverse problem</p><h3>Bayes updates uncertainty about parameters</h3><p>The <strong>prior</strong> assigns plausibility before observing the data. The <strong>likelihood</strong> evaluates the data under each parameter value. The denominator integrates their product over all parameter values so that the <strong>posterior</strong> is a normalized probability distribution.</p><div class="primer-equation bayes-equation" role="math" aria-label="Posterior equals likelihood times prior divided by the integral of likelihood times prior over the parameter space"><span>p(θ | x<sub>obs</sub>) =</span><span class="equation-fraction"><span>p(x<sub>obs</sub> | θ) p(θ)</span><span>∫<sub>Θ</sub> p(x<sub>obs</sub> | ϑ) p(ϑ) dϑ</span></span></div><dl class="concept-notes"><div><dt>Identifiability</dt><dd>Whether distinct parameter values make distinguishable predictions.</dd></div><div><dt>Credible interval</dt><dd>An interval containing a stated fraction of posterior probability, conditional on model and prior.</dd></div></dl></div><svg class="density-sketch" viewBox="0 0 620 150" role="img" aria-label="A broad prior and a likelihood combine into a narrower posterior"><path d="M20 126 C100 126 125 35 210 35 C295 35 315 126 390 126" class="prior"/><path d="M180 126 C245 126 270 54 330 54 C390 54 410 126 470 126" class="likelihood"/><path d="M205 126 C255 126 276 25 322 25 C368 25 382 126 430 126" class="posterior"/><text x="76" y="28">prior</text><text x="390" y="50">likelihood</text><text x="285" y="18">posterior</text><line x1="20" y1="127" x2="590" y2="127"/></svg></article>
       <article class="primer-step"><div class="step-marker">05</div><div class="step-copy"><p class="scene-label">Approximate the intractable likelihood</p><h3>SBI learns from simulations</h3><p><strong>ABC</strong> retains simulations within distance tolerance ε. <strong>NPE</strong> learns a normalized conditional density from many parameter–trajectory pairs; <strong>amortization</strong> makes later observations cheap to analyze.</p><div class="primer-flow sbi-flow" role="img" aria-label="Prior draws generate simulations used by ABC or NPE to infer a posterior"><span><b>Prior draws</b><small>θ₁ … θₙ</small></span><i>→</i><span><b>Simulations</b><small>x₁ … xₙ</small></span><i>→</i><span><b>ABC / NPE</b><small>compare or learn</small></span><i>→</i><span><b>Posterior</b><small>p(θ | x<sub>obs</sub>)</small></span></div><dl class="concept-notes"><div><dt>Calibration</dt><dd>Across repeated datasets, posterior coverage matches its stated probability.</dd></div><div><dt>SIR and ESS</dt><dd>Importance resampling approximates a target; effective sample size reports weight concentration.</dd></div></dl></div><div class="abc-cartoon primer-abc" aria-hidden="true"><span>draw</span><i>simulate</i><b>compare</b><em>infer</em></div></article>
       <article class="primer-step primer-finale"><div class="step-marker">06</div><div class="step-copy"><p class="scene-label">Return to biology</p><h3>A posterior is useful when it predicts and survives checks</h3><p>A <strong>posterior predictive distribution</strong> simulates trajectories—or new derived quantities—from posterior draws. A <strong>PPC</strong> compares these predictions with observations. A <strong>collective posterior</strong> combines independent replicate evidence while correcting repeated prior factors.</p><dl class="concept-notes"><div><dt>Prediction</dt><dd>Propagate posterior uncertainty through the simulator to a biological quantity.</dd></div><div><dt>Model check</dt><dd>Locate systematic disagreements between posterior simulations and data.</dd></div></dl></div><div class="predictive-cartoon primer-predictive" role="img" aria-label="Posterior uncertainty passes through a simulator to prediction and model checking"><div class="mini-posterior"><i></i></div><b>→</b><div class="mini-simulator">simulate</div><b>→</b><div class="mini-predictive"><i></i><span></span><em></em><strong></strong></div></div></article>
       </div><div class="primer-check"><strong>The complete loop:</strong> define states → simulate evolution → observe passages → infer parameters → predict new biology → check the model.</div>

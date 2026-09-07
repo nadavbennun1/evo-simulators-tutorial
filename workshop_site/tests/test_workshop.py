@@ -229,7 +229,7 @@ def test_equations_fallbacks_accessibility_and_no_obsolete_20k_claim():
 def test_chapter_one_revision_contract():
     text = (SITE / "evolution.html").read_text()
     notebook = (ROOT / "evolution_simulators.ipynb").read_text()
-    assert "Predict the Avecilla evolutionary trajectory" in text
+    assert "Predict a three-genotype chemostat trajectory" in text
     assert 'id="evo-delta-c"' in text and 'id="evo-mut-wt"' not in text
     assert "An <em>s</em>-DFE at a glance" in text
     assert "100 / (1 + RMSE)" in text
@@ -237,7 +237,7 @@ def test_chapter_one_revision_contract():
     assert text.index('id="zhou-model-playground"') > text.index('data-cell-id="2e99f96f"')
     assert "color=C['avecilla_wf']" in notebook
     assert re.search(r'src="assets/chapter/chuong-fit-orange\.png\?v=[0-9a-f]{12}"', text)
-    assert "orange predictions, blue data" in text
+    assert "orange predictions, blue observations" in text
     assert "color=C['chuong']" in notebook
     assert "Error loading sheet" not in text and "NoneType" not in text
     assert "evo-presets" in text and "<span>CNV formation log₁₀(δ<sub>C</sub>)</span>" in text
@@ -268,6 +268,9 @@ def test_foundations_primer_is_one_continuous_lesson():
     assert "One population, one continuous inference story" in home
     assert home.count('class="primer-step') == 6
     assert 'class="primer-story"' in home and 'class="concept-notes"' in home
+    assert 'class="sampling-diagram"' in home and 'class="equation-fraction"' in home
+    assert "complete genotype-frequency history" in home
+    assert "∝" not in home
     assert "<details" not in home
     for term in ("Effective population size", "Identifiability", "Likelihood", "ABC", "Collective posterior", "ESS"):
         assert term.lower() in home.lower()
@@ -304,9 +307,13 @@ def test_presentation_revision_contract():
     assert "paper-figure-wide" not in sbi
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
-    assert "A posterior can predict more than the fitted trajectory" in sbi
+    assert "Posterior prediction of CNV-lineage diversity" in sbi
     assert "exponential" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
+    assert 'loading="eager"' in sbi and 'class="diversity-rank"' in sbi
+    assert 'class="inverse-process-diagram"' in sbi and 'id="inverse-example"' in sbi
+    assert "Several mechanisms can match the sampled trajectory" in sbi
+    assert "∝" not in evolution + sbi
     assert "MathJax" in sbi and "mml-chtml.js" in sbi
     assert '<p><div class="math-scroll"' not in evolution + sbi
     for removed in (
@@ -314,6 +321,9 @@ def test_presentation_revision_contract():
         "Monte Carlo stabilization.",
         "This is the Avecilla three-genotype mechanism:",
         "This is an illustrative flexibility demonstration, not a coverage study.",
+        "Chuong parameters",
+        "Design a Zhou passage schedule",
+        "PPC mismatch detective",
     ):
         assert removed not in evolution + sbi
     for doi in (
