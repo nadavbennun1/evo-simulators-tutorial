@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-07T08:14:45.423643+00:00",
+  "generated_at_utc": "2026-09-07T10:01:52.210822+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -20,6 +20,7 @@
   ],
   "asset_generation_command": "PYTHONPATH=../evodesign/src python workshop_site/build_site.py --scientific-assets",
   "artifacts": {
+    "assets/chapter/chuong-diversity-figure-3b.jpg": "bf33f6c25e8856b2491ade647ad46de99fe8c5624264aae6fd7ac321398f4482",
     "assets/chapter/chuong-fit-orange.png": "6595401580517f68f2b0e5bc02887fba1d4f2344bf567e41daadf5a8d5bf7fab",
     "assets/chapter/collective-figure-1.png": "62b1488b550c83b4edffebfaf6edf52a35ef84d181e582f218982fb4c1a6650c",
     "assets/chapter/collective-figure-4.png": "558b988f620ebefe623f01c79c514d6422843ac1a9671e66429b18a9bf3019e5",
@@ -40,9 +41,9 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "d2416d97a16f6d57166c31c8a1df4831dbafe41f23441429ea704a09c34a7417",
-    "index.html": "2732e2267c7a932a61ea6ebc90a6c1fe3764656de76da178efab7db05ca95f89",
-    "sbi.html": "dcb92b0c3c6cb19f0055761257da43aabd59d826c1350ddfe755ef9457903c61"
+    "evolution.html": "50ea4c511bfd4cd0d7d192674f8c7f12336f11d813a14cc415d53e3c9bcbb9ba",
+    "index.html": "8401c6eedc9fd0de974b83a194bd4ea818b9c2fe976dcd07736e261f4de2546e",
+    "sbi.html": "37c4c42d9a70df2c53eda93b5e7a7df8631bd3b05639dba92809f67cdcf4143b"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",

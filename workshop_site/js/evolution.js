@@ -59,7 +59,7 @@
       if (!started) {
         $("#evo-composition").innerHTML = "";
         $("#evo-summary").textContent = "The plot starts empty. Choose a scenario, then press Play to reveal its evolutionary trajectory.";
-        $("#evo-driver").textContent = "No trajectory has been simulated yet.";
+        if ($("#evo-driver")) $("#evo-driver").textContent = "No trajectory has been simulated yet.";
         return;
       }
       trajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i));
@@ -77,7 +77,7 @@
       else if (Math.abs(sC - sB) > 0.02) driver = `${sC > sB ? "the CNV" : "the other beneficial lineage"} has the larger selection coefficient`;
       else if (Math.max(dC, dB) / Math.max(Math.min(dC, dB), 1e-12) > 5) driver = `${dC > dB ? "CNV" : "other-beneficial"} mutational supply is larger`;
       else driver = "selection and mutational supply are closely balanced";
-      $("#evo-driver").textContent = `This is the Avecilla three-genotype mechanism: ${driver}.`;
+      if ($("#evo-driver")) $("#evo-driver").textContent = `This is the Avecilla three-genotype mechanism: ${driver}.`;
       $("#evo-summary").textContent = `${reps} seeded Wright–Fisher replicate${reps > 1 ? "s" : ""}; showing generation ${show}. Median CNV frequency ${(med[1] * 100).toFixed(1)}%. For Nₑ > 10,000 the browser uses a seeded normal approximation to binomial drift.`;
     }
 

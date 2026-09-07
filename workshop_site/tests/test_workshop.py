@@ -263,18 +263,20 @@ def test_sbi_revision_contract():
     assert 'id="abc-progress"' in text and "requestAnimationFrame" in script
 
 
-def test_foundations_primer_and_lesson_timing():
+def test_foundations_primer_is_one_continuous_lesson():
     home = (SITE / "index.html").read_text()
-    assert "15-minute foundations primer" in home
-    assert home.count('class="primer-cell"') >= 4
+    assert "One population, one continuous inference story" in home
+    assert home.count('class="primer-step') == 6
+    assert 'class="primer-story"' in home and 'class="concept-notes"' in home
+    assert "<details" not in home
     for term in ("Effective population size", "Identifiability", "Likelihood", "ABC", "Collective posterior", "ESS"):
-        assert term in home
+        assert term.lower() in home.lower()
     assert home.count("75 min · 15 min foundations + 60 min lesson") == 2
     for page in (SITE / "evolution.html", SITE / "sbi.html"):
         chapter = page.read_text()
         assert 'class="chapter-walkthrough"' in chapter
         assert chapter.count('class="story-slide') == 4
-        assert "15 min visual primer" in chapter and "60 min chapter" in chapter
+        assert "15 min visual primer" not in chapter and "Four-slide walkthrough" not in chapter
 
 
 def test_presentation_revision_contract():
@@ -299,8 +301,21 @@ def test_presentation_revision_contract():
     assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi
     assert "collective-figure-1.png" in sbi and "collective-figure-4.png" in sbi
     assert "Fig. 1, CC BY 4.0" in sbi and "Fig. 4, CC BY 4.0" in sbi
+    assert "paper-figure-wide" not in sbi
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
+    assert "A posterior can predict more than the fitted trajectory" in sbi
+    assert "exponential" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
+    assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
+    assert "MathJax" in sbi and "mml-chtml.js" in sbi
+    assert '<p><div class="math-scroll"' not in evolution + sbi
+    for removed in (
+        "The mystery cultures are deliberately shuffled",
+        "Monte Carlo stabilization.",
+        "This is the Avecilla three-genotype mechanism:",
+        "This is an illustrative flexibility demonstration, not a coverage study.",
+    ):
+        assert removed not in evolution + sbi
     for doi in (
         "10.1371/journal.pbio.3001633", "10.7554/eLife.98934",
         "10.1101/2025.07.21.665951", "10.1371/journal.pcbi.1014534",

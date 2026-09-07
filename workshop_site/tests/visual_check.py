@@ -28,13 +28,28 @@ def main() -> None:
             driver.set_window_size(width, height)
             for page in ("index", "evolution", "sbi"):
                 driver.get(f"{base}/{page}.html"); time.sleep(1.5)
+                if page != "index":
+                    WebDriverWait(driver, 8).until(
+                        lambda d: d.execute_script("return document.querySelectorAll('mjx-container').length") > 0
+                    )
                 overflow = driver.execute_script("return document.documentElement.scrollWidth > document.documentElement.clientWidth")
                 if overflow:
                     offenders = driver.execute_script("return [...document.querySelectorAll('*')].filter(e => e.getBoundingClientRect().right > document.documentElement.clientWidth + 1).slice(0,12).map(e => [e.tagName, e.id, e.className, Math.round(e.getBoundingClientRect().right), Math.round(e.getBoundingClientRect().width)])")
                     raise AssertionError(f"horizontal overflow on {page} at {width}px: {offenders}")
-                assert driver.execute_script("return document.querySelectorAll('math').length") > (0 if page != "index" else -1)
+                assert driver.execute_script("return document.querySelectorAll('math,mjx-container').length") > (0 if page != "index" else -1)
                 driver.save_screenshot(f"/tmp/workshop-{page}-{label}.png")
         driver.set_window_size(1200, 900); driver.get(f"{base}/sbi.html"); time.sleep(2)
+        prediction_box = driver.find_element("id", "posterior-predictions")
+        diversity_image = driver.find_element("css selector", "#posterior-predictions img")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", diversity_image)
+        time.sleep(.5)
+        WebDriverWait(driver, 10).until(lambda d: diversity_image.get_property("naturalWidth") > 0)
+        prediction_box.screenshot("/tmp/workshop-posterior-predictions.png")
+        driver.execute_script("window.scrollTo(0, arguments[0].offsetTop - 90)", prediction_box)
+        driver.save_screenshot("/tmp/workshop-posterior-predictions-top.png")
+        outline_finale = driver.find_element("css selector", ".chapter-walkthrough .story-slide:nth-child(4)")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", outline_finale)
+        outline_finale.screenshot("/tmp/workshop-sbi-outline-finale.png")
         for station in ("guess-parameter", "training-viewer", "zhou-schedule-designer", "collective-outlier-lab", "ppc-detective"):
             element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.5)
             element.screenshot(f"/tmp/workshop-{station}.png")
@@ -82,6 +97,12 @@ def main() -> None:
         assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
         driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         assert driver.execute_script("return document.querySelectorAll('#zhou-model-canvas').length") == 1
+        driver.get(f"{base}/index.html"); time.sleep(1)
+        primer = driver.find_element("id", "foundations-primer")
+        driver.execute_script("arguments[0].scrollIntoView({block:'start'})", primer)
+        primer.screenshot("/tmp/workshop-continuous-primer.png")
+        driver.execute_script("window.scrollTo(0, arguments[0].offsetTop - 90)", primer)
+        driver.save_screenshot("/tmp/workshop-continuous-primer-top.png")
         print("Visual smoke check passed; screenshots written to /tmp/workshop-*.png")
     finally:
         driver.quit(); server.shutdown(); server.server_close(); thread.join(timeout=3)

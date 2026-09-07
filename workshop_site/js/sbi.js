@@ -204,7 +204,7 @@
       P.legend(f, [{label: "Trisomic", color: colors[0]}, {label: "Wild type", color: colors[1]}, {label: "LOH", color: colors[2]}]);
       drawPosterior(scheduleMask); drawPpc(scheduleMask, selected);
       const widths = Array.from({length: 4}, (_, parameter) => q(scheduleMask, parameter, 2) - q(scheduleMask, parameter, 0));
-      $("#zhou-change").textContent = `Schedule mask ${scheduleMask}, ${selected.size} measured passages including locked passage 0. Mean 90% interval width ${(widths.reduce((a, b) => a + b, 0) / 4).toFixed(3)}.`;
+      if ($("#zhou-change")) $("#zhou-change").textContent = `Schedule mask ${scheduleMask}, ${selected.size} measured passages including locked passage 0. Mean 90% interval width ${(widths.reduce((a, b) => a + b, 0) / 4).toFixed(3)}.`;
     }
     checks.forEach(x => x.addEventListener("change", draw)); $("#reveal-withheld").addEventListener("change", draw);
     $$('[data-schedule]').forEach(button => button.addEventListener("click", () => { const selected = new Set(presets[button.dataset.schedule]); checks.slice(1).forEach(x => { x.checked = selected.has(+x.value); }); draw(); }));
