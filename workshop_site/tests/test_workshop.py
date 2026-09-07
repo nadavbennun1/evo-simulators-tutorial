@@ -292,6 +292,7 @@ def test_presentation_revision_contract():
     assert '<a class="primary-link" href="evolution.html">Chapter 01</a>' in home
     assert '<a class="secondary-link" href="sbi.html">Chapter 02</a>' in home
     assert "Open lesson →" not in home
+    assert 'x1="88" y1="70" x2="126" y2="70"' in home
     assert 'src="assets/workshop-qr.svg"' in home
     assert "https://nadavbennun1.github.io/evo-simulators-tutorial/" in home
     assert "Running on Google Colab" not in evolution
@@ -310,6 +311,7 @@ def test_presentation_revision_contract():
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
     assert "Posterior prediction of CNV-lineage diversity" in sbi
     assert "Effective diversity" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
+    assert "<h3>References</h3>" in sbi and "Short references" not in sbi
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
     assert 'loading="eager"' in sbi and 'class="diversity-rank"' in sbi
     assert 'class="inverse-process-diagram"' in sbi and 'id="inverse-example"' in sbi
