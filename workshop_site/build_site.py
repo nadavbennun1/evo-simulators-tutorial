@@ -40,6 +40,54 @@ NOTEBOOKS = {
     "sbi": ROOT / "SBI_tutorial.ipynb",
 }
 SEED = 20260825
+PUBLIC_URL = "https://nadavbennun1.github.io/evo-simulators-tutorial/"
+
+PAPERS = {
+    "avecilla": ("Avecilla et al. (2022)", "https://doi.org/10.1371/journal.pbio.3001633"),
+    "chuong": ("Chuong et al. (2025)", "https://doi.org/10.7554/eLife.98934"),
+    "de": ("De et al. (2025)", "https://doi.org/10.1101/2025.07.21.665951"),
+    "collective": ("Ben Nun et al. (2026)", "https://doi.org/10.1371/journal.pcbi.1014534"),
+    "sbi": ("Tejero-Cantero et al. (2020)", "https://doi.org/10.21105/joss.02505"),
+}
+
+EVOLUTION_SIMULATOR_CELLS = {"efcdf8fa", "6cfee4f5", "2539f7c5", "5f9d90ff"}
+EVOLUTION_OUTPUT_ONLY = {
+    "21748f7d", "b09b721a", "54e9f8de", "da8788a6", "6355cf57", "7b0a27f1",
+    "d29cac1e", "f8f106e5", "104a1da1", "97c3a42c", "66cce2fa", "8db7a696",
+    "35d77585", "65a843c6", "7fd6e35c", "2e99f96f", "40f8e547",
+}
+SBI_VISIBLE_CODE = {"67d19e3c", "88e4194b", "90cc8760"}
+SBI_OUTPUT_ONLY = {"cdda66b7", "0ba5658f", "da54003d", "098a16bd"}
+
+OUTPUT_CAPTIONS = {
+    "21748f7d": ("GAP1 CNV frequency across chemostat populations", "Replicate GAP1 CNV trajectories from the Avecilla study"),
+    "b09b721a": ("The Avecilla model connects mutation, selection, drift, and continuous culture", "Avecilla evolutionary-model diagram"),
+    "54e9f8de": ("A compact three-genotype simulator reproduces the main sweep dynamics", "Avecilla model fit"),
+    "da8788a6": ("A distribution of effects creates many competing CNV lineages", "DFE trajectory comparison"),
+    "6355cf57": ("Sliding windows ask whether one constant selection coefficient is enough", "Windowed selection diagnostic"),
+    "7b0a27f1": ("Selection enriches the upper tail of the DFE as the sweep progresses", "DFE and fitted selection through time"),
+    "d29cac1e": ("Continuous chemostat dynamics and discrete Wright–Fisher dynamics can tell the same frequency story", "Chemostat ODE and Wright-Fisher comparison"),
+    "f8f106e5": ("LTRΔ populations begin with an early plateau before the CNV sweep", "Chuong experimental trajectories"),
+    "104a1da1": ("The three-state Avecilla model misses the early LTRΔ structure", "Avecilla model applied to Chuong data"),
+    "97c3a42c": ("A pre-existing CNV pool supplies the missing biological state", "Chuong four-genotype model diagram"),
+    "66cce2fa": ("The four-genotype model captures the observed batch-culture trajectories", "Chuong model fit"),
+    "8db7a696": ("CNV reporters reveal whether amplification persists after selection is removed", "De et al. reporter trajectories"),
+    "35d77585": ("The reversion model follows movement from CNV to single copy", "De et al. two-genotype model diagram"),
+    "65a843c6": ("Different reporter loci can imply different reversion dynamics", "De et al. model fit"),
+    "7fd6e35c": ("Chromosome loss can resolve through euploid recovery or LOH", "Zhou three-state model diagram"),
+    "2e99f96f": ("Three measured states constrain two loss routes and their fitnesses", "Zhou model fit"),
+    "40f8e547": ("Four experiments, one recurring grammar: state, transition, fitness, drift", "Comparison of evolutionary trajectories"),
+    "cdda66b7": ("The same parameters produce a family of stochastic observations", "Repeated Wright-Fisher simulations"),
+    "0ba5658f": ("A synthetic observation gives us a known answer for checking ABC", "Synthetic trajectory for ABC"),
+    "da54003d": ("Accepted simulations turn a distance threshold into parameter uncertainty", "ABC posterior result"),
+    "098a16bd": ("NPE returns a joint posterior after one conditioning step", "Neural posterior estimate"),
+}
+
+OUTPUT_STORIES = {
+    "da8788a6": "A single mutation rate can feed many CNV classes. Their effects are drawn once from the DFE; selection then changes which classes remain visible.",
+    "6355cf57": "Now fit a constant-s model to short windows. If the biological effect really is constant, the local estimate should stay flat.",
+    "7b0a27f1": "Under a DFE, weak lineages disappear and strong lineages dominate. The rising local estimate is therefore a population-level signature of sorting within the DFE.",
+}
 
 
 def sha256(path: Path) -> str:
@@ -95,7 +143,7 @@ class _MathMatch:
         return self.body
 
 
-def output_html(output: dict, stem: str, output_index: int) -> str:
+def output_html(output: dict, stem: str, output_index: int, figures_only: bool = False) -> str:
     # This notebook cell records a missing-optional-dependency failure rather than
     # a scientific result. Keep its reproducible source, but do not publish the
     # stale "Error loading sheet" / cascading NoneType output as lesson content.
@@ -117,7 +165,10 @@ def output_html(output: dict, stem: str, output_index: int) -> str:
                 raw = "".join(raw)
             (NOTEBOOK_ASSETS / name).write_bytes(base64.b64decode(raw))
             source = versioned_asset(f"assets/notebook/{name}")
-            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="Stored notebook figure from cell {stem}"><figcaption>Stored notebook output · cell {stem}</figcaption></figure>')
+            caption, alt = OUTPUT_CAPTIONS.get(stem, ("Scientific notebook result", f"Scientific result from notebook cell {stem}"))
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="{html.escape(alt)}"><figcaption>{html.escape(caption)}</figcaption></figure>')
+    if figures_only:
+        return "".join(pieces)
     text = output.get("text")
     if text:
         text = "".join(text) if isinstance(text, list) else str(text)
@@ -135,6 +186,336 @@ def output_html(output: dict, stem: str, output_index: int) -> str:
     return "".join(pieces)
 
 
+def paper(key: str) -> str:
+    label, url = PAPERS[key]
+    return f"[{label}]({url})"
+
+
+def paper_html(key: str) -> str:
+    """Return the same compact citation for use inside raw HTML blocks."""
+    label, url = PAPERS[key]
+    return f'<a href="{html.escape(url)}">{html.escape(label)}</a>'
+
+
+def curated_markdown(key: str, cid: str, source: str) -> str | None:
+    """Replace notebook prose with a presentation-first scientific narrative."""
+    if cid in {"9bb0927d", "46c3d4e4", "4f69d96e"}:
+        return None
+    replacements = {
+        "cd6f3ea8": fr'''## A CNV race inside a chemostat
+
+In the glutamine-limited populations of {paper("avecilla")}, *GAP1* copy-number
+variants repeatedly rise from rarity. That movie contains three evolutionary forces:
+new variants **appear**, fitter lineages **expand**, and finite populations **sample**
+their next generation.
+
+Nine replicate trajectories let us ask a mechanistic question: can one compact simulator
+turn formation rate, fitness advantage, and population size into the observed sweep?''',
+        "3282b174": r'''## The Avecilla simulator: three forces, three genotypes
+
+An ancestral cell can form a *GAP1* CNV at rate $\delta_C$ or another beneficial mutation
+at rate $\delta_B$. Relative fitnesses are $1$, $1+s_C$, and $1+s_B$.
+
+$$x_C^\dagger=x_C+\delta_Cx_A,\qquad x_B^\dagger=x_B+\delta_Bx_A$$
+$$x_i^*=\frac{w_i x_i^\dagger}{\sum_j w_jx_j^\dagger},\qquad
+n_{t+1}\sim\mathrm{Multinomial}(N_e,x^*)$$
+
+The matrix update supplies the expected next-generation frequencies; the multinomial draw
+is the biological gamble that turns one expectation into many possible histories.''',
+        "629428f4": r'''## A sweep can contain a distribution of fitness effects
+
+A **distribution of fitness effects (DFE)** assigns a selection coefficient $s$ to each new
+mutation. Its mean describes a typical new variant, while its shape controls how often rare,
+large-effect mutations occur.
+
+For CNVs this matters because breakpoint, copy number, and amplicon size differ among lineages.
+If new CNVs draw $s_k$ from a gamma DFE, their contribution is reweighted by selection:
+
+$$\Pr(k\mid\mathrm{CNV\ at\ }t)\propto \Pr(k\mid\mathrm{new\ CNV})\,(1+s_k)^t$$
+
+The DFE itself stays fixed, but the CNV-bearing population becomes enriched for its upper tail.
+That creates a testable prediction: a constant-$s$ fit applied to successive windows should
+rise through time for DFE-generated data, but remain flat for truly constant-$s$ data.''',
+        "f37292e6": r'''The full trajectory alone cannot reliably separate one large constant effect from a DFE
+with a lower mean and a compensating upper tail. Windowed fits add a temporal diagnostic.
+
+Constant-$s$ simulations recover a flat $\hat{s}$. DFE simulations instead produce a rising
+$\hat{s}$ as selection enriches high-effect CNV lineages. The Lauer trajectories also rise,
+but this is evidence against a single constant effect—not proof of a DFE. Detection limits,
+clonal interference, and an incorrectly fixed $\delta_C$ can create related patterns.
+
+For inference, fit DFE parameters directly or use the windowed-$\hat{s}$ trend as a posterior
+predictive diagnostic of the simpler model.''',
+        "6ec896e6": r'''## Continuous culture changes the clock, not the evolutionary cast
+
+A chemostat has overlapping generations and nutrient-limited growth. The corresponding ODE
+tracks ancestral, CNV, and other-beneficial cells together with substrate $S$:
+
+$$\frac{dX_i}{dt}=X_i\bigl(\mu_i(S)-D\bigr)+\text{mutation flow},\qquad
+\mu_i(S)=r_i\frac{S}{S+k}$$
+$$\frac{dS}{dt}=D(S_0-S)-\frac{1}{Y}\sum_iX_i\mu_i(S)$$
+
+The ODE explains the reactor biology explicitly. The Wright–Fisher approximation keeps the
+same evolutionary competition on a generation clock and is far cheaper to simulate.''',
+        "4ff32a3e": r'''### Connecting hours to generations
+
+The two descriptions share interpretable parameters:
+
+| Chemostat quantity | Wright–Fisher quantity | Conversion |
+|---|---|---|
+| growth-rate difference | selection coefficient | $s_C=(r_C-r_A)/(r_A\ln2)$ |
+| hourly formation rate | per-generation formation rate | $\delta_C^{gen}=\delta_C^{hr}\ln2/D$ |
+| time in hours | generations | $g=tD/\ln2$ |
+
+For frequency-only inference, the discrete simulator is usually sufficient. The ODE remains
+valuable when nutrient concentration and reactor transients are themselves part of the question.''',
+        "4cd32c54": fr'''## The batch-culture data demand one more hidden state
+
+In {paper("chuong")}, seven LTRΔ populations were observed at 12 generations through 116.
+Their early plateau cannot emerge from a model that starts with no CNV-bearing cells. The model
+therefore separates newly formed CNV⁺ cells from a small, pre-existing CNV⁻ pool.''',
+        "f9cb77d4": r'''### Why the simpler state space fails
+
+The mismatch is biological, not merely cosmetic: batch culture changes the drift scale, and
+the earliest observation already contains information about cells present before the measured
+sweep. Adding the CNV⁻ state lets initial frequency $\varphi$ explain that early mass while
+$\delta$ controls de novo formation and $s$ controls the later rise.''',
+        "5de3ea7b": r'''## The Chuong simulator: formation, standing variation, and competition
+
+The population has WT, newly formed CNV⁺, pre-existing CNV⁻, and an SNV competitor. The first
+three inferred parameters are $\theta=(\log_{10}s,\log_{10}\delta,\log_{10}\varphi)$.
+
+$$M=\begin{pmatrix}1-\delta-\mu_{SNV}&0&0&0\\
+\delta&1&0&0\\0&0&1&0\\\mu_{SNV}&0&0&1\end{pmatrix},\qquad
+n_{t+1}\sim\mathrm{Multinomial}\!\left(N_e,\frac{M\,\mathrm{diag}(w)p_t}{|M\,\mathrm{diag}(w)p_t|}\right)$$
+
+The extra state changes what the early trajectory means, while the same mutation–selection–drift
+grammar still drives the simulator.''',
+        "2973e9a8": fr'''## Reverse the arrow: when does an amplification disappear?
+
+{paper("de")} moved CNV strains from the environment that selected the amplification into rich
+medium and followed fluorescent reporters through 1:64 serial transfers. Here the CNV begins
+common; fitter single-copy revertants may arise and replace it.''',
+        "3d886968": r'''## The De simulator: a two-state reversion model
+
+The transition direction is now CNV $\rightarrow$ non-CNV at rate $\delta$. If revertants have
+fitness $1+s$, their frequency can rise through formation and selection together:
+
+$$M=\begin{pmatrix}1-\delta&0\\\delta&1\end{pmatrix},\qquad
+E=M\,\mathrm{diag}(1,1+s)$$
+
+Because both parameters accelerate loss of the CNV, trajectory shape and repeated measurements
+are essential for separating reversion rate from fitness advantage.''',
+        "1466cfd7": r'''## Two routes out of aneuploidy
+
+The Zhou model follows trisomic cells as they resolve either to wild type or to loss of
+heterozygosity (LOH). The observation is now a three-part composition, so every passage reports
+which route gained population share.''',
+        "b4a01787": r'''## The Zhou simulator: competing chromosome-loss routes
+
+Trisomic cells move to WT at rate $\mu_{WT}$ or LOH at rate $\mu_{LOH}$; the three states then
+compete with relative fitnesses $(w_{Tri},1,w_{LOH})$.
+
+$$M=\begin{pmatrix}1-\mu_{WT}-\mu_{LOH}&0&0\\\mu_{WT}&1&0\\\mu_{LOH}&0&1\end{pmatrix},
+\qquad G=\mathrm{diag}(w_{Tri},1,w_{LOH})M$$
+
+This is the same executable grammar with a different state space: define allowed transitions,
+apply fitness, sample drift, and observe the passages the experiment actually measured.''',
+        "49b50682": r'''## Summary
+
+| | Avecilla WF | Avecilla ODE | Chuong WF | De WF | Zhou WF |
+|---|---|---|---|---|---|
+| **Genotypes** | 3 | 3 | 4 | 2 | 3 |
+| **Time axis** | generations | hours | generations | generations | passages |
+| **Population model** | fixed $N_e$ | continuous reactor | fixed $N_e$ | serial-dilution $N_e$ | fixed $N_e$ |
+| **Transitions** | ancestor → CNV/beneficial | continuous mutation flow | WT → CNV⁺ | CNV → single copy | Tri → WT/LOH |
+
+> **Take home:** choose states and transitions from the biology, choose $N_e$ from the experimental
+> life cycle, and keep observation noise separate from evolutionary drift.
+
+<details class="appendix-note"><summary>Appendix: why the quick fits use perturbed parameters</summary>
+The displayed fits draw replicate parameters around a central value to illustrate between-replicate
+variation, while multinomial sampling produces within-replicate drift. These are fast visual
+justifications of each simulator—not the inference target of this lesson. Chapter 2 develops the
+systematic inference workflow.
+</details>''',
+        "fa1ab176": fr'''## Trajectories are answers; what was the question?
+
+The *GAP1* frequencies from {paper("chuong")} are snapshots of a hidden process. We want the
+selection coefficient $s$, formation rate $\delta$, and initial CNV fraction $\varphi$, but many
+parameter combinations can draw similar curves.
+
+$$p(\theta\mid x_{{obs}})\propto p(x_{{obs}}\mid\theta)p(\theta)$$
+
+The simulator can generate $x$ for any $\theta$, yet its likelihood is not available in closed
+form. SBI turns that apparent dead end into a workflow: simulate possible worlds, retain or learn
+the parameter patterns that produce observations like ours, then challenge the result with new
+simulations.''',
+        "f992e16d": r'''## ABC: audition many possible worlds
+
+Approximate Bayesian computation draws $\theta$ from the prior, simulates a trajectory, and asks
+how far it lies from the observation:
+
+$$\theta\ \text{is accepted when}\ d(x_{sim},x_{obs})\leq\varepsilon_{ABC}$$
+
+The threshold $\varepsilon_{ABC}$ is a tolerance in **data space**. Smaller values make accepted
+simulations more observation-like but demand a larger simulation budget. The progressive station
+shows that trade-off rather than hiding it behind one final posterior.''',
+        "8d7d8c01": r'''## NPE: teach a network to return a posterior
+
+Neural posterior estimation first creates simulated pairs
+$(\theta_i,x_i)\sim p(\theta)p(x\mid\theta)$. A conditional density estimator learns
+$q_\phi(\theta\mid x)$ by minimizing
+
+$$\mathcal L(\phi)=-\mathbb E_{p(\theta,x)}[\log q_\phi(\theta\mid x)].$$
+
+Training is expensive once; conditioning and sampling are fast for every supported observation
+afterward. The next code sections retain only the scientifically meaningful operations: training
+the density estimator and sampling parameter draws after conditioning on $x_{obs}$.''',
+        "zhou-flex-intro": r'''## One trained NPE can accept different passage schedules
+
+The observation schedule is part of the data. A design-conditioned estimator learns
+
+$$q_\phi(\theta\mid y_{observed},m,d,p_0),$$
+
+where $m$ marks measured passages, $d$ records measurement depth, and $p_0$ supplies the initial
+three-state composition. Missing is therefore different from a measured frequency of zero.''',
+        "zhou-flex-contract": r'''### Flexibility has a contract
+
+Training exposes the estimator to supported masks while keeping all views of one biological
+trajectory in the same data split. It can then reuse one learned posterior across subsets of
+passages 0–12 without retraining. It does not promise extrapolation to a new assay or passages
+outside that horizon. Passage 0 remains required because it defines the experiment's starting state.''',
+        "zhou-flex-takeaway": r'''### What changes when the schedule changes?
+
+Odd and even passages expose different stochastic snapshots, so their posteriors need not be
+identical. Agreement means the conclusion is stable for this example; disagreement identifies
+where another measurement could be valuable. Flexibility preserves the information the experiment
+collected—it does not manufacture information that was never observed.''',
+        "928bf2bf": fr'''## Replicates should agree without letting one dominate
+
+Each independent replicate gives an individual posterior $p_i(\theta\mid x_i)$. Multiplying them
+directly counts the shared prior $r$ times. The standard collective removes those extra copies:
+
+$$p(\theta\mid x_1,\ldots,x_r)\propto
+\frac{{\prod_{{i=1}}^r p_i(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}.$$
+
+<figure class="paper-figure paper-figure-wide">
+  <img loading="lazy" src="{versioned_asset('assets/chapter/collective-figure-1.png')}" alt="Five-stage collective posterior workflow from empirical trajectories through individual and robust collective posteriors to posterior predictive checks">
+  <figcaption>From replicate trajectories to individual posteriors, a robust collective posterior, and predictive checks. {paper_html("collective")} · Fig. 1, CC BY 4.0.</figcaption>
+</figure>
+
+### What ε protects
+
+An outlying replicate can assign vanishing density to the region supported by all others. In a
+product, that one near-zero factor can overwhelm the consensus. The robust method replaces each
+individual density with a floor,
+
+$$p_\epsilon(\theta\mid x_i)=\max\!\left[p_i(\theta\mid x_i),\epsilon\right],$$
+$$p_\epsilon(\theta\mid x_1,\ldots,x_r)\propto
+\frac{{\prod_i p_\epsilon(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}.$$
+
+This ε is a **minimum posterior density**, not the ABC distance tolerance. As $\epsilon\to0$ the
+robust result approaches the standard collective. Raising ε limits how strongly unsupported tails
+can veto the overlap among replicates; raising it too far discards real information. The workshop
+estimates ε for the selected replicate set on a deterministic prior grid and exposes fixed values
+for sensitivity analysis.
+
+<figure class="paper-figure">
+  <img loading="lazy" src="{versioned_asset('assets/chapter/collective-figure-4.png')}" alt="Individual and collective posteriors and predictive trajectories with weak versus stronger epsilon flooring">
+  <figcaption>A near-zero floor lets an outlier pull the collective away from the replicate consensus; a stronger floor restores posterior and predictive agreement. {paper_html("collective")} · Fig. 4, CC BY 4.0.</figcaption>
+</figure>''',
+        "d74c479a": None,
+        "3fce18ac": fr'''## Summary
+
+| Method | Core move | Best role |
+|---|---|---|
+| **ABC** | retain simulations close to the observation | transparent baseline and prototyping |
+| **NPE** | learn $q_\phi(\theta\mid x)$ from simulations | repeated, fast posterior inference |
+| **Flexible NPE** | condition on observations and their design mask | supported passage schedules without retraining |
+| **Collective posterior** | combine replicate posteriors with prior correction and ε flooring | shared parameters with outlier resistance |
+
+> **Take home:** inference is not finished when a posterior appears. Check simulation coverage,
+> prior support, replicate sensitivity, and posterior predictions before making a biological claim.
+
+### Short references
+
+- {paper("sbi")} — the `sbi` software toolkit
+- {paper("chuong")} — the experimental-evolution case study
+- {paper("collective")} — collective and robust replicate inference
+- {paper("avecilla")} — SBI for chemostat adaptation dynamics
+- {paper("de")} — CNV stability under serial dilution
+
+*Contact: Nadav Ben Nun · nadavbennun1@mail.tau.ac.il*''',
+    }
+    return replacements.get(cid, source)
+
+
+def mechanism_code(stem: str, source: str, cell_index: int) -> str:
+    titles = {
+        "efcdf8fa": "Avecilla · three competing genotypes",
+        "6cfee4f5": "Chuong · standing variation plus new CNVs",
+        "2539f7c5": "De · CNV reversion",
+        "5f9d90ff": "Zhou · two chromosome-loss routes",
+    }
+    snippets = {
+        "efcdf8fa": [("Parameters become rates", "delta_C = 10 ** log_delta_C\ndelta_B = 10 ** log_delta_B"), ("Selection becomes weights", "w = [1, 1 + s_C, 1 + s_B]"), ("Mutation becomes a matrix", "E = M @ np.diag(w)"), ("Drift becomes a draw", "n = np.random.multinomial(N, p)")],
+        "6cfee4f5": [("Log parameters enter biology", "s, m, p0 = 10 ** np.array([...])"), ("Standing variation sets the start", "n[0] = N * (1 - p0)\nn[2] = N * p0"), ("Mutation and selection compose", "E = M @ np.diag(w)"), ("Drift creates replicate histories", "n = np.random.multinomial(N, p)")],
+        "2539f7c5": [("Reversion points CNV → single copy", "M = [[1-m, 0], [m, 1]]"), ("Fitness favors the revertant", "diag([1.0, 1.0 + s])"), ("Initial rarity is explicit", "n = [N*(1-p0), N*p0]"), ("Drift samples the next generation", "n = np.random.multinomial(N, p)")],
+        "5f9d90ff": [("Two routes leave trisomy", "M[1,0] = mu_tri\nM[2,0] = mu_loh"), ("Each state has its fitness", "S = diag([w_tri, 1, w_loh])"), ("Order is declared", "G = S @ M  # mutate, then select"), ("Passages choose observations", "ret = p[ret_gens]")],
+    }
+    cards = "".join(f'<article><span>{i:02d}</span><h3>{html.escape(label)}</h3><pre><code>{html.escape(code)}</code></pre></article>' for i,(label,code) in enumerate(snippets[stem],1))
+    return f'''<section class="mechanism-code lesson-cell" data-cell-id="{stem}"><p class="section-kicker">The executable mechanism</p><h2>{titles[stem]}</h2><p class="mechanism-intro">Follow one generation from biological assumption to code.</p><div class="force-code-grid">{cards}</div><details class="code-panel full-simulator"><summary>Open the complete simulator <span>Python · cell {cell_index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{html.escape(source)}</code></pre></details></section>'''
+
+
+def chapter_walkthrough(chapter: str) -> str:
+    timing = '<div class="lesson-timing story-timing"><strong>75 minutes</strong><a href="index.html#foundations-primer">15 min visual primer</a><i>+</i><span>60 min chapter</span></div>'
+    if chapter == "evolution":
+        slides = '''
+        <article class="story-slide"><div class="story-copy"><span>01</span><h2>We’re going to make evolution move.</h2><p>Start with cells in a vessel. Give them heritable states. Then let mutation, selection, and chance write the trajectory.</p></div><div class="culture-cartoon" role="img" aria-label="Three laboratory populations with different colored cell mixtures"><i></i><i></i><i></i><div><b></b><b></b><b></b><em></em><em></em><strong></strong></div></div></article>
+        <article class="story-slide"><div class="story-copy"><span>02</span><h2>Three forces share the keyboard.</h2><p>Mutation creates alternatives, selection changes their expected contribution, and drift samples one finite future.</p><div class="story-equation">pₜ → M pₜ → fitness × M pₜ → Multinomial(Nₑ, p*)</div></div><div class="force-cartoon"><div>mutation<small>new colors appear</small></div><b>→</b><div>selection<small>some colors grow</small></div><b>→</b><div>drift<small>chance chooses</small></div></div></article>
+        <article class="story-slide"><div class="story-copy"><span>03</span><h2>The experiment chooses the simulator.</h2><p>A chemostat flows continuously. Serial dilution expands and bottlenecks. Chromosome loss opens competing routes. The state space should follow that biology.</p></div><div class="vessel-cartoon"><div class="chemostat-vessel"><i></i><span>continuous flow</span></div><div class="batch-vessels"><i></i><b>→</b><i></i><b>→</b><i></i><span>grow · dilute · repeat</span></div></div></article>
+        <article class="story-slide story-goal"><div class="story-copy"><span>04</span><h2>By the end, you can interrogate the model.</h2><p>Change a rate, a fitness, or Nₑ; predict what should happen; then see whether the simulated population agrees.</p></div><div class="trajectory-cartoon" aria-hidden="true"><i></i><b></b><em></em><span>frequency</span><small>time</small></div></article>'''
+    else:
+        slides = '''
+        <article class="story-slide"><div class="story-copy"><span>01</span><h2>We have the movie. What caused it?</h2><p>A trajectory is an outcome, not a parameter. SBI runs the evolutionary story backward without pretending the likelihood is tractable.</p></div><div class="trajectory-question" role="img" aria-label="Several evolutionary trajectories leading to a question about parameters"><i></i><i></i><i></i><b>?</b><span>θ</span></div></article>
+        <article class="story-slide"><div class="story-copy"><span>02</span><h2>ABC auditions possible worlds.</h2><p>Draw parameters, simulate, compare. Close worlds stay; distant worlds leave.</p><div class="story-equation">θ ~ prior → xsim ~ simulator → d(xsim, xobs) ≤ εABC</div></div><div class="abc-cartoon"><span>prior</span><i>simulate</i><b>compare</b><em>keep</em></div></article>
+        <article class="story-slide"><div class="story-copy"><span>03</span><h2>NPE learns the audition.</h2><p>A neural density estimator trains on many parameter–trajectory pairs, then returns a posterior for each new observation.</p><div class="story-equation">qφ(θ | x) ≈ p(θ | x)</div></div><div class="network-cartoon" aria-hidden="true"><div><i></i><i></i><i></i></div><b></b><div><i></i><i></i><i></i><i></i></div><b></b><div><i></i><i></i></div></div></article>
+        <article class="story-slide story-goal"><div class="story-copy"><span>04</span><h2>A posterior still has to earn trust.</h2><p>Combine replicate evidence, resist outliers, respect the observation schedule, and simulate posterior predictions back into data space.</p></div><div class="posterior-cartoon" aria-hidden="true"><i></i><i></i><i></i><b></b><em></em></div></article>'''
+    return f'<section class="chapter-walkthrough" aria-label="Chapter walkthrough">{timing}<p class="section-kicker">Four-slide walkthrough</p>{slides}</section>'
+
+
+def effective_population_section() -> str:
+    source = fr'''## Effective population size belongs to the life cycle
+
+$N_e$ is the size of an ideal Wright–Fisher population with the same drift variance as the
+experiment. It is not automatically the largest cell count—or even the census average.
+
+### Chemostat: match the variance of neutral frequency change
+
+{paper("avecilla")} simulated two neutral alleles at chemostat steady state and matched their
+one-generation conditional variance:
+
+$$\mathrm{{Var}}(p'\mid p)=\frac{{p(1-p)}}{{N_e}},\qquad
+\widehat N_e=\frac{{p(1-p)}}{{\frac1t\sum_{{j=1}}^t\mathrm{{Var}}(p'_j\mid p_j)}}.$$
+
+Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the steady-state census.
+
+### Serial dilution: bottlenecks dominate the harmonic mean
+
+{paper("de")} used 1:64 transfers, corresponding to six doublings per cycle. For generation-level
+sizes $N_0,\ldots,N_5$, the appropriate cycle summary is
+
+$$N_e^{{cycle}}=\frac6{{\sum_{{g=0}}^5 1/N_g}}.$$
+
+If $N_g=N_0 2^g$ and $N_0=6.25\times10^5$ cells, the culture reaches $4\times10^7$ cells before
+transfer, yet $N_e^{{cycle}}\approx1.90\times10^6$. The harmonic mean stays close to the bottleneck
+because drift is strongest when the culture is smallest.
+
+<div class="ne-contrast"><span><b>Chemostat</b> infer $N_e$ from neutral variance at steady state</span><i>vs.</i><span><b>Serial dilution</b> harmonically average the changing population sizes</span></div>'''
+    return f'<section class="lesson-cell prose-cell ne-section" id="effective-population-size">{math_to_html(source)}</section>'
+
+
 def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, list[dict]]:
     nb = nbformat.read(NOTEBOOKS[key], as_version=4)
     blocks, coverage = [], []
@@ -147,28 +528,42 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             continue
         anchor = f'cell-{cid}'
         if cell.cell_type == "markdown":
-            body = math_to_html(source)
-            blocks.append(f'<section class="lesson-cell prose-cell" id="{anchor}" data-cell-id="{cid}">{body}</section>')
-            status = "included"
-        else:
-            lang = "python"
-            code = html.escape(source)
-            suppress_outputs = key == "sbi" and cid in {"zhou-flex-data", "zhou-flex-inference"}
-            output = "" if suppress_outputs else "".join(
-                output_html(dict(out), cid, j) for j, out in enumerate(cell.get("outputs", []))
-            )
-            short = len(source.splitlines()) <= 9
-            if short:
-                code_block = f'<div class="code-panel visible-code"><div class="code-toolbar"><span>Python · notebook cell {index}</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></div>'
-                status = "included"
+            curated = curated_markdown(key, cid, source)
+            if curated is None:
+                status, reason = "excluded", "replaced by the visual chapter walkthrough or deliberately removed from the lesson"
             else:
-                code_block = f'<details class="code-panel"><summary>Show the code <span>Python · cell {index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></details>'
-                status = "deliberately_collapsed"
-            blocks.append(f'<section class="lesson-cell code-cell" id="{anchor}" data-cell-id="{cid}">{code_block}{output}</section>')
+                body = math_to_html(curated)
+                blocks.append(f'<section class="lesson-cell prose-cell" id="{anchor}" data-cell-id="{cid}">{body}</section>')
+                status, reason = "included", ""
+        else:
+            if key == "evolution" and cid in EVOLUTION_SIMULATOR_CELLS:
+                blocks.append(mechanism_code(cid, source, index))
+                status, reason = "deliberately_collapsed", "simulator force map is visible and the complete implementation is progressively disclosed"
+            elif key == "sbi" and cid in SBI_VISIBLE_CODE:
+                labels = {"67d19e3c": "The ABC loop", "88e4194b": "Train the neural posterior", "90cc8760": "Condition and sample from NPE"}
+                code = html.escape(source)
+                open_attr = " open" if cid != "88e4194b" else ""
+                blocks.append(f'<section class="purposeful-code lesson-cell" id="{anchor}" data-cell-id="{cid}"><p class="section-kicker">Code worth keeping</p><h2>{labels[cid]}</h2><details class="code-panel"{open_attr}><summary>Python implementation <span>notebook cell {index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></details></section>')
+                status, reason = ("included", "") if open_attr else ("deliberately_collapsed", "training implementation is available on demand")
+            elif (key == "evolution" and cid in EVOLUTION_OUTPUT_ONLY) or (key == "sbi" and cid in SBI_OUTPUT_ONLY):
+                output = "".join(output_html(dict(out), cid, j, figures_only=True) for j, out in enumerate(cell.get("outputs", [])))
+                story = OUTPUT_STORIES.get(cid, "")
+                if story:
+                    blocks.append(f'<section class="figure-story lesson-cell" id="{anchor}" data-cell-id="{cid}"><p>{html.escape(story)}</p>{output}</section>')
+                elif output:
+                    blocks.append(f'<section class="lesson-cell output-only-cell" id="{anchor}" data-cell-id="{cid}">{output}</section>')
+                if story or output:
+                    status, reason = "included", "notebook code hidden; only its scientific figure or scientific interpretation is used in the presentation"
+                else:
+                    status, reason = "excluded", "notebook code hidden; the interactive station replaces this stored implementation"
+            else:
+                status, reason = "excluded", "implementation detail is outside this presentation's learning goals"
         coverage.append({"index": index, "cell_id": cid, "type": cell.cell_type,
-                         "status": status, "reason": "long code is progressively disclosed" if status == "deliberately_collapsed" else ""})
+                         "status": status, "reason": reason})
         for interaction in interactions.get(cid, []):
             blocks.append(station_markup(interaction))
+        if key == "evolution" and cid == "4ff32a3e":
+            blocks.append(effective_population_section())
     return "\n".join(blocks), coverage
 
 
@@ -200,7 +595,7 @@ def station_markup(name: str) -> str:
           <label>Gamma shape <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
           <button type="reset">Reset</button></form>
           <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Gamma-shaped distribution of selection coefficients"></canvas><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <div class="what-changed"><strong>Read the plot.</strong> <span id="dfe-change"></span></div>'''
+        <div class="what-changed"><strong>Evolutionary consequence.</strong> <span id="dfe-change"></span></div>'''
     elif name == "chuong-parameter-challenge":
         body = '''<h2>Infer the hidden Chuong parameters</h2><p class="prediction">A new noisy CNV-frequency observation is generated each round. Guess the three log₁₀ parameters, then score your parameter RMSE.</p>
         <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">
@@ -234,10 +629,10 @@ def station_markup(name: str) -> str:
     elif name == "collective-outlier-lab":
         body = '''<h2>Collective posterior outlier laboratory</h2><p class="prediction">Question: which replicate has the most leverage on the shared estimate?</p>
         <div class="preset-row"><button data-coll-select="all">Select all</button><button data-coll-select="clean">Clean only</button><button data-coll-select="outliers">Outliers only</button><button id="coll-loo">Leave one out</button></div>
-        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Robustness floor <select id="coll-epsilon"><option value="auto:0.80">Estimate from 80th percentile</option><option value="auto:0.90">Estimate from 90th percentile</option><option value="auto:0.95" selected>Estimate from 95th percentile</option><option value="auto:0.99">Estimate from 99th percentile</option><option value="0">Fixed log ε = 0</option><option value="-10">Fixed log ε = −10</option><option value="-100">Fixed log ε = −100</option><option value="-1000">Fixed log ε = −1000</option></select><output id="coll-epsilon-value">Estimating…</output></label><label>R7 displacement from consensus <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
+        <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Robustness floor <select id="coll-epsilon"><option value="auto:0.80">Estimate from 80th percentile</option><option value="auto:0.90">Estimate from 90th percentile</option><option value="auto:0.95" selected>Estimate from 95th percentile</option><option value="auto:0.99">Estimate from 99th percentile</option><option value="0">Fixed log₁₀ ε = 0</option><option value="-10">Fixed log₁₀ ε = −10</option><option value="-100">Fixed log₁₀ ε = −100</option><option value="-1000">Fixed log₁₀ ε = −1000</option></select><output id="coll-epsilon-value">Estimating…</output></label><label>R7 displacement from consensus <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
         <div class="viz"><canvas id="collective-trajectory-canvas" width="760" height="310" aria-label="Selected replicate trajectories"></canvas><canvas id="collective-posterior-canvas" width="760" height="310" aria-label="Individual, standard collective, and robust collective posterior densities"></canvas><p id="collective-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <details class="method-note"><summary>What is evaluated—and what is sampled?</summary><p>The browser evaluates a normalized three-parameter joint posterior grid, applies the ε floor to each full joint density, aggregates, and only then marginalizes to the displayed selection axis. It does not draw posterior samples. To estimate log ε deterministically, a uniform midpoint grid discretizes the prior, each selected replicate posterior is evaluated at every grid point, and the chosen density percentile is used. This is a grid approximation to the published prior-draw heuristic; the published production implementation samples the high-dimensional collective target with Sampling-importance-resampling (SIR).</p></details>
-        <div class="what-changed"><strong>Move R7, then compare.</strong> At 0×, R7 is centered on the shared truth; increasing displacement moves its trajectory and its posterior center in all three parameters. The gold Standard collective should follow R7, while the green Robust collective should resist it. Fixed log ε = −1000 intentionally removes that resistance. Exclusion remains sensitivity analysis, not a data-discarding rule.</div>'''
+        <details class="method-note"><summary>What is evaluated—and what is sampled?</summary><p>The browser evaluates a normalized three-parameter joint posterior grid, applies the ε floor to each full joint density, aggregates, and only then marginalizes to the displayed selection axis. It does not draw posterior samples. To estimate ε deterministically, a uniform midpoint grid discretizes the prior, each selected replicate posterior is evaluated at every grid point, and the chosen density percentile is used. This is a grid approximation to the published prior-draw heuristic; the published production implementation samples the high-dimensional collective target with Sampling-importance-resampling (SIR). Fixed controls report log₁₀ ε, matching the paper; calculations convert these values to natural-log density internally.</p></details>
+        <div class="what-changed"><strong>Move R7, then compare.</strong> At 0×, R7 is centered on the shared truth; increasing displacement moves its trajectory and its posterior center in all three parameters. The gold Standard collective should follow R7, while the green Robust collective should resist it. Fixed log₁₀ ε = −1000 intentionally removes that resistance. Exclusion remains sensitivity analysis, not a data-discarding rule.</div>'''
     elif name == "zhou-schedule-designer":
         body = '''<h2>Design a Zhou passage schedule</h2><p class="prediction">Prediction: which passages constrain rates, and which constrain relative fitness?</p>
         <div class="preset-row"><button data-schedule="odd">Odd passages</button><button data-schedule="even">Even passages</button><button data-schedule="early">Early only</button><button data-schedule="late">Late only</button><button data-schedule="sparse">Sparse</button><button data-schedule="full">Full schedule</button><button data-schedule="zero">Passage 0 only</button></div>
@@ -248,9 +643,9 @@ def station_markup(name: str) -> str:
         <div class="what-changed"><strong>What changed?</strong> <span id="zhou-change"></span> This is an illustrative flexibility demonstration, not a coverage study.</div>'''
     elif name == "guess-parameter":
         body = '''<h2>Run rejection ABC</h2><p class="prediction">Choose a simulation budget and acceptance quantile. ABC keeps the closest simulated trajectories; watch the accepted parameter cloud tighten as ε decreases.</p>
-        <div class="interactive-grid"><form class="controls" id="abc-controls"><label>Acceptance quantile <output id="abc-quantile-label">5%</output><input id="abc-quantile" type="range" min="1" max="25" step="1" value="5"></label><label>Simulation budget <select id="abc-sims"><option>250</option><option selected>1000</option><option>3000</option><option>10000</option></select></label><label>Seed <input id="abc-seed" type="number" min="0" value="20260825"></label><button id="abc-run" type="button">Run ABC progressively</button><button type="reset">Reset</button><label class="progress-label" for="abc-progress">Simulation progress <output id="abc-progress-label">0 / 1000</output></label><progress id="abc-progress" max="1000" value="0"></progress><div id="abc-milestones" class="milestone-row" aria-label="ABC simulation milestones"></div></form><div class="viz"><canvas id="abc-trajectory-canvas" width="760" height="350" aria-label="Observed trajectory and accepted ABC simulations"></canvas><canvas id="guess-canvas" width="760" height="350" aria-label="ABC posterior marginals for selection, mutation, and initial frequency"></canvas><p id="abc-summary" class="plot-summary" aria-live="polite"></p></div></div><div class="what-changed"><strong>Read the run from left to right.</strong> Every milestone reuses the same seeded simulation stream and remains visible for about one second. At each cumulative budget, ABC recomputes ε and redraws the accepted trajectories and posterior, making Monte Carlo stabilization visible rather than jumping directly to the answer.</div>'''
+        <div class="interactive-grid"><form class="controls" id="abc-controls"><label>Acceptance quantile <output id="abc-quantile-label">5%</output><input id="abc-quantile" type="range" min="1" max="25" step="1" value="5"></label><label>Simulation budget <select id="abc-sims"><option>250</option><option selected>1000</option><option>3000</option><option>10000</option></select></label><label>Seed <input id="abc-seed" type="number" min="0" value="20260825"></label><button id="abc-run" type="button">Run ABC progressively</button><button type="reset">Reset</button><label class="progress-label" for="abc-progress">Simulation progress <output id="abc-progress-label">0 / 1000</output></label><progress id="abc-progress" max="1000" value="0"></progress><div id="abc-milestones" class="milestone-row" aria-label="ABC simulation milestones"></div></form><div class="viz"><canvas id="abc-trajectory-canvas" width="760" height="350" aria-label="Observed trajectory and accepted ABC simulations"></canvas><canvas id="guess-canvas" width="760" height="350" aria-label="ABC posterior marginals for selection, mutation, and initial frequency"></canvas><p id="abc-summary" class="plot-summary" aria-live="polite"></p></div></div><div class="what-changed"><strong>Monte Carlo stabilization.</strong> Every milestone reuses the same seeded simulation stream and remains visible for about one second. At each cumulative budget, ABC recomputes ε and redraws the accepted trajectories and posterior rather than jumping directly to the answer.</div>'''
     else:
-        body = '''<h2>PPC mismatch detective</h2><p class="prediction">For each dataset, compare the orange observation with the blue posterior-predictive expectation. Choose the most plausible diagnosis, then check your answer.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> Well specified</label><label><input type="radio" name="diagnosis" value="noise"> Noise mismatch</label><label><input type="radio" name="diagnosis" value="outlier"> Contamination</label><label><input type="radio" name="diagnosis" value="support"> Support issue</label><label><input type="radio" name="diagnosis" value="structure"> Structural mismatch</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observed trajectory and posterior predictive band"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Check my diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary" aria-live="polite"></p><div class="what-changed"><strong>Interpret carefully.</strong> A PPC can show where observation and prediction disagree. It can suggest a failure mode, but the pattern rarely proves one unique cause.</div>'''
+        body = '''<h2>PPC mismatch detective</h2><p class="prediction">The mystery cultures are deliberately shuffled. Compare the orange observation with the blue posterior-predictive expectation and choose the most plausible biological or measurement explanation.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> This culture looks plausible</label><label><input type="radio" name="diagnosis" value="noise"> Measurements are noisier than assumed</label><label><input type="radio" name="diagnosis" value="outlier"> One time point may be contaminated</label><label><input type="radio" name="diagnosis" value="support"> Biology lies outside the training range</label><label><input type="radio" name="diagnosis" value="structure"> The simulator misses a biological process</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observed trajectory and posterior predictive band"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Check my diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary" aria-live="polite"></p><div class="what-changed"><strong>Interpret carefully.</strong> A PPC localizes tension between observation and prediction. It can suggest a failure mode, but the pattern rarely proves one unique cause.</div>'''
     return common_start + body + common_end
 
 
@@ -545,15 +940,16 @@ def page_shell(title: str, eyebrow: str, active: str, content: str, scripts: lis
         f'<script src="{versioned_asset("js/" + name + ".js")}" defer></script>'
         for name in ("science", "core", "plots")
     )
-    chapter_header = "" if active == "home" else f'<header class="chapter-hero"><p class="eyebrow">{eyebrow}</p><h1>{html.escape(title)}</h1><p class="lede">Mechanistic evolution, uncertainty, and experimental design—kept close enough to inspect.</p></header>'
+    chapter_header = "" if active == "home" else f'<header class="chapter-hero"><p class="eyebrow">{eyebrow}</p><h1>{html.escape(title)}</h1></header>'
     return f'''<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>{html.escape(title)}</title><link rel="icon" href="assets/favicon.svg"><link rel="stylesheet" href="{stylesheet}"><noscript><style>.static-fallback{{display:block}}</style></noscript></head><body data-page="{active}"><a class="skip-link" href="#main">Skip to lesson</a><header class="site-header"><a class="wordmark" href="index.html"><span>Δ</span> Drift &amp; Design</a><nav aria-label="Workshop chapters">{nav}</nav><div class="header-actions"><button id="workshop-mode" type="button" aria-pressed="false">Workshop mode</button><button id="reset-all" type="button">Reset all</button></div></header><div class="progress-track" aria-hidden="true"><span id="reading-progress"></span></div><main id="main">{chapter_header}{content}</main><footer><p>Drift &amp; Design · Static workshop edition</p><nav><a href="index.html">Start</a><a href="evolution.html">Evolution</a><a href="sbi.html">SBI</a></nav></footer>{shared_scripts}{script_tags}</body></html>'''
 
 
 def landing_page() -> str:
-    content = '''<section class="landing-hero"><div><span class="method-status"><i></i>Static · reproducible · model-free at runtime</span><h2>Follow a population.<br>Then infer what moved it.</h2><p>Two 75-minute lessons connect evolutionary simulators to simulation-based inference, with nine prediction-first laboratories.</p><div class="button-row"><a class="primary-link" href="evolution.html">Begin chapter 01</a><a class="secondary-link" href="sbi.html">Jump to SBI</a></div></div><div class="hero-orbit" aria-hidden="true"><span></span><span></span><span></span><b>θ</b></div></section>
+    content = '''<section class="landing-hero"><div><h1>Follow a population.<br>Then infer what moved it.</h1><div class="button-row lesson-choice"><a class="primary-link" href="evolution.html">Chapter 01</a><a class="secondary-link" href="sbi.html">Chapter 02</a></div></div><div class="hero-orbit" aria-hidden="true"><span></span><span></span><span></span><b>θ</b></div></section>
     <section class="objectives"><p class="section-kicker">Workshop outcomes</p><h2>What you will be able to do</h2><div class="objective-grid"><article><b>01</b><h3>Read the mechanism</h3><p>Translate mutation, selection, and drift into population-frequency trajectories.</p></article><article><b>02</b><h3>Reason with uncertainty</h3><p>Compare ABC, NPE, collective evidence, and posterior predictive checks.</p></article><article><b>03</b><h3>Design observations</h3><p>See how a passage mask changes what the same experiment can identify.</p></article></div></section>
-    <section class="chapter-cards"><a href="evolution.html"><span>Chapter 01 · 75 min · 15 min foundations + 60 min lesson</span><h2>Evolutionary simulators</h2><p>From population state and fitness to stochastic Wright–Fisher trajectories.</p><strong>Enter the simulator chapter →</strong></a><a href="sbi.html"><span>Chapter 02 · 75 min · 15 min foundations + 60 min lesson</span><h2>Simulation-based inference</h2><p>ABC, NPE, collective evidence, experimental design, and diagnostics.</p><strong>Enter the inference chapter →</strong></a></section>
-    <section class="glossary glossary-notebook" id="foundations-primer"><div class="primer-heading"><div><p class="section-kicker">Pocket glossary · notebook flow</p><h2>15-minute foundations primer</h2><p>Read the four cells in order. Open unfamiliar terms as you go; each chapter will reuse this vocabulary.</p></div><span class="time-badge">≈ 3–4 min per cell</span></div>
+    <section class="chapter-cards" aria-label="Choose a lesson"><a href="evolution.html"><span>Chapter 01</span><h2>Evolutionary simulators</h2><p>From population state and fitness to stochastic Wright–Fisher trajectories.</p><small>75 min · 15 min foundations + 60 min lesson</small><strong>Open lesson</strong></a><a href="sbi.html"><span>Chapter 02</span><h2>Simulation-based inference</h2><p>ABC, NPE, collective evidence, experimental design, and diagnostics.</p><small>75 min · 15 min foundations + 60 min lesson</small><strong>Open lesson</strong></a></section>
+    <section class="phone-entry"><div><p class="section-kicker">Bring the workshop to your bench</p><h2>Open this page on your phone</h2><p>Scan once, then use the interactive stations during the workshop.</p><code>nadavbennun1.github.io/evo-simulators-tutorial</code></div><a href="https://nadavbennun1.github.io/evo-simulators-tutorial/" aria-label="Open the workshop landing page"><img src="assets/workshop-qr.svg" alt="QR code for this workshop landing page" width="220" height="220"></a></section>
+    <section class="glossary glossary-notebook" id="foundations-primer"><div class="primer-heading"><div><p class="section-kicker">Pocket glossary · visual walkthrough</p><h2>15-minute foundations primer</h2><p>Move through four illustrated slides. Open a term only when you need it.</p></div><span class="time-badge">≈ 3–4 min per slide</span></div><div class="primer-deck">
       <article class="primer-cell"><header><span>Cell 01</span><div><h3>Describe an evolving population</h3><p>Begin with who is present, how reproduction differs, and where randomness enters.</p></div></header>
         <div class="primer-illustration population-sketch" role="img" aria-label="A population of three genotypes changing from mostly ancestral to a mixture over generations"><div class="dot-row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b></b></div><span>mutation + selection + drift →</span><div class="dot-row late"><i></i><i></i><b></b><b></b><em></em><em></em><b></b><em></em></div></div>
         <div class="term-grid"><details open><summary>Genotype and allele frequency</summary><p>A genotype is a heritable state. Its frequency is its fraction of the population; all mutually exclusive state frequencies sum to one.</p></details><details><summary>Fitness and selection coefficient</summary><p>Fitness is expected reproductive success. Relative fitness compares types; a selection coefficient <em>s</em> records the advantage or cost relative to a reference.</p></details><details><summary>Mutation or formation rate</summary><p>The per-generation probability of moving from one heritable state to another, such as forming or losing a copy-number variant.</p></details><details><summary>Genetic drift</summary><p>Random frequency change caused by sampling a finite number of parents or offspring. Drift is strongest when populations are small.</p></details><details><summary>Effective population size</summary><p><em>N</em><sub>e</sub> is the idealized population size that produces the observed amount of drift; it can be much smaller than the census count.</p></details><details><summary>Wright–Fisher model</summary><p>A generation-based model: select parental contributions by fitness, apply mutation, then sample a finite new generation. Repeated sampling creates stochastic trajectories.</p></details></div>
@@ -570,7 +966,7 @@ def landing_page() -> str:
         <div class="primer-flow sbi-flow" role="img" aria-label="Prior simulations are compared with an observation to produce a posterior and posterior predictive check"><span><b>Prior draws</b><small>θ₁, …, θₙ</small></span><i>→</i><span><b>Simulations</b><small>x₁, …, xₙ</small></span><i>→</i><span><b>ABC / NPE</b><small>condition on x<sub>obs</sub></small></span><i>→</i><span><b>Posterior + PPC</b><small>infer, simulate, diagnose</small></span></div>
         <div class="term-grid"><details open><summary>ABC and ε</summary><p>Approximate Bayesian computation accepts simulations close to the observation. ε is the distance threshold: smaller is more selective but needs more simulations.</p></details><details><summary>NPE and amortization</summary><p>Neural posterior estimation trains a conditional density q(θ|x). Amortization pays the simulation/training cost once, enabling fast inference for many new x.</p></details><details><summary>Calibration</summary><p>Across repeated simulated datasets, posterior probabilities should have their advertised long-run coverage. Calibration is different from fitting one observation well.</p></details><details><summary>PPC</summary><p>A posterior predictive check compares observed data with posterior simulations. It detects tension but rarely identifies one unique cause.</p></details><details><summary>Collective posterior</summary><p>A shared-parameter posterior combining independent replicates while removing duplicated prior factors. A robust version floors very small individual posterior densities.</p></details><details><summary>SIR and ESS</summary><p>Sampling-importance-resampling weights proposal draws and resamples them. Effective sample size (ESS) summarizes weight concentration; low ESS warns that few draws dominate.</p></details></div>
       </article>
-      <div class="primer-check"><strong>Ready check.</strong> Can you narrate θ → simulator → noisy trajectory → posterior → PPC, and say where drift, ε, and the prior enter? If yes, continue to a chapter.</div>
+      </div><div class="primer-check"><strong>Ready check.</strong> Can you narrate θ → simulator → noisy trajectory → posterior → PPC, and say where drift, ε, and the prior enter? If yes, continue to a chapter.</div>
     </section>'''
     return page_shell("Evolution × inference", "An interactive scientific workshop", "home", content, [])
 
@@ -602,10 +998,10 @@ def build_content() -> None:
     sbi,cov=render_notebook("sbi",interactions["SBI_tutorial.ipynb"]); all_coverage["SBI_tutorial.ipynb"]=cov
     write_json(SITE/"content_map.json",all_coverage)
     (SITE/"index.html").write_text(landing_page())
-    evo_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">← Workshop home</a><a href="sbi.html">Next: simulation-based inference →</a></nav>'
-    sbi_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">← Evolutionary simulators</a><a href="index.html">Workshop home →</a></nav>'
-    (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01 · Models before methods","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+implementation_notebook("evolution")+evo+evo_nav+'</article></div>',["evolution"]))
-    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02 · Learning from simulations","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+implementation_notebook("sbi")+sbi+sbi_nav+'</article></div>',["sbi"]))
+    evo_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">Workshop home</a><a href="sbi.html">Next: simulation-based inference</a></nav>'
+    sbi_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">Evolutionary simulators</a><a href="index.html">Workshop home</a></nav>'
+    (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+chapter_walkthrough("evolution")+evo+evo_nav+'</article></div>',["evolution"]))
+    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+chapter_walkthrough("sbi")+sbi+sbi_nav+'</article></div>',["sbi"]))
 
 
 def provenance() -> None:

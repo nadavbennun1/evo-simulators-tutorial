@@ -270,8 +270,43 @@ def test_foundations_primer_and_lesson_timing():
     for term in ("Effective population size", "Identifiability", "Likelihood", "ABC", "Collective posterior", "ESS"):
         assert term in home
     assert home.count("75 min · 15 min foundations + 60 min lesson") == 2
-    assert "Implementation notebook" in (SITE / "evolution.html").read_text()
-    assert "Implementation notebook" in (SITE / "sbi.html").read_text()
+    for page in (SITE / "evolution.html", SITE / "sbi.html"):
+        chapter = page.read_text()
+        assert 'class="chapter-walkthrough"' in chapter
+        assert chapter.count('class="story-slide') == 4
+        assert "15 min visual primer" in chapter and "60 min chapter" in chapter
+
+
+def test_presentation_revision_contract():
+    home = (SITE / "index.html").read_text()
+    evolution = (SITE / "evolution.html").read_text()
+    sbi = (SITE / "sbi.html").read_text()
+    script = (SITE / "js/sbi.js").read_text()
+
+    assert '<a class="primary-link" href="evolution.html">Chapter 01</a>' in home
+    assert '<a class="secondary-link" href="sbi.html">Chapter 02</a>' in home
+    assert "Open lesson →" not in home
+    assert 'src="assets/workshop-qr.svg"' in home
+    assert "https://nadavbennun1.github.io/evo-simulators-tutorial/" in home
+    assert "Running on Google Colab" not in evolution
+    assert len(re.findall(r'<code class="language-python">', evolution)) == 4
+    assert len(re.findall(r'<code class="language-python">', sbi)) == 3
+    assert evolution.count('class="force-code-grid"') == 4
+    assert "Effective population size belongs to the life cycle" in evolution
+    assert "Serial dilution: bottlenecks dominate the harmonic mean" in evolution
+    assert "WF = ODE?" not in evolution and "Infer mutation rate via SBI?" not in evolution
+    assert "Appendix: why the quick fits use perturbed parameters" in evolution
+    assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi
+    assert "collective-figure-1.png" in sbi and "collective-figure-4.png" in sbi
+    assert "Fig. 1, CC BY 4.0" in sbi and "Fig. 4, CC BY 4.0" in sbi
+    assert "log₁₀ ε" in sbi and "Math.LN10" in script
+    assert "const caseOrder = [3, 0, 4, 2, 1]" in script
+    for doi in (
+        "10.1371/journal.pbio.3001633", "10.7554/eLife.98934",
+        "10.1101/2025.07.21.665951", "10.1371/journal.pcbi.1014534",
+        "10.21105/joss.02505",
+    ):
+        assert doi in evolution + sbi
 
 
 def test_javascript_syntax():

@@ -116,7 +116,9 @@
       const rawIndividualLogs = ids.map(i => data.grid.map((_, j) => adjustedLogPosterior(i, j, strength)));
       const estimated = epsilonSetting.startsWith("auto:");
       const epsilonQuantile = estimated ? +epsilonSetting.split(":")[1] : null;
-      const logEpsilon = estimated ? S.estimateCollectiveLogEpsilon(data, ids, strength, epsilonQuantile) : +epsilonSetting;
+      // Posterior calculations use natural logs internally. Fixed controls follow
+      // the paper's log10(epsilon) convention, so convert them before flooring.
+      const logEpsilon = estimated ? S.estimateCollectiveLogEpsilon(data, ids, strength, epsilonQuantile) : +epsilonSetting * Math.LN10;
       const result = S.collectiveJointSelectionMarginals(data, ids, strength, logEpsilon);
       const standardDensity = density(result.standard), robustDensity = density(result.robust), individuals = rawIndividualLogs.map(density);
       const maxDensity = Math.max(...standardDensity, ...robustDensity, ...individuals.flat()) * 1.08;
@@ -132,7 +134,8 @@
       };
       const standardSummary=summarize(standardDensity),robustSummary=summarize(robustDensity);
       const calibrationCount=ids.length*data.epsilon_calibration.grid_points_per_axis**3;
-      $("#coll-epsilon-value").textContent = (estimated ? "Estimated " + (epsilonQuantile*100).toFixed(0) + "th percentile: " : "Using ") + "log ε = " + logEpsilon.toFixed(3);
+      const log10Epsilon = logEpsilon / Math.LN10;
+      $("#coll-epsilon-value").textContent = (estimated ? "Estimated " + (epsilonQuantile*100).toFixed(0) + "th percentile: " : "Using ") + "log₁₀ ε = " + log10Epsilon.toFixed(3);
       const shiftedMean=S.effectivePosteriorMean(data,data.contaminated_index,strength);
       $("#collective-summary").textContent = "R7 center (" + shiftedMean.map(value=>value.toFixed(2)).join(", ") + "). " + (estimated ? "Set-specific ε from " + calibrationCount.toLocaleString() + " deterministic prior-grid evaluations. " : "Fixed floor. ") + "Standard mean " + standardSummary.mean.toFixed(3) + "; robust mean " + robustSummary.mean.toFixed(3) + " with 90% interval [" + robustSummary.lo.toFixed(3) + ", " + robustSummary.hi.toFixed(3) + "]; truth " + data.truth + ".";
       drawTrajectories(ids, strength);
@@ -286,15 +289,16 @@
     }
 
     if (ppc) {
-      let index = 0, result = "";
+      const caseOrder = [3, 0, 4, 2, 1];
+      let index = caseOrder[0], result = "";
       const row = $("#ppc-cases");
-      data.ppc_cases.forEach((_, i) => row.insertAdjacentHTML("beforeend", `<button type="button" data-case="${i}">${i + 1}. Dataset ${String.fromCharCode(65 + i)}</button>`));
+      caseOrder.forEach((caseIndex, position) => row.insertAdjacentHTML("beforeend", `<button type="button" data-case="${caseIndex}">Mystery culture ${position + 1}</button>`));
       function drawPpc() {
         const item = data.ppc_cases[index], f = P.frame(ppc, 0, 1.05, 8, 116);
         P.band(f, data.generations, item.q05, item.q95, P.C.blue, .18); P.line(f, data.generations, item.median, P.C.blue, 2);
         P.line(f, data.generations, item.observation, P.C.orange, 1.8); P.points(f, data.generations, item.observation, P.C.orange, 4);
         P.legend(f, [{label: "90% PPC + median", color: P.C.blue}, {label: "observed data", color: P.C.orange}]);
-        $("#ppc-summary").textContent = result || `Dataset ${String.fromCharCode(65 + index)}: choose the mismatch pattern that best explains where the orange observation departs from the blue predictive band.`;
+        $("#ppc-summary").textContent = result || `Mystery culture ${caseOrder.indexOf(index) + 1}: choose the biological or measurement explanation that best matches where the orange observation departs from the blue predictive band.`;
       }
       $$('[data-case]', row).forEach(button => button.addEventListener("click", () => { index = +button.dataset.case; result = ""; $$('input[name="diagnosis"]').forEach(input => { input.checked = false; }); drawPpc(); }));
       $("#ppc-reveal").addEventListener("click", () => {
@@ -302,7 +306,7 @@
         if (!choice) { result = "Choose one diagnosis first, then check your answer."; drawPpc(); return; }
         result = `${choice.value === item.kind ? "Correct." : "Not quite."} Known generating case: ${item.title}. ${item.reason} The PPC pattern flags tension, but does not by itself prove that cause.`; drawPpc();
       });
-      $("#ppc-reset").addEventListener("click", () => { index = 0; result = ""; $$('input[name="diagnosis"]').forEach(input => { input.checked = false; }); drawPpc(); });
+      $("#ppc-reset").addEventListener("click", () => { index = caseOrder[0]; result = ""; $$('input[name="diagnosis"]').forEach(input => { input.checked = false; }); drawPpc(); });
       addEventListener("resize", drawPpc); drawPpc();
     }
   }

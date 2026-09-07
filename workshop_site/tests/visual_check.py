@@ -24,7 +24,7 @@ def main() -> None:
     driver = webdriver.Firefox(options=options, service=Service("/snap/bin/geckodriver"))
     try:
         base = f"http://127.0.0.1:{server.server_port}"
-        for width, height, label in ((1440, 1000, "desktop"), (768, 1024, "tablet")):
+        for width, height, label in ((1440, 1000, "desktop"), (768, 1024, "tablet"), (390, 844, "mobile")):
             driver.set_window_size(width, height)
             for page in ("index", "evolution", "sbi"):
                 driver.get(f"{base}/{page}.html"); time.sleep(1.5)
@@ -61,8 +61,9 @@ def main() -> None:
         assert neutral_posterior != driver.execute_script("return document.querySelector('#collective-posterior-canvas').toDataURL()")
         assert neutral_trajectory != driver.execute_script("return document.querySelector('#collective-trajectory-canvas').toDataURL()")
         driver.execute_script("document.querySelector('#coll-epsilon').value='-10'; document.querySelector('#coll-epsilon').dispatchEvent(new Event('change'))")
-        assert "log ε = -10.000" in driver.find_element("id", "coll-epsilon-value").text
+        assert "log₁₀ ε = -10.000" in driver.find_element("id", "coll-epsilon-value").text
         assert "Fixed floor." in driver.find_element("id", "collective-summary").text
+        driver.find_element("css selector", '#ppc-cases button[data-case="0"]').click()
         driver.find_element("css selector", 'input[name="diagnosis"][value="well-specified"]').click()
         driver.find_element("id", "ppc-reveal").click()
         assert driver.find_element("id", "ppc-summary").text.startswith("Correct.")

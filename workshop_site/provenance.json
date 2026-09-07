@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-03T09:44:49.634069+00:00",
+  "generated_at_utc": "2026-09-07T08:14:45.423643+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -21,6 +21,8 @@
   "asset_generation_command": "PYTHONPATH=../evodesign/src python workshop_site/build_site.py --scientific-assets",
   "artifacts": {
     "assets/chapter/chuong-fit-orange.png": "6595401580517f68f2b0e5bc02887fba1d4f2344bf567e41daadf5a8d5bf7fab",
+    "assets/chapter/collective-figure-1.png": "62b1488b550c83b4edffebfaf6edf52a35ef84d181e582f218982fb4c1a6650c",
+    "assets/chapter/collective-figure-4.png": "558b988f620ebefe623f01c79c514d6422843ac1a9671e66429b18a9bf3019e5",
     "assets/fallback/chuong-parameter-challenge.png": "7b0531c28d1de5de1cd8f8b378363cac049b7e5a30f81ba25fea3e08900d7da2",
     "assets/fallback/collective-outlier-lab.png": "ae68012c55fcdddc476dc5f711bc8670db4a54604e0c4280ef3ea89ea5cec7e2",
     "assets/fallback/dfe-example.png": "3b2329a0242afc300fedf8b1b0d8c6904a0955cb2e74a3ffe7bb5cc41912b12e",
@@ -30,7 +32,7 @@
     "assets/fallback/training-viewer.png": "3b518c1f8908ee2d6fecdeb95a3aa8d5fa640e284bbb4f8fbf1c88d50d49cc56",
     "assets/fallback/zhou-model-playground.png": "6a1e65c4371619e7b391db8d6f5c2b8601d523a51e441d2346ce745cef785632",
     "assets/fallback/zhou-schedule-designer.png": "cecf1e50b63fc8770f61c8028b6f36d3a1a9dab648038127887bc2bc34f5fa71",
-    "content_map.json": "b55418158d24b5f6514b762fa67b80cd424cbc73990004f83333a1232d720129",
+    "content_map.json": "a5d55a0ef43df9c41f7e2788b108c63ca047e81bcc3256d0eeb855b925292240",
     "data/collective_lab.json": "25c22d18309f1f9219ed48a13deb491625f293deea4996c2a16653ea481334c1",
     "data/exercises.json": "3d81472061586685e2051f27175bc40eb97072a7403dfa9920b8216ae962d500",
     "data/training_viewer.json": "5bd1cd4259c82da0f35200336f8025e569d5057ae41236e0f55b9aee76d2abd9",
@@ -38,9 +40,9 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "bc0b8992d1baf8c8daa9c82cce35594989c081e3999070f03b675bdd8d7fdfe4",
-    "index.html": "6c199a0190ba66676cd543dc176d441ccc6ceb874499613805c683d51f3882ac",
-    "sbi.html": "246cc65e75a6221dcd73e5f72509138a1837aedb9350571b0b4fc06792a86b1f"
+    "evolution.html": "d2416d97a16f6d57166c31c8a1df4831dbafe41f23441429ea704a09c34a7417",
+    "index.html": "2732e2267c7a932a61ea6ebc90a6c1fe3764656de76da178efab7db05ca95f89",
+    "sbi.html": "dcb92b0c3c6cb19f0055761257da43aabd59d826c1350ddfe755ef9457903c61"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",
