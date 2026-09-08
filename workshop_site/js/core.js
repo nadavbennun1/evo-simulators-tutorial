@@ -2,8 +2,6 @@
   const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
   const key="drift-design-workshop-v1";let saved={};try{saved=JSON.parse(localStorage.getItem(key)||"{}") }catch(_){saved={}};
   function persist(){localStorage.setItem(key,JSON.stringify(saved))}
-  const mode=$("#workshop-mode");if(saved.workshop){document.body.classList.add("workshop-hidden");mode?.setAttribute("aria-pressed","true")}
-  mode?.addEventListener("click",()=>{const on=document.body.classList.toggle("workshop-hidden");mode.setAttribute("aria-pressed",String(on));saved.workshop=on;persist()});
   $("#reset-all")?.addEventListener("click",()=>{if(confirm("Reset workshop progress and all interactive settings?")){localStorage.removeItem(key);location.reload()}});
   const progress=$("#reading-progress");function updateProgress(){const max=document.documentElement.scrollHeight-innerHeight,p=max?scrollY/max:0;progress.style.width=`${Math.min(100,p*100)}%`;saved[document.body.dataset.page||"page"]=Math.round(p*100);persist()}addEventListener("scroll",updateProgress,{passive:true});updateProgress();
   // Build a cell-ID-backed chapter table of contents.

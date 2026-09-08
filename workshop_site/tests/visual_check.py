@@ -104,14 +104,10 @@ def main() -> None:
         driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         assert driver.execute_script("return document.querySelectorAll('#zhou-model-canvas').length") == 1
         driver.get(f"{base}/index.html"); time.sleep(1)
-        primer = driver.find_element("id", "foundations-primer")
-        sampling_step = driver.find_element("css selector", "#foundations-primer .primer-step:nth-child(3)")
-        sampling_step.screenshot("/tmp/workshop-sampling-explainer.png")
-        driver.find_element("css selector", "#foundations-primer .primer-step:nth-child(4)").screenshot("/tmp/workshop-bayes-primer.png")
-        driver.execute_script("arguments[0].scrollIntoView({block:'start'})", primer)
-        primer.screenshot("/tmp/workshop-continuous-primer.png")
-        driver.execute_script("window.scrollTo(0, arguments[0].offsetTop - 90)", primer)
-        driver.save_screenshot("/tmp/workshop-continuous-primer-top.png")
+        driver.find_element("css selector", ".landing-hero").screenshot("/tmp/workshop-landing-hero.png")
+        lesson_cards = driver.find_element("css selector", ".chapter-cards")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", lesson_cards)
+        lesson_cards.screenshot("/tmp/workshop-lesson-cards.png")
         print("Visual smoke check passed; screenshots written to /tmp/workshop-*.png")
     finally:
         driver.quit(); server.shutdown(); server.server_close(); thread.join(timeout=3)

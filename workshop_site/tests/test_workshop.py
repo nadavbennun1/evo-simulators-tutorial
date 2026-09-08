@@ -263,24 +263,22 @@ def test_sbi_revision_contract():
     assert 'id="abc-progress"' in text and "requestAnimationFrame" in script
 
 
-def test_foundations_primer_is_one_continuous_lesson():
+def test_landing_page_is_focused_on_the_two_lessons():
     home = (SITE / "index.html").read_text()
-    assert "One population, one continuous inference story" in home
-    assert home.count('class="primer-step') == 6
-    assert 'class="primer-story"' in home and 'class="concept-notes"' in home
-    assert 'class="sampling-diagram"' in home and 'class="equation-fraction"' in home
-    assert "complete genotype-frequency history" in home
-    assert '<span>p(x<sub>obs</sub>)</span>' in home
-    assert "∝" not in home
-    assert "<details" not in home
-    for term in ("Effective population size", "Identifiability", "Likelihood", "ABC", "Collective posterior", "ESS"):
-        assert term.lower() in home.lower()
-    assert home.count("75 min · 15 min foundations + 60 min lesson") == 2
+    favicon = (SITE / "assets/favicon.svg").read_text()
+    assert "Simulation-based inference for experimental evolution" in home
+    assert '<span>θ</span> SBI for experimental evolution' in home
+    assert ">θ</text>" in favicon and "Drift &amp; Design" not in home
+    assert 'id="workshop-mode"' not in home and "Workshop mode" not in home
+    assert 'class="primer-journey"' not in home and "Foundations" not in home
+    assert "75 min" not in home and "15 min" not in home and "60 min" not in home
+    assert home.count("Click to open lesson") == 2
+    assert "Scan once" not in home
     for page in (SITE / "evolution.html", SITE / "sbi.html"):
         chapter = page.read_text()
         assert 'class="chapter-walkthrough"' in chapter
         assert chapter.count('class="story-slide') == 4
-        assert "15 min visual primer" not in chapter and "Four-slide walkthrough" not in chapter
+        assert 'class="lesson-timing"' not in chapter
 
 
 def test_presentation_revision_contract():
@@ -289,10 +287,9 @@ def test_presentation_revision_contract():
     sbi = (SITE / "sbi.html").read_text()
     script = (SITE / "js/sbi.js").read_text()
 
-    assert '<a class="primary-link" href="evolution.html">Chapter 01</a>' in home
+    assert '<a class="secondary-link" href="evolution.html">Chapter 01</a>' in home
     assert '<a class="secondary-link" href="sbi.html">Chapter 02</a>' in home
     assert "Open lesson →" not in home
-    assert 'x1="88" y1="70" x2="126" y2="70"' in home
     assert 'src="assets/workshop-qr.svg"' in home
     assert "https://nadavbennun1.github.io/evo-simulators-tutorial/" in home
     assert "Running on Google Colab" not in evolution
@@ -315,7 +312,7 @@ def test_presentation_revision_contract():
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
     assert 'loading="eager"' in sbi and 'class="diversity-rank"' in sbi
     assert 'class="inverse-process-diagram"' in sbi and 'id="inverse-example"' in sbi
-    assert 'class="mini-posterior-density"' in home and 'class="mini-posterior-density"' in sbi
+    assert 'class="mini-posterior-density"' in sbi
     assert "typeset-story-equation" in sbi
     assert "Several mechanisms can match the sampled trajectory" in sbi
     assert "ten equally abundant lineages" in sbi and 'class="diversity-calculation"' in sbi
