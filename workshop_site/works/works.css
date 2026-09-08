@@ -70,7 +70,6 @@ main {
 
 .eyebrow,
 .section-label p,
-.group-heading p,
 .kind {
   margin: 0;
   font-size: .79rem;
@@ -299,7 +298,6 @@ a:focus-visible > .open-arrow { transform: translate(3px, -3px); }
 }
 
 .group-heading { display: flex; align-items: flex-start; gap: 17px; padding-top: 7px; }
-.group-heading p { margin-bottom: 8px; color: var(--wine); }
 .group-heading h2 { margin-bottom: 7px; color: var(--forest); font-size: 1.65rem; font-weight: 620; line-height: 1.08; letter-spacing: -.035em; }
 .group-heading span { display: block; max-width: 175px; color: var(--muted); font-size: .77rem; line-height: 1.5; }
 
