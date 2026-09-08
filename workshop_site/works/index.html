@@ -1,0 +1,162 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#203628">
+  <title>SBI and experimental evolution - our recent works</title>
+  <meta name="description" content="Recent methods and experimental applications of simulation-based inference in yeast and MS2 bacteriophage evolution.">
+  <meta property="og:title" content="SBI and experimental evolution - our recent works">
+  <meta property="og:description" content="A reading path through collective posterior inference and applications to yeast and MS2 experimental evolution.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://nadavbennun1.github.io/evo-simulators-tutorial/works/">
+  <link rel="canonical" href="https://nadavbennun1.github.io/evo-simulators-tutorial/works/">
+  <link rel="icon" href="../assets/favicon.svg">
+  <link rel="stylesheet" href="works.css">
+</head>
+<body>
+  <a class="skip-link" href="#reading-list">Skip to the papers</a>
+
+  <main>
+    <header class="hero">
+      <a class="home-link" href="../poster/" aria-label="Open the interactive SBI poster">
+        <span class="theta" aria-hidden="true">θ</span>
+        <span>Interactive SBI poster</span>
+      </a>
+
+      <div class="hero-copy">
+        <p class="eyebrow">A SHORT READING PATH</p>
+        <h1>SBI and experimental evolution - our recent works</h1>
+        <p class="intro">From combining noisy replicates to recovering mutation, selection, and ecological interactions from microbial evolution experiments.</p>
+        <ul class="index" aria-label="Collection summary">
+          <li><strong>6</strong><span>works</span></li>
+          <li><strong>1</strong><span>method</span></li>
+          <li><strong>2</strong><span>organisms</span></li>
+        </ul>
+      </div>
+
+      <div class="hero-mark" aria-hidden="true">
+        <svg viewBox="0 0 320 250">
+          <path class="thread thread-one" d="M18 207 C58 207 67 172 94 165 S139 185 166 144 S211 68 302 47"/>
+          <path class="thread thread-two" d="M18 220 C60 220 74 194 102 185 S151 192 180 151 S227 86 302 71"/>
+          <circle cx="18" cy="207" r="6"/><circle cx="94" cy="165" r="6"/><circle cx="166" cy="144" r="6"/><circle cx="302" cy="47" r="6"/>
+        </svg>
+      </div>
+    </header>
+
+    <section class="method-section" aria-labelledby="method-title">
+      <div class="section-label">
+        <span>01</span>
+        <p>METHOD</p>
+      </div>
+
+      <a class="method-card" href="https://doi.org/10.1371/journal.pcbi.1014534" target="_blank" rel="noopener">
+        <div class="method-copy">
+          <div class="card-meta">
+            <span class="kind">INTEGRATE REPLICATE DATA</span>
+            <span class="citation">Ben Nun et al., 2026</span>
+          </div>
+          <h2 id="method-title">Collective posterior inference from highly variable empirical replicates</h2>
+          <p>Combine evidence across independent experiments into one posterior while limiting the influence of outlying or misspecified replicates.</p>
+        </div>
+
+        <div class="collective-visual" aria-hidden="true">
+          <div class="replicate-lines">
+            <i></i><i></i><i></i><i></i><i></i>
+          </div>
+          <span class="join">+</span>
+          <div class="posterior-rings">
+            <i></i><i></i><i></i><b></b>
+          </div>
+        </div>
+        <span class="open-arrow" aria-hidden="true">↗</span>
+      </a>
+    </section>
+
+    <section class="applications" id="reading-list" aria-labelledby="applications-title">
+      <div class="section-label">
+        <span>02</span>
+        <p id="applications-title">APPLICATIONS TO EXPERIMENTAL DATA</p>
+      </div>
+
+      <div class="organism-group yeast-group">
+        <header class="group-heading">
+          <div class="organism-icon yeast" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div>
+            <p>ORGANISM</p>
+            <h2>Yeast</h2>
+            <span><em>Saccharomyces cerevisiae</em> · copy-number evolution</span>
+          </div>
+        </header>
+
+        <div class="paper-list">
+          <a class="paper-card" href="https://doi.org/10.1371/journal.pbio.3001633" target="_blank" rel="noopener">
+            <span class="citation">Avecilla et al., 2022</span>
+            <h3>Neural networks enable efficient and accurate simulation-based inference of evolutionary parameters from adaptation dynamics</h3>
+            <p>Infer the formation rate and fitness effect of adaptive <em>GAP1</em> copy-number variants from evolving yeast populations.</p>
+            <span class="venue">PLOS Biology</span>
+            <span class="open-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <a class="paper-card" href="https://doi.org/10.7554/eLife.98934" target="_blank" rel="noopener">
+            <span class="citation">Chuong et al., 2025</span>
+            <h3>Template switching during DNA replication is a prevalent source of adaptive gene amplification</h3>
+            <p>Resolve the structures and molecular origins of recurrent adaptive gene amplifications in experimental evolution.</p>
+            <span class="venue">eLife</span>
+            <span class="open-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <a class="paper-card" href="https://doi.org/10.1101/2025.07.21.665951" target="_blank" rel="noopener">
+            <span class="citation">De et al., 2025</span>
+            <h3>Segmental copy number amplifications are more stable than aneuploidies in the absence of selection</h3>
+            <p>Track copy-number loss after selection is removed, then infer how reversion and fitness shape those dynamics.</p>
+            <span class="venue">bioRxiv</span>
+            <span class="open-arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>
+
+      <div class="organism-group ms2-group">
+        <header class="group-heading">
+          <div class="organism-icon phage" aria-hidden="true"><i></i><b></b><span></span></div>
+          <div>
+            <p>ORGANISM</p>
+            <h2>MS2 bacteriophage</h2>
+            <span>RNA virus · mutation, selection, and cooperation</span>
+          </div>
+        </header>
+
+        <div class="paper-list two-up">
+          <a class="paper-card" href="https://doi.org/10.1093/ve/vead033" target="_blank" rel="noopener">
+            <span class="citation">Caspi et al., 2023</span>
+            <h3>Mutation rate, selection, and epistasis inferred from RNA virus haplotypes via neural posterior estimation</h3>
+            <p>Jointly infer mutation and selection from full-length MS2 haplotypes while accounting for sequencing error and multilocus evolution.</p>
+            <span class="venue">Virus Evolution</span>
+            <span class="open-arrow" aria-hidden="true">↗</span>
+          </a>
+
+          <a class="paper-card" href="https://doi.org/10.64898/2026.07.02.736036" target="_blank" rel="noopener">
+            <span class="citation">Maoz et al., 2026</span>
+            <h3>Inferring viral proteins that act as public goods during coinfection</h3>
+            <p>Use MS2 coinfection dynamics to infer which viral functions can be shared between genomes inside the same host cell.</p>
+            <span class="venue">bioRxiv</span>
+            <span class="open-arrow" aria-hidden="true">↗</span>
+          </a>
+        </div>
+      </div>
+    </section>
+
+    <footer>
+      <div>
+        <p class="eyebrow">TAKE IT WITH YOU</p>
+        <h2>One scan. The full reading list.</h2>
+        <a class="qr-download" href="sbi-experimental-evolution-works-qr.png" download>Download QR code <span aria-hidden="true">↓</span></a>
+      </div>
+      <a class="qr-card" href="sbi-experimental-evolution-works-qr.png" download aria-label="Download the QR code as a PNG file">
+        <img src="sbi-experimental-evolution-works-qr.png" alt="QR code linking to this reading list">
+      </a>
+    </footer>
+  </main>
+</body>
+</html>
