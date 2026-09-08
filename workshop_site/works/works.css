@@ -116,34 +116,6 @@ h1 {
 .index strong { color: var(--forest); font-size: 1.5rem; font-weight: 680; }
 .index span { color: var(--muted); font-size: .75rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
 
-.hero-mark {
-  position: absolute;
-  right: -82px;
-  bottom: 29px;
-  width: 400px;
-  height: 310px;
-  border: 1px solid rgba(49, 88, 59, .12);
-  border-radius: 49% 51% 43% 57% / 58% 38% 62% 42%;
-  background: rgba(223, 231, 218, .69);
-  transform: rotate(-5deg);
-}
-
-.hero-mark::before,
-.hero-mark::after {
-  content: "";
-  position: absolute;
-  border: 1px solid rgba(49, 88, 59, .14);
-  border-radius: inherit;
-}
-
-.hero-mark::before { inset: 30px -32px -28px 42px; }
-.hero-mark::after { inset: 62px 70px 47px -36px; }
-.hero-mark svg { position: absolute; inset: 28px 46px; width: 78%; transform: rotate(5deg); }
-.hero-mark path { fill: none; stroke-width: 5; stroke-linecap: round; }
-.hero-mark .thread-one { stroke: var(--wine); }
-.hero-mark .thread-two { stroke: var(--green-bright); opacity: .8; }
-.hero-mark circle { fill: var(--forest); stroke: var(--paper-light); stroke-width: 4; }
-
 .method-section,
 .applications {
   width: 100%;
@@ -348,12 +320,10 @@ a:focus-visible > .open-arrow { transform: translate(3px, -3px); }
 .organism-icon.phage b { right: 12px; transform: rotate(-35deg); }
 
 .paper-list { display: grid; width: 100%; min-width: 0; gap: 14px; }
-.paper-list.two-up { grid-template-columns: 1fr 1fr; }
-
 .paper-card {
   position: relative;
   display: grid;
-  grid-template-columns: 180px minmax(260px, 1fr) 210px;
+  grid-template-columns: minmax(110px, .55fr) minmax(0, 1.65fr) minmax(135px, .8fr);
   align-items: center;
   gap: 24px;
   min-height: 144px;
@@ -385,21 +355,16 @@ a:focus-visible > .open-arrow { transform: translate(3px, -3px); }
 
 .paper-card p { margin: 0; color: var(--muted); font-size: .96rem; line-height: 1.55; }
 .paper-card .venue { position: absolute; left: 29px; bottom: 20px; color: var(--green); font-size: .68rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-.paper-list.two-up .paper-card { display: block; min-height: 325px; padding: 34px 60px 56px 34px; }
-.paper-list.two-up .paper-card h3 { margin: 25px 0 20px; font-size: clamp(1.52rem, 2.8vw, 1.9rem); line-height: 1.13; }
-.paper-list.two-up .paper-card .venue { left: 34px; bottom: 27px; }
 
 :focus-visible { outline: 3px solid var(--clay); outline-offset: 4px; }
 
 @media (max-width: 900px) {
-  .hero-mark { right: -190px; opacity: .78; }
   .method-card { grid-template-columns: 1fr; }
   .collective-visual { justify-self: start; }
   .organism-group { grid-template-columns: 1fr; }
   .group-heading span { max-width: none; }
   .paper-card { grid-template-columns: 150px 1fr; }
   .paper-card p { grid-column: 2; }
-  .paper-list.two-up { grid-template-columns: 1fr 1fr; }
 }
 
 @media (max-width: 680px) {
@@ -408,7 +373,6 @@ a:focus-visible > .open-arrow { transform: translate(3px, -3px); }
   .hero-copy { margin-top: 0; }
   h1 { max-width: 350px; font-size: clamp(2.75rem, 13vw, 4.2rem); line-height: .92; }
   .intro { max-width: 340px; margin-bottom: 27px; font-size: 1.08rem; }
-  .hero-mark { right: -268px; bottom: -34px; opacity: .62; }
   .method-section,
   .applications { padding-top: 58px; }
   .section-label { align-items: flex-start; gap: 12px; margin-bottom: 20px; }
@@ -421,14 +385,10 @@ a:focus-visible > .open-arrow { transform: translate(3px, -3px); }
   .organism-group { padding-top: 31px; gap: 24px; }
   .group-heading h2 { font-size: 1.9rem; }
   .group-heading span { font-size: .84rem; }
-  .paper-card,
-  .paper-list.two-up .paper-card { display: block; min-height: 0; padding: 27px 57px 59px 26px; }
-  .paper-card h3,
-  .paper-list.two-up .paper-card h3 { margin: 17px 0 16px; font-size: 1.42rem; line-height: 1.15; }
+  .paper-card { display: block; min-height: 0; padding: 27px 57px 59px 26px; }
+  .paper-card h3 { margin: 17px 0 16px; font-size: 1.42rem; line-height: 1.15; }
   .paper-card p { font-size: .98rem; line-height: 1.58; }
-  .paper-card .venue,
-  .paper-list.two-up .paper-card .venue { left: 26px; bottom: 24px; }
-  .paper-list.two-up { grid-template-columns: 1fr; }
+  .paper-card .venue { left: 26px; bottom: 24px; }
 }
 
 @media (max-width: 450px) {
