@@ -49,6 +49,7 @@ PAPERS = {
     "de": ("De et al. (2025)", "https://doi.org/10.1101/2025.07.21.665951"),
     "collective": ("Ben Nun et al. (2026)", "https://doi.org/10.1371/journal.pcbi.1014534"),
     "sbi": ("Tejero-Cantero et al. (2020)", "https://doi.org/10.21105/joss.02505"),
+    "tavare": ("Tavaré et al. (1997)", "https://doi.org/10.1093/genetics/145.2.505"),
 }
 
 EVOLUTION_SIMULATOR_CELLS = {"efcdf8fa", "6cfee4f5", "2539f7c5", "5f9d90ff"}
@@ -88,8 +89,8 @@ OUTPUT_CAPTIONS = {
     "2e99f96f": ("Three measured states constrain two loss routes and their fitnesses", "Zhou model fit"),
     "cdda66b7": ("The same parameters produce a family of stochastic observations", "Repeated Wright-Fisher simulations"),
     "0ba5658f": ("A synthetic observation gives us a known answer for checking ABC", "Synthetic trajectory for ABC"),
-    "da54003d": ("Accepted simulations turn a distance threshold into parameter uncertainty", "ABC posterior result"),
-    "098a16bd": ("NPE returns a joint posterior after one conditioning step", "Neural posterior estimate"),
+    "da54003d": ("Rejection ABC posterior for the synthetic trajectory", "ABC posterior result"),
+    "098a16bd": ("Neural posterior estimate for the synthetic trajectory", "Neural posterior estimate"),
 }
 
 OUTPUT_STORIES = {
@@ -381,19 +382,38 @@ $\varphi$. Distinct parameter combinations can produce similar frequency traject
 $$p(\theta\mid x_{{obs}})=
 \frac{{p(x_{{obs}}\mid\theta)p(\theta)}}{{p(x_{{obs}})}}$$
 
+<div class="bayes-components" aria-label="Components of Bayes' rule">
+  <article><strong>Prior · $p(\theta)$</strong><p>Our scientific knowledge and beliefs about plausible parameter values before observing these data.</p></article>
+  <article><strong>Likelihood · $p(x_{{obs}}\mid\theta)$</strong><p>How compatible the observed trajectory is with a parameter value under the evolutionary and observation models.</p></article>
+  <article><strong>Evidence · $p(x_{{obs}})$</strong><p>The probability of the observation averaged over the prior; it normalizes the posterior.</p></article>
+  <article><strong>Posterior · $p(\theta\mid x_{{obs}})$</strong><p>Our updated uncertainty about the parameters after incorporating the observed trajectory.</p></article>
+</div>
+
 The simulator can generate $x$ for any $\theta$, but its likelihood cannot be evaluated in closed
 form. SBI approximates the posterior from simulated parameter–data pairs. Posterior-predictive
 simulations then evaluate whether the fitted model reproduces relevant features of the data.''',
-        "f992e16d": r'''## Rejection ABC approximates the posterior
+        "f992e16d": fr'''## Rejection ABC approximates the posterior
+
+<aside class="simulation-likelihood-note">
+  <strong>The simulator samples from the likelihood.</strong>
+  For a fixed parameter value $\theta$, each stochastic simulation is one draw from
+  $p(x\mid\theta)$. Repeating the simulation reveals which datasets that parameter can generate,
+  even when the likelihood density itself cannot be evaluated.
+</aside>
 
 Approximate Bayesian computation draws $\theta$ from the prior, simulates a trajectory, and computes
 its distance from the observation:
 
-$$\theta\ \text{is accepted when}\ d(x_{sim},x_{obs})\leq\varepsilon_{ABC}$$
+$$\theta\ \text{{is accepted when}}\ d(x_{{sim}},x_{{obs}})\leq\varepsilon_{{ABC}}$$
 
-The threshold $\varepsilon_{ABC}$ is a tolerance in **data space**. Smaller values make accepted
-simulations more observation-like but demand a larger simulation budget. The progressive station
-shows that trade-off rather than hiding it behind one final posterior.''',
+The threshold $\varepsilon_{{ABC}}$ is a tolerance in **data space**. Smaller values make accepted
+simulations more observation-like but demand a larger simulation budget. This rejection procedure
+was introduced for population-genetic inference by {paper("tavare")}.
+
+<figure class="paper-figure abc-framework-figure">
+  <img loading="lazy" src="{versioned_asset('assets/chapter/abc-framework.png')}" alt="ABC framework: parameters drawn from a prior enter an evolutionary simulator, simulated data are compared with an observation using a distance threshold, and accepted parameters form the posterior">
+  <figcaption>Rejection ABC turns prior draws into posterior samples by retaining simulations sufficiently close to the observation.</figcaption>
+</figure>''',
         "8d7d8c01": r'''## Neural posterior estimation learns a conditional density
 
 Neural posterior estimation first creates simulated pairs
@@ -402,10 +422,18 @@ $q_\phi(\theta\mid x)$ by minimizing
 
 $$\mathcal L(\phi)=-\mathbb E_{p(\theta,x)}[\log q_\phi(\theta\mid x)].$$
 
-Training is expensive once; conditioning and sampling are fast for every supported observation
-afterward. The next code sections retain only the scientifically meaningful operations: training
-the density estimator and sampling parameter draws after conditioning on $x_{obs}$.''',
-        "zhou-flex-intro": r'''## One trained NPE can accept different passage schedules
+<aside class="amortization-note"><strong>Amortization.</strong> Training pays the computational cost
+once across many simulated parameter–trajectory pairs. The trained estimator can then condition on
+each new supported observation and produce posterior samples without retraining or rerunning ABC.</aside>
+
+The next code sections show the two scientific operations: training the density estimator and
+sampling parameter draws after conditioning on $x_{obs}$.''',
+        "zhou-flex-intro": r'''<aside class="intermediate-summary"><strong>Intermediate summary.</strong>
+We have used rejection ABC to construct a posterior directly from accepted simulations and NPE to
+learn an amortized posterior from simulated pairs. We can now consider extensions to NPE that are
+tailored to the genotype-frequency observations collected in experimental evolution.</aside>
+
+## One trained NPE can accept different passage schedules
 
 The observation schedule is part of the data. A design-conditioned estimator learns
 
@@ -413,12 +441,7 @@ $$q_\phi(\theta\mid y_{observed},m,d,p_0),$$
 
 where $m$ marks measured passages, $d$ records measurement depth, and $p_0$ supplies the initial
 three-state composition. Missing is therefore different from a measured frequency of zero.''',
-        "zhou-flex-contract": r'''### Flexibility has a contract
-
-Training exposes the estimator to supported masks while keeping all views of one biological
-trajectory in the same data split. It can then reuse one learned posterior across subsets of
-passages 0–12 without retraining. It does not promise extrapolation to a new assay or passages
-outside that horizon. Passage 0 remains required because it defines the experiment's starting state.''',
+        "zhou-flex-contract": None,
         "zhou-flex-takeaway": r'''### What changes when the schedule changes?
 
 Odd and even passages expose different stochastic snapshots, so their posteriors need not be
@@ -427,17 +450,19 @@ where another measurement could be valuable. Flexibility preserves the informati
 collected—it does not manufacture information that was never observed.''',
         "928bf2bf": fr'''## Combining replicate-specific posteriors
 
-Each independent replicate gives an individual posterior $p_i(\theta\mid x_i)$. Multiplying them
-directly counts the shared prior $r$ times. The standard collective removes those extra copies:
+Using Bayes' rule we can get:
 
 $$p(\theta\mid x_{{1:r}})=
 \frac{{\dfrac{{\prod_{{i=1}}^r p_i(\theta\mid x_i)}}{{p(\theta)^{{r-1}}}}}}
 {{\displaystyle\int_\Theta
 \dfrac{{\prod_{{i=1}}^r p_i(\vartheta\mid x_i)}}{{p(\vartheta)^{{r-1}}}}\,d\vartheta}}$$
 
+Each independent replicate contributes one likelihood term, while the factor $p(\theta)^{{r-1}}$
+removes the additional copies of the shared prior.
+
 <figure class="paper-figure">
   <img loading="lazy" src="{versioned_asset('assets/chapter/collective-figure-1.png')}" alt="Five-stage collective posterior workflow from empirical trajectories through individual and robust collective posteriors to posterior predictive checks">
-  <figcaption>From replicate trajectories to individual posteriors, a robust collective posterior, and predictive checks. {paper_html("collective")} · Fig. 1, CC BY 4.0.</figcaption>
+  <figcaption>From replicate trajectories to individual posteriors, a robust collective posterior, and predictive checks. {paper_html("collective")} · Fig. 1.</figcaption>
 </figure>
 
 ### Role of the density floor ε
@@ -460,7 +485,7 @@ for sensitivity analysis.
 
 <figure class="paper-figure">
   <img loading="lazy" src="{versioned_asset('assets/chapter/collective-figure-4.png')}" alt="Individual and collective posteriors and predictive trajectories with weak versus stronger epsilon flooring">
-  <figcaption>A near-zero floor lets an outlier pull the collective away from the replicate consensus; a stronger floor restores posterior and predictive agreement. {paper_html("collective")} · Fig. 4, CC BY 4.0.</figcaption>
+  <figcaption>A near-zero floor lets an outlier pull the collective away from the replicate consensus; a stronger floor restores posterior and predictive agreement. {paper_html("collective")} · Fig. 4.</figcaption>
 </figure>''',
         "d74c479a": None,
         "3fce18ac": fr'''## Summary
@@ -478,6 +503,7 @@ for sensitivity analysis.
 ### References
 
 - {paper("sbi")} — the `sbi` software toolkit
+- {paper("tavare")} — rejection ABC for population-genetic inference
 - {paper("chuong")} — the experimental-evolution case study
 - {paper("collective")} — collective and robust replicate inference
 - {paper("avecilla")} — SBI for chemostat adaptation dynamics
@@ -546,6 +572,10 @@ def chapter_walkthrough(chapter: str) -> str:
         <article class="story-slide"><div class="story-copy"><span>03</span><h2>Neural posterior estimation</h2><p>Learn a conditional density from simulated parameter–trajectory pairs.</p><div class="story-equation typeset-story-equation">{npe_equation}</div></div><div class="network-cartoon" aria-hidden="true"><div><i></i><i></i><i></i></div><b></b><div><i></i><i></i><i></i><i></i></div><b></b><div><i></i><i></i></div></div></article>
         <article class="story-slide story-goal"><div class="story-copy"><span>04</span><h2>Prediction and model checking</h2><p>Propagate posterior uncertainty into trajectories and derived biological quantities.</p></div><div class="predictive-cartoon" role="img" aria-label="Posterior density flows through a simulator into a predictive trajectory band"><svg class="mini-posterior-density" viewBox="0 0 150 150" aria-hidden="true"><line x1="8" y1="137" x2="144" y2="137"/><path d="M10 136 C39 135 45 38 77 38 C109 38 116 135 142 136 Z"/></svg><b>→</b><div class="mini-simulator">simulate</div><b>→</b><div class="mini-predictive"><i></i><span></span><em></em><strong></strong></div></div></article>'''
     return f'<section class="chapter-walkthrough" aria-label="Chapter outline">{slides}</section>'
+
+
+def chapter_outline_heading() -> str:
+    return '<header class="chapter-outline-heading"><h2>In this chapter:</h2></header>'
 
 
 def avecilla_model_builder_section() -> str:
@@ -853,9 +883,8 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             elif key == "sbi" and cid in SBI_VISIBLE_CODE:
                 labels = {"67d19e3c": "The ABC loop", "88e4194b": "Train the neural posterior", "90cc8760": "Condition and sample from NPE"}
                 code = html.escape(source)
-                open_attr = " open" if cid != "88e4194b" else ""
-                blocks.append(f'<section class="purposeful-code lesson-cell" id="{anchor}" data-cell-id="{cid}"><p class="section-kicker">Code worth keeping</p><h2>{labels[cid]}</h2><details class="code-panel"{open_attr}><summary>Python implementation <span>notebook cell {index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></details></section>')
-                status, reason = ("included", "") if open_attr else ("deliberately_collapsed", "training implementation is available on demand")
+                blocks.append(f'<section class="purposeful-code lesson-cell" id="{anchor}" data-cell-id="{cid}"><p class="section-kicker">Code worth keeping</p><h2>{labels[cid]}</h2><details class="code-panel"><summary>Python implementation <span>notebook cell {index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{code}</code></pre></details></section>')
+                status, reason = "deliberately_collapsed", "implementation is available on demand"
             elif key == "sbi" and cid == "cdda66b7":
                 blocks.append(inverse_problem_figure())
                 status, reason = "included", "notebook output replaced by a focused identifiability diagram"
@@ -959,7 +988,6 @@ def station_markup(name: str) -> str:
         <div class="preset-row"><button data-coll-select="all">Select all</button><button data-coll-select="clean">Clean only</button><button data-coll-select="outliers">Outliers only</button><button id="coll-loo">Leave one out</button></div>
         <div class="interactive-grid"><div class="controls"><fieldset id="replicate-checks"><legend>Replicates entering sensitivity analysis</legend></fieldset><label>Investigate <select id="coll-investigate"></select></label><label>Robustness floor <select id="coll-epsilon"><option value="auto:0.80">Estimate from 80th percentile</option><option value="auto:0.90">Estimate from 90th percentile</option><option value="auto:0.95" selected>Estimate from 95th percentile</option><option value="auto:0.99">Estimate from 99th percentile</option><option value="0">Fixed log₁₀ ε = 0</option><option value="-10">Fixed log₁₀ ε = −10</option><option value="-100">Fixed log₁₀ ε = −100</option><option value="-1000">Fixed log₁₀ ε = −1000</option></select><output id="coll-epsilon-value">Estimating…</output></label><label>R7 displacement from consensus <output id="contam-label">1.0×</output><input id="contam-strength" type="range" min="0" max="1.5" step="0.1" value="1"></label><button id="coll-reset" type="button">Reset</button></div>
         <div class="viz"><canvas id="collective-trajectory-canvas" width="760" height="310" aria-label="Selected replicate trajectories"></canvas><canvas id="collective-posterior-canvas" width="760" height="310" aria-label="Individual, standard collective, and robust collective posterior densities"></canvas><p id="collective-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <details class="method-note"><summary>What is evaluated—and what is sampled?</summary><p>The browser evaluates a normalized three-parameter joint posterior grid, applies the ε floor to each full joint density, aggregates, and only then marginalizes to the displayed selection axis. It does not draw posterior samples. To estimate ε deterministically, a uniform midpoint grid discretizes the prior, each selected replicate posterior is evaluated at every grid point, and the chosen density percentile is used. This is a grid approximation to the published prior-draw heuristic; the published production implementation samples the high-dimensional collective target with Sampling-importance-resampling (SIR). Fixed controls report log₁₀ ε, matching the paper; calculations convert these values to natural-log density internally.</p></details>
         <div class="what-changed"><strong>Move R7, then compare.</strong> At 0×, R7 is centered on the shared truth; increasing displacement moves its trajectory and its posterior center in all three parameters. The gold Standard collective should follow R7, while the green Robust collective should resist it. Fixed log₁₀ ε = −1000 intentionally removes that resistance. Exclusion remains sensitivity analysis, not a data-discarding rule.</div>'''
     elif name == "zhou-schedule-designer":
         body = '''<h2>Design a passage schedule</h2><p class="prediction">Prediction: which passages constrain transition rates, and which constrain relative fitness?</p>
@@ -970,7 +998,7 @@ def station_markup(name: str) -> str:
         <div class="button-row"><button id="zhou-reset" type="button">Reset</button></div>'''
     elif name == "guess-parameter":
         body = '''<h2>Run rejection ABC</h2><p class="prediction">Choose a simulation budget and acceptance quantile. ABC keeps the closest simulated trajectories; watch the accepted parameter cloud tighten as ε decreases.</p>
-        <div class="interactive-grid"><form class="controls" id="abc-controls"><label>Acceptance quantile <output id="abc-quantile-label">5%</output><input id="abc-quantile" type="range" min="1" max="25" step="1" value="5"></label><label>Simulation budget <select id="abc-sims"><option>250</option><option selected>1000</option><option>3000</option><option>10000</option></select></label><label>Seed <input id="abc-seed" type="number" min="0" value="20260825"></label><button id="abc-run" type="button">Run ABC progressively</button><button type="reset">Reset</button><label class="progress-label" for="abc-progress">Simulation progress <output id="abc-progress-label">0 / 1000</output></label><progress id="abc-progress" max="1000" value="0"></progress><div id="abc-milestones" class="milestone-row" aria-label="ABC simulation milestones"></div></form><div class="viz"><canvas id="abc-trajectory-canvas" width="760" height="350" aria-label="Observed trajectory and accepted ABC simulations"></canvas><canvas id="guess-canvas" width="760" height="350" aria-label="ABC posterior marginals for selection, mutation, and initial frequency"></canvas><p id="abc-summary" class="plot-summary" aria-live="polite"></p></div></div>'''
+        <div class="interactive-grid"><form class="controls" id="abc-controls"><label>Acceptance quantile <output id="abc-quantile-label">5%</output><input id="abc-quantile" type="range" min="1" max="25" step="1" value="5"></label><label>Simulation budget <select id="abc-sims"><option>250</option><option selected>1000</option><option>3000</option><option>10000</option></select></label><label>Seed <input id="abc-seed" type="number" min="0" value="20260825"></label><button id="abc-run" type="button">Run ABC</button><button type="reset">Reset</button><label class="progress-label" for="abc-progress">Simulation progress <output id="abc-progress-label">0 / 1000</output></label><progress id="abc-progress" max="1000" value="0"></progress><div id="abc-milestones" class="milestone-row" aria-label="ABC simulation milestones"></div></form><div class="viz"><canvas id="abc-trajectory-canvas" width="760" height="350" aria-label="Observed trajectory and accepted ABC simulations"></canvas><canvas id="guess-canvas" width="760" height="350" aria-label="ABC posterior marginals for selection, mutation, and initial frequency"></canvas><p id="abc-summary" class="plot-summary" aria-live="polite">Choose a simulation budget and acceptance quantile, then click Run ABC.</p></div></div>'''
     else:
         body = '''<h2>Diagnose posterior-predictive mismatch</h2><p class="prediction">Compare the orange observations with the blue posterior-predictive distribution and select the most plausible biological or measurement explanation.</p><div class="preset-row" id="ppc-cases"></div><div class="diagnosis-row"><label><input type="radio" name="diagnosis" value="well-specified"> This culture looks plausible</label><label><input type="radio" name="diagnosis" value="noise"> Measurements are noisier than assumed</label><label><input type="radio" name="diagnosis" value="outlier"> One time point may be contaminated</label><label><input type="radio" name="diagnosis" value="support"> Biology lies outside the training range</label><label><input type="radio" name="diagnosis" value="structure"> The simulator misses a biological process</label></div><canvas id="ppc-canvas" width="1100" height="430" aria-label="Observed trajectory and posterior predictive band"></canvas><div class="button-row"><button id="ppc-reveal" type="button">Check my diagnosis</button><button id="ppc-reset" type="button">Reset</button></div><p id="ppc-summary" class="plot-summary" aria-live="polite"></p><div class="what-changed"><strong>Interpret carefully.</strong> A PPC localizes tension between observation and prediction. It can suggest a failure mode, but the pattern rarely proves one unique cause.</div>'''
     return common_start + body + common_end
@@ -1322,7 +1350,7 @@ def build_content() -> None:
     sbi_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">Evolutionary simulators</a><a href="index.html">Workshop home</a></nav>'
     (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+evo+evo_nav+'</article></div>',["evolution"]))
     sbi_opening = station_markup("chuong-parameter-challenge")
-    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+sbi_opening+chapter_walkthrough("sbi")+sbi+sbi_nav+'</article></div>',["evolution", "sbi"]))
+    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+sbi_opening+chapter_outline_heading()+chapter_walkthrough("sbi")+sbi+sbi_nav+'</article></div>',["evolution", "sbi"]))
 
 
 def provenance() -> None:

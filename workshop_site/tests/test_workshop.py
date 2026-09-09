@@ -297,10 +297,25 @@ def test_sbi_revision_contract():
     assert "Check my diagnosis" in text and "observed data" in script
     assert "stackrel" not in text and "stackrel" not in (ROOT / "SBI_tutorial.ipynb").read_text()
     assert "Standard collective" in text and "Robust collective" in text
-    assert "three-parameter joint posterior grid" in text and "full joint density" in text
-    assert "Sampling-importance-resampling" in text
+    assert "What is evaluated—and what is sampled?" not in text
     assert 'value="auto:0.95" selected' in text
     assert 'id="abc-progress"' in text and "requestAnimationFrame" in script
+    assert "In this chapter:" in text
+    assert "Tavaré et al. (1997)" in text and "10.1093/genetics/145.2.505" in text
+    assert 'class="bayes-components"' in text and "The simulator samples from the likelihood" in text
+    assert 'class="amortization-note"' in text and 'class="intermediate-summary"' in text
+    assert "Flexibility has a contract" not in text
+    assert "Using Bayes' rule we can get:" in text and "removes the additional copies of the shared prior" in text
+    assert "CC BY 4.0" not in text
+    assert "Accepted simulations turn a distance threshold into parameter uncertainty" not in text
+    assert "NPE returns a joint posterior after one conditioning step" not in text
+    assert 'class="paper-figure abc-framework-figure"' in text and "abc-framework.png" in text
+    assert '<details class="code-panel" open' not in text
+    assert "Run ABC progressively" not in text and ">Run ABC</button>" in text
+    assert 'const displayOrder = [1, 0, 2, 3]' in script
+    assert '["w_Het", "μ_Het→WT", "w_LOH", "μ_Het→LOH"]' in script
+    assert '$$(\'[data-schedule="zero"]\')[0].click()' in script
+    assert "addEventListener(\"resize\", drawAbc); clearAbc();" in script
 
 
 def test_landing_page_is_focused_on_the_two_lessons():
@@ -344,7 +359,7 @@ def test_presentation_revision_contract():
     assert "Appendix: why the quick fits use perturbed parameters" in evolution
     assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi
     assert "collective-figure-1.png" in sbi and "collective-figure-4.png" in sbi
-    assert "Fig. 1, CC BY 4.0" in sbi and "Fig. 4, CC BY 4.0" in sbi
+    assert "Fig. 1." in sbi and "Fig. 4." in sbi and "CC BY 4.0" not in sbi
     assert "paper-figure-wide" not in sbi
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script

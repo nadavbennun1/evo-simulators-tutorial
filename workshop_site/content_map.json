@@ -335,8 +335,8 @@
       "index": 6,
       "cell_id": "67d19e3c",
       "type": "code",
-      "status": "included",
-      "reason": ""
+      "status": "deliberately_collapsed",
+      "reason": "implementation is available on demand"
     },
     {
       "index": 7,
@@ -364,7 +364,7 @@
       "cell_id": "88e4194b",
       "type": "code",
       "status": "deliberately_collapsed",
-      "reason": "training implementation is available on demand"
+      "reason": "implementation is available on demand"
     },
     {
       "index": 11,
@@ -377,8 +377,8 @@
       "index": 12,
       "cell_id": "90cc8760",
       "type": "code",
-      "status": "included",
-      "reason": ""
+      "status": "deliberately_collapsed",
+      "reason": "implementation is available on demand"
     },
     {
       "index": 13,
@@ -405,8 +405,8 @@
       "index": 16,
       "cell_id": "zhou-flex-contract",
       "type": "markdown",
-      "status": "included",
-      "reason": ""
+      "status": "excluded",
+      "reason": "replaced by the visual chapter walkthrough or deliberately removed from the lesson"
     },
     {
       "index": 17,

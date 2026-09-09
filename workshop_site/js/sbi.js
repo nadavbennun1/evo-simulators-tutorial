@@ -159,23 +159,25 @@
     const grid = $("#passage-grid");
     for (let passage = 0; passage <= 12; passage++) grid.insertAdjacentHTML("beforeend", `<label class="${passage === 0 ? "locked" : ""}"><input type="checkbox" value="${passage}" ${passage === 0 ? 'checked disabled aria-locked="true"' : ""}> P${passage}${passage === 0 ? "<small>required</small>" : ""}</label>`);
     const checks = $$("input", grid), presets = {odd: [1, 3, 5, 7, 9, 11], even: [2, 4, 6, 8, 10, 12], early: [1, 2, 3, 4], late: [9, 10, 11, 12], sparse: [3, 7, 11], full: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], zero: []};
+    const displayOrder = [1, 0, 2, 3], displayLabels = ["w_Het", "μ_Het→WT", "w_LOH", "μ_Het→LOH"];
     const mask = () => checks.slice(1).reduce((sum, input) => sum + (input.checked ? (1 << (+input.value - 1)) : 0), 0);
     const q = (scheduleMask, parameter, k) => quantiles[(scheduleMask * 4 + parameter) * 3 + k];
     const sq = (scheduleMask, seed, parameter, k) => seeds[((scheduleMask * 3 + seed) * 4 + parameter) * 3 + k];
 
     function drawPosterior(scheduleMask) {
       const c = $("#zhou-posterior-canvas"), f = P.frame(c, 0, 1.1, 0, 4), full = 4095;
-      for (let parameter = 0; parameter < 4; parameter++) {
+      for (let displayPosition = 0; displayPosition < 4; displayPosition++) {
+        const parameter = displayOrder[displayPosition];
         const [lo, hi] = manifest.parameter_bounds[parameter], median = q(scheduleMask, parameter, 1);
         const sd = Math.max((q(scheduleMask, parameter, 2) - q(scheduleMask, parameter, 0)) / 3.29, 1e-3), curve = gaussianCurve(median, sd, lo, hi);
-        P.line(f, curve.xs.map(x => parameter + .08 + .84 * (x - lo) / (hi - lo)), curve.ys, P.C.tri, 2.7);
+        P.line(f, curve.xs.map(x => displayPosition + .08 + .84 * (x - lo) / (hi - lo)), curve.ys, P.C.tri, 2.7);
         for (let seed = 0; seed < 3; seed++) {
           const seedMedian = sq(scheduleMask, seed, parameter, 1), seedSd = Math.max((sq(scheduleMask, seed, parameter, 2) - sq(scheduleMask, seed, parameter, 0)) / 3.29, 1e-3), seedCurve = gaussianCurve(seedMedian, seedSd, lo, hi);
-          P.line(f, seedCurve.xs.map(x => parameter + .08 + .84 * (x - lo) / (hi - lo)), seedCurve.ys, P.C.blue, .8, .35);
+          P.line(f, seedCurve.xs.map(x => displayPosition + .08 + .84 * (x - lo) / (hi - lo)), seedCurve.ys, P.C.blue, .8, .35);
         }
-        const fullX = parameter + .08 + .84 * (q(full, parameter, 1) - lo) / (hi - lo), truthX = parameter + .08 + .84 * (manifest.truth[parameter] - lo) / (hi - lo);
+        const fullX = displayPosition + .08 + .84 * (q(full, parameter, 1) - lo) / (hi - lo), truthX = displayPosition + .08 + .84 * (manifest.truth[parameter] - lo) / (hi - lo);
         P.line(f, [fullX, fullX], [0, .9], P.C.gold, 1, 1, [3, 3]); P.line(f, [truthX, truthX], [0, 1], P.C.clay, 1.5, 1, [5, 3]);
-        P.text(f, ["Tri→WT", "Tri fitness", "LOH fitness", "Tri→LOH"][parameter], parameter + .5, 1.05, {align: "center", font: "bold 10px system-ui"});
+        P.text(f, displayLabels[displayPosition], displayPosition + .5, 1.05, {align: "center", font: "bold 10px system-ui"});
       }
       P.legend(f, [{label: "schedule posterior", color: P.C.tri}, {label: "seed runs", color: P.C.blue}, {label: "full schedule", color: P.C.gold}, {label: "truth", color: P.C.clay}]);
     }
@@ -208,7 +210,7 @@
     }
     checks.forEach(x => x.addEventListener("change", draw)); $("#reveal-withheld").addEventListener("change", draw);
     $$('[data-schedule]').forEach(button => button.addEventListener("click", () => { const selected = new Set(presets[button.dataset.schedule]); checks.slice(1).forEach(x => { x.checked = selected.has(+x.value); }); draw(); }));
-    $("#zhou-reset").addEventListener("click", () => $$('[data-schedule="odd"]')[0].click()); addEventListener("resize", draw); $$('[data-schedule="odd"]')[0].click();
+    $("#zhou-reset").addEventListener("click", () => $$('[data-schedule="zero"]')[0].click()); addEventListener("resize", draw); $$('[data-schedule="zero"]')[0].click();
   }
 
   async function abcAndPpcExercises() {
@@ -234,7 +236,7 @@
         const stages = milestoneBudgets(budget), candidates = [], token = ++runToken;
         let nextStage = 0;
         progress.max = budget; progress.value = 0; progressLabel.textContent = "0 / " + budget.toLocaleString();
-        runButton.textContent = "Restart progressive run"; updateMilestones(stages, 0);
+        runButton.textContent = "Restart ABC run"; updateMilestones(stages, 0);
         $("#abc-summary").textContent = "Drawing parameters from the prior and running the simulator…";
         function renderStage(count, complete = false) {
           const ranked = candidates.slice(0, count).sort((a, b) => a.distance - b.distance);
@@ -260,7 +262,7 @@
             if (reachedMilestone) setTimeout(() => requestAnimationFrame(advance), 850);
             else requestAnimationFrame(advance);
           }
-          else { runButton.textContent = "Run ABC progressively"; updateMilestones(stages, budget); }
+          else { runButton.textContent = "Run ABC again"; updateMilestones(stages, budget); }
         }
         requestAnimationFrame(advance);
       }
@@ -283,9 +285,18 @@
         P.legend(pf, [{label: "ABC posterior", color: P.C.orange}, {label: "uniform prior", color: P.C.muted}, {label: "truth", color: P.C.blue}]);
         $("#abc-summary").textContent = (complete ? "Complete" : "Milestone") + ": " + accepted.length + "/" + budget + " simulations accepted at the " + (acceptedQuantile * 100).toFixed(0) + "% quantile; ε = " + epsilon.toFixed(4) + (complete ? "" : " (target " + targetBudget.toLocaleString() + ")") + ". Posterior medians and 90% intervals: " + summaries.join("; ") + ".";
       }
+      function clearAbc() {
+        runToken += 1; lastRun = null;
+        [trajectoryCanvas, abcPosterior].forEach(canvas => canvas.getContext("2d").clearRect(0, 0, canvas.width, canvas.height));
+        const budget = +$("#abc-sims").value;
+        progress.max = budget; progress.value = 0; progressLabel.textContent = "0 / " + budget.toLocaleString();
+        updateMilestones(milestoneBudgets(budget), 0); runButton.textContent = "Run ABC";
+        $("#abc-summary").textContent = "Choose a simulation budget and acceptance quantile, then click Run ABC.";
+      }
       $("#abc-quantile").addEventListener("input", event => { $("#abc-quantile-label").textContent = `${event.target.value}%`; });
-      $("#abc-run").addEventListener("click", runAbc); $("#abc-controls").addEventListener("reset", () => { runToken += 1; setTimeout(() => { $("#abc-quantile-label").textContent = "5%"; runAbc(); }); });
-      addEventListener("resize", drawAbc); runAbc();
+      $("#abc-sims").addEventListener("change", clearAbc);
+      $("#abc-run").addEventListener("click", runAbc); $("#abc-controls").addEventListener("reset", () => { runToken += 1; setTimeout(() => { $("#abc-quantile-label").textContent = "5%"; clearAbc(); }); });
+      addEventListener("resize", drawAbc); clearAbc();
     }
 
     if (ppc) {

@@ -61,7 +61,9 @@ def main() -> None:
             element.screenshot(f"/tmp/workshop-{station}.png")
         assert driver.execute_script("return document.querySelector('#passage-grid input[value=\"0\"]').disabled")
         assert driver.execute_script("return document.querySelectorAll('#passage-grid input').length") == 13
-        assert "ε =" in driver.find_element("id", "abc-summary").text
+        assert driver.execute_script("return document.querySelectorAll('#passage-grid input:checked').length") == 1
+        assert driver.find_element("id", "abc-summary").text == "Choose a simulation budget and acceptance quantile, then click Run ABC."
+        assert driver.find_element("id", "abc-progress").get_attribute("value") == "0"
         driver.execute_script("document.querySelector('#abc-sims').value='10000'")
         driver.find_element("id", "abc-run").click()
         time.sleep(.4)
