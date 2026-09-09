@@ -78,7 +78,7 @@ OUTPUT_CAPTIONS = {
     "7b0a27f1": ("Selection enriches the upper tail of the DFE as the sweep progresses", "DFE and fitted selection through time"),
     "d29cac1e": ("Continuous chemostat dynamics and discrete Wright–Fisher dynamics can tell the same frequency story", "Chemostat ODE and Wright-Fisher comparison"),
     "f8f106e5": ("LTRΔ populations begin with an early plateau before the CNV sweep", "Chuong experimental trajectories"),
-    "104a1da1": ("The three-state Avecilla model misses the early LTRΔ structure!", "Avecilla model applied to Chuong data"),
+    "104a1da1": ("The three-state Avecilla model misses the LTRΔ structure!", "Avecilla model applied to Chuong data"),
     "97c3a42c": ("A pre-existing CNV pool supplies the missing biological state", "Chuong four-genotype model diagram"),
     "66cce2fa": ("The four-genotype model captures the observed chemostat trajectories", "Chuong model fit"),
     "8db7a696": ("CNV reporters reveal whether amplification persists after selection is removed", "De et al. reporter trajectories"),
@@ -273,21 +273,30 @@ For inference, fit DFE parameters directly or use the windowed-$\hat{s}$ trend a
 predictive diagnostic of the simpler model.''',
         "6ec896e6": r'''## The continuous chemostat model
 
-A chemostat has overlapping generations and nutrient-limited growth. The corresponding ODE
-tracks ancestral, CNV, and other-beneficial cells together with the residual limiting-substrate
-concentration $S(t)$ inside the vessel:
+A chemostat has overlapping generations and nutrient-limited growth. The model tracks ancestral,
+CNV, and other-beneficial cells together with the limiting-substrate concentration $S(t)$ inside
+the vessel. The paper writes one equation for each genotype; summation notation is unnecessary for
+these three states. Nutrient availability first sets each genotype's realized growth rate:
 
-$$\frac{dX_i}{dt}=X_i\bigl(\mu_i(S)-D\bigr)
-+\sum_{j\ne i}q_{ij}\mu_j(S)X_j
--\sum_{k\ne i}q_{ki}\mu_i(S)X_i,\qquad
-\mu_i(S)=r_i\frac{S}{S+k}$$
-$$\frac{dS}{dt}=D(S_0-S)-\frac{1}{Y}\sum_iX_i\mu_i(S)$$
+$$\mu_i(S)=r_i\frac{S}{S+k}$$
+
+Each population equation is then ordinary biological accounting: growth minus washout, with
+mutation moving ancestral cells into the two beneficial states.
+
+$$\frac{dX_A}{dt}=X_A\bigl(\mu_A(S)-D\bigr)-\delta_CX_A-\delta_BX_A$$
+$$\frac{dX_C}{dt}=X_C\bigl(\mu_C(S)-D\bigr)+\delta_CX_A$$
+$$\frac{dX_B}{dt}=X_B\bigl(\mu_B(S)-D\bigr)+\delta_BX_A$$
+
+The nutrient equation is the same balance at the vessel level: input minus outflow minus cellular
+consumption.
+
+$$\frac{dS}{dt}=D(S_0-S)-\frac{X_A\mu_A(S)+X_C\mu_C(S)+X_B\mu_B(S)}{Y}$$
 
 Here $D$ is the dilution rate, $S_0$ is the substrate concentration in the **incoming fresh
 medium**, and $S(t)$ is the generally lower concentration remaining in the vessel. At startup the
 model may set $S(0)=S_0$; after equilibration, the steady-state value is defined by $dS/dt=0$ and
-need not equal $S_0$. The two sums are mutation flow: births of genotype $j$ that produce genotype
-$i$ at probability $q_{ij}$, minus births of genotype $i$ that mutate into another state.
+need not equal $S_0$. Mutation flow is now visible directly: $\delta_CX_A$ leaves the ancestral
+state and enters the CNV state, while $\delta_BX_A$ enters the other-beneficial state.
 
 The ODE exposes reactor biology that the Wright–Fisher approximation compresses into a generation
 clock and an effective population size.''',
@@ -597,7 +606,7 @@ def chuong_standing_variation_section() -> str:
       <div class="station-kicker">Interactive mechanism</div><h2>What does the hidden CNV⁻ population change?</h2>
       <p class="prediction">Hold the LTRΔ selection and formation parameters fixed. The blue baseline uses φ = 10⁻¹², effectively no standing CNV⁻ cells; the comparison uses φ = 10⁻⁴ by default.</p>
       <div class="interactive-grid"><form class="controls" id="chuong-phi-controls"><div class="preset-row" role="group" aria-label="Initial CNV-negative frequency presets"><button type="button" data-phi-preset="-12">No standing variation</button><button type="button" data-phi-preset="-4">Standing variation</button></div><label>Comparison log₁₀(φ) <output id="chuong-phi-label">−4.0</output><input id="chuong-phi" type="range" min="-12" max="-3" step="0.1" value="-4"></label><div class="button-row"><button id="chuong-phi-play" type="button">Play comparison</button><button type="reset">Reset</button></div></form><div class="viz"><canvas id="chuong-phi-canvas" width="760" height="430" aria-label="Animated total and observed GAP1 CNV trajectories with and without standing CNV-negative cells"></canvas><p id="chuong-phi-summary" class="plot-summary" aria-live="polite">The plot starts empty. Choose φ, then play the comparison.</p></div></div>
-      <div class="what-changed"><strong>Biological interpretation.</strong> CNV⁻ cells already carry a <em>GAP1</em> amplification but are invisible to the reporter-defined CNV⁺ curve. Their initial frequency can therefore change total CNV abundance and early competition without looking like de novo reporter amplification.</div>
+      <div class="what-changed"><strong>Biological interpretation.</strong> CNV⁻ cells already carry a <em>GAP1</em> amplification but are invisible to the reporter-defined CNV⁺ curve. Their initial frequency can therefore change total CNV abundance and early competition without looking like de novo reporter amplification. The two solid curves should not coincide: the orange total includes the standing CNV⁻ lineage, which has the same selective advantage and expands from the start; the blue baseline begins without that lineage.</div>
       <noscript><p class="noscript">Enable JavaScript to animate the φ comparison.</p></noscript>
     </section>'''
 
@@ -674,7 +683,7 @@ a generic second mutant.'''
 
 
 def effective_population_section() -> str:
-    source = fr'''## Effective population size belongs to the life cycle
+    introduction = fr'''## Effective population size belongs to the life cycle
 
 $N_e$ is the size of an ideal Wright–Fisher population with the same drift variance as the
 experiment. It is not automatically the largest cell count—or even the census average.
@@ -706,9 +715,21 @@ The paper writes an unsubscripted $p$ in this last expression: it is the neutral
 at which the Wright–Fisher variance is matched. In this very large population it remains close to
 its initial value $1/2$; $p_j$ identifies the frequency in a particular retained transition.
 
-Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the steady-state census.
+Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the steady-state census.'''
 
-### Serial dilution: bottlenecks dominate the harmonic mean
+    chemostat_simulator = '''<section class="ne-simulator" id="chemostat-ne-simulator">
+      <div class="ne-simulator-heading"><span>Simulation 1</span><div><h4>Estimate <i>N</i><sub>e</sub> from neutral fluctuations</h4><p>Each point is an independent next generation drawn from the same neutral population at <i>p</i> = 0.5. The vertical displacement is <i>p</i>′ − <i>p</i>. Repeating the draw reveals its variance.</p></div></div>
+      <div class="ne-simulator-grid"><form class="controls" id="chemostat-ne-controls">
+        <div class="preset-row"><button type="button" data-chemostat-ne-preset="8.5185">Published scale</button><button type="button" data-chemostat-ne-preset="4">Visible drift</button></div>
+        <label><span>Simulated log₁₀(<i>N</i><sub>e</sub>)</span><output id="chemostat-ne-label">8.52</output><input id="chemostat-ne" type="range" min="4" max="8.5185" step="0.0001" value="8.5185"></label>
+        <label><span>Neutral draws</span><select id="chemostat-ne-draws"><option value="100">100</option><option value="300">300</option><option value="900" selected>900</option></select></label>
+        <label><span>Seed</span><input id="chemostat-ne-seed" type="number" min="0" max="99999" value="1633"></label>
+        <div class="button-row"><button id="chemostat-ne-run" type="button">Run neutral simulation</button><button type="reset">Reset</button></div>
+      </form><div class="viz"><canvas id="chemostat-ne-canvas" width="760" height="390" aria-label="Independent neutral next-generation frequency changes used to estimate effective population size"></canvas><p class="ne-axis-note" id="chemostat-ne-axis"></p><p class="plot-summary" id="chemostat-ne-summary" aria-live="polite">The plot starts empty. Run the neutral simulation to build the variance estimate.</p></div></div>
+      <div class="ne-calculation" id="chemostat-ne-calculation" aria-live="polite"><article><small>1 · neutral diversity</small><b><i>p</i>(1 − <i>p</i>)</b><strong>—</strong></article><article><small>2 · simulated fluctuation</small><b>Var(<i>p</i>′ | <i>p</i>)</b><strong>—</strong></article><article><small>3 · variance match</small><b><i>N̂</i><sub>e</sub> = <i>p</i>(1 − <i>p</i>) / Var</b><strong>—</strong></article></div>
+    </section>'''
+
+    serial_text = fr'''### Serial dilution: bottlenecks dominate the harmonic mean
 
 {paper("de")} used 1:64 transfers, corresponding to six doublings per cycle. For generation-level
 sizes $N_0,\ldots,N_5$, the appropriate cycle summary is
@@ -717,10 +738,21 @@ $$N_e^{{cycle}}=\frac6{{\sum_{{g=0}}^5 1/N_g}}.$$
 
 If $N_g=N_0 2^g$ and $N_0=6.25\times10^5$ cells, the culture reaches $4\times10^7$ cells before
 transfer, yet $N_e^{{cycle}}\approx1.90\times10^6$. The harmonic mean stays close to the bottleneck
-because drift is strongest when the culture is smallest.
+because drift is strongest when the culture is smallest.'''
 
-<div class="ne-contrast"><span><b>Chemostat</b> infer $N_e$ from neutral variance at steady state</span><i>vs.</i><span><b>Serial dilution</b> harmonically average the changing population sizes</span></div>'''
-    return f'<section class="lesson-cell prose-cell ne-section" id="effective-population-size">{math_to_html(source)}</section>'
+    serial_simulator = '''<section class="ne-simulator" id="serial-ne-simulator">
+      <div class="ne-simulator-heading"><span>Simulation 2</span><div><h4>Accumulate drift across one dilution cycle</h4><p>The culture doubles between transfers. Each generation contributes 1/<i>N</i><sub>g</sub> to the denominator, so early generations near the bottleneck receive the greatest weight.</p></div></div>
+      <div class="ne-simulator-grid"><form class="controls" id="serial-ne-controls">
+        <label><span>Starting population log₁₀(<i>N</i><sub>0</sub>)</span><output id="serial-ne-n0-label">5.80</output><input id="serial-ne-n0" type="range" min="4.5" max="7" step="0.00001" value="5.79588"></label>
+        <label><span>Dilution at transfer</span><select id="serial-ne-dilution"><option value="8">1:8</option><option value="16">1:16</option><option value="64" selected>1:64</option><option value="256">1:256</option></select></label>
+        <div class="button-row"><button id="serial-ne-run" type="button">Simulate one cycle</button><button type="reset">Reset</button></div>
+      </form><div class="viz"><canvas id="serial-ne-canvas" width="760" height="390" aria-label="Population growth and harmonic-mean contributions during a serial dilution cycle"></canvas><p class="plot-summary" id="serial-ne-summary" aria-live="polite">The plot starts empty. Simulate a cycle to reveal each generation's contribution.</p></div></div>
+      <div class="serial-generation-grid" id="serial-ne-generations" aria-label="Generation sizes and reciprocal drift weights"></div>
+      <div class="ne-calculation" id="serial-ne-calculation" aria-live="polite"><article><small>1 · reciprocal sum</small><b>Σ 1/<i>N</i><sub>g</sub></b><strong>—</strong></article><article><small>2 · harmonic mean</small><b><i>N</i><sub>e</sub><sup>cycle</sup> = <i>G</i> / Σ(1/<i>N</i><sub>g</sub>)</b><strong>—</strong></article><article><small>3 · bottleneck contribution</small><b>(1/<i>N</i><sub>0</sub>) / Σ(1/<i>N</i><sub>g</sub>)</b><strong>—</strong></article></div>
+    </section>'''
+
+    contrast = math_to_html(r'''<div class="ne-contrast"><span><b>Chemostat</b> infer $N_e$ from neutral variance at steady state</span><i>vs.</i><span><b>Serial dilution</b> harmonically average the changing population sizes</span></div>''')
+    return f'<section class="lesson-cell prose-cell ne-section" id="effective-population-size">{math_to_html(introduction)}{chemostat_simulator}{math_to_html(serial_text)}{serial_simulator}{contrast}</section>'
 
 
 def inverse_problem_figure() -> str:
@@ -779,6 +811,16 @@ competition, clonal interference, and recurrent formation, the absolute values a
 overestimates; the between-strain comparison is the more defensible prediction.
 '''
     return f'<section class="lesson-cell prose-cell prediction-box" id="posterior-predictions">{math_to_html(source)}</section>'
+
+
+def evolution_references() -> str:
+    source = fr'''## References
+
+- {paper("lauer")} — experimental *GAP1* CNV trajectories in glutamine-limited chemostats
+- {paper("avecilla")} — Wright–Fisher and continuous chemostat simulators for CNV adaptation
+- {paper("chuong")} — standing CNV variation and lineage-diversity predictions
+- {paper("de")} — CNV stability and reversion during serial dilution'''
+    return f'<section class="lesson-cell prose-cell chapter-references" id="evolution-references">{math_to_html(source)}</section>'
 
 
 def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, list[dict]]:
@@ -1275,6 +1317,7 @@ def build_content() -> None:
     sbi,cov=render_notebook("sbi",interactions["SBI_tutorial.ipynb"]); all_coverage["SBI_tutorial.ipynb"]=cov
     write_json(SITE/"content_map.json",all_coverage)
     (SITE/"index.html").write_text(landing_page())
+    evo += "\n" + evolution_references()
     evo_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">Workshop home</a><a href="sbi.html">Next: simulation-based inference</a></nav>'
     sbi_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">Evolutionary simulators</a><a href="index.html">Workshop home</a></nav>'
     (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+evo+evo_nav+'</article></div>',["evolution"]))

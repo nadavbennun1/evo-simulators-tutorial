@@ -240,6 +240,145 @@
     $("#reset-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = ""; input.classList.remove("correct", "incorrect"); statusNode(input).textContent = ""; }); summary.textContent = ""; });
   }
 
+  function effectivePopulationSimulators() {
+    const chemostatCanvas = $("#chemostat-ne-canvas"), serialCanvas = $("#serial-ne-canvas");
+    if (!chemostatCanvas || !serialCanvas) return;
+    const sci = (value, digits = 2) => {
+      if (!Number.isFinite(value) || value === 0) return value === 0 ? "0" : "—";
+      const exponent = Math.floor(Math.log10(Math.abs(value))), coefficient = value / (10 ** exponent);
+      return `${coefficient.toFixed(digits)} × 10<sup>${exponent}</sup>`;
+    };
+    const compact = value => value >= 1e6 ? `${(value / 1e6).toFixed(value >= 1e8 ? 0 : 2)} million` : Math.round(value).toLocaleString();
+
+    const chemoNe = $("#chemostat-ne"), chemoDraws = $("#chemostat-ne-draws"), chemoSeed = $("#chemostat-ne-seed");
+    const chemoCards = $$("#chemostat-ne-calculation article strong");
+    let chemoTimer = null, chemoStarted = false, chemoVisible = 0, chemoChanges = [];
+
+    function prepareChemostat() {
+      const nEff = Math.round(10 ** (+chemoNe.value)), total = +chemoDraws.value;
+      const R = S.mulberry32(+chemoSeed.value || 0), p = 0.5;
+      chemoChanges = Array.from({length: total}, () => binomial(nEff, p, R) / nEff - p);
+    }
+
+    function drawChemostat() {
+      const nEff = Math.round(10 ** (+chemoNe.value)), total = +chemoDraws.value, p = 0.5;
+      const theoreticalSd = Math.sqrt(p * (1 - p) / nEff);
+      const multiplier = theoreticalSd < 1e-4 ? 1e5 : theoreticalSd < 1e-3 ? 1e4 : theoreticalSd < 1e-2 ? 1e3 : 1e2;
+      const limit = 4.25 * theoreticalSd * multiplier;
+      const f = P.frame(chemostatCanvas, -limit, limit, 1, total);
+      $("#chemostat-ne-label").textContent = (+chemoNe.value).toFixed(2);
+      $("#chemostat-ne-axis").textContent = `Vertical axis: (p′ − p) × ${multiplier.toLocaleString()}. The horizontal line is no frequency change.`;
+      P.line(f, [1, total], [0, 0], P.C.muted, 1.4, 1, [5, 4]);
+      P.text(f, "independent neutral draws →", Math.max(2, total * 0.03), limit * 0.9, {color:P.C.muted, font:"11px system-ui"});
+      if (!chemoStarted) {
+        chemoCards.forEach(card => { card.textContent = "—"; });
+        $("#chemostat-ne-summary").textContent = "The plot starts empty. Run the neutral simulation to build the variance estimate.";
+        return;
+      }
+      const shown = chemoChanges.slice(0, chemoVisible), xs = shown.map((_, i) => i + 1);
+      P.points(f, xs, shown.map(value => value * multiplier), P.C.blue, total > 300 ? 1.5 : 2.2);
+      chemoCards[0].innerHTML = `0.500 × 0.500 = <em>0.250</em>`;
+      if (shown.length < 2) {
+        chemoCards[1].textContent = "waiting for repeated draws";
+        chemoCards[2].textContent = "—";
+        $("#chemostat-ne-summary").textContent = `Draw ${shown.length} of ${total}. Variance requires repeated next-generation draws.`;
+        return;
+      }
+      const mean = shown.reduce((sum, value) => sum + value, 0) / shown.length;
+      const variance = shown.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (shown.length - 1);
+      const estimate = p * (1 - p) / variance;
+      chemoCards[1].innerHTML = sci(variance, 2);
+      chemoCards[2].innerHTML = `0.250 / ${sci(variance, 2)} = <em>${sci(estimate, 2)}</em>`;
+      $("#chemostat-ne-summary").textContent = `${shown.length} of ${total} draws: the simulated variance is ${variance.toExponential(2)}, giving N̂ₑ = ${compact(estimate)} cells. The generating value is ${compact(nEff)}.`;
+    }
+
+    function resetChemostat() {
+      if (chemoTimer) clearInterval(chemoTimer);
+      chemoTimer = null; chemoStarted = false; chemoVisible = 0; chemoChanges = [];
+      $("#chemostat-ne-run").textContent = "Run neutral simulation"; drawChemostat();
+    }
+
+    [chemoNe, chemoDraws, chemoSeed].forEach(node => node.addEventListener("input", resetChemostat));
+    $$('[data-chemostat-ne-preset]').forEach(button => button.addEventListener("click", () => { chemoNe.value = button.dataset.chemostatNePreset; resetChemostat(); }));
+    $("#chemostat-ne-run").addEventListener("click", event => {
+      if (chemoTimer) { clearInterval(chemoTimer); chemoTimer = null; event.target.textContent = "Resume"; return; }
+      if (!chemoStarted || chemoVisible >= +chemoDraws.value) { chemoVisible = 0; prepareChemostat(); }
+      chemoStarted = true; event.target.textContent = "Pause";
+      const chunk = Math.max(2, Math.ceil(+chemoDraws.value / 45));
+      chemoTimer = setInterval(() => {
+        chemoVisible = Math.min(+chemoDraws.value, chemoVisible + chunk); drawChemostat();
+        if (chemoVisible >= +chemoDraws.value) { clearInterval(chemoTimer); chemoTimer = null; event.target.textContent = "Run again"; }
+      }, 70);
+      drawChemostat();
+    });
+    $("#chemostat-ne-controls").addEventListener("reset", () => setTimeout(resetChemostat));
+
+    const serialN0 = $("#serial-ne-n0"), serialDilution = $("#serial-ne-dilution");
+    const serialCards = $$("#serial-ne-calculation article strong");
+    let serialTimer = null, serialStarted = false, serialVisible = 0;
+
+    function serialValues() {
+      const n0 = 10 ** (+serialN0.value), fold = +serialDilution.value, generations = Math.round(Math.log2(fold));
+      const sizes = Array.from({length: generations + 1}, (_, g) => n0 * (2 ** g));
+      const intervalSizes = sizes.slice(0, generations), reciprocalSum = intervalSizes.reduce((sum, value) => sum + 1 / value, 0);
+      return {n0, fold, generations, sizes, intervalSizes, reciprocalSum, nEff: generations / reciprocalSum};
+    }
+
+    function drawSerial() {
+      const values = serialValues(), xMax = values.generations, yMin = Math.log10(values.n0) - 0.15, yMax = Math.log10(values.sizes.at(-1)) + 0.2;
+      const f = P.frame(serialCanvas, yMin, yMax, 0, xMax);
+      $("#serial-ne-n0-label").textContent = (+serialN0.value).toFixed(2);
+      P.text(f, "log₁₀ population size", 0.12, yMax - 0.08, {color:P.C.muted, font:"11px system-ui"});
+      if (!serialStarted) {
+        $("#serial-ne-generations").innerHTML = "";
+        serialCards.forEach(card => { card.textContent = "—"; });
+        $("#serial-ne-summary").textContent = "The plot starts empty. Simulate a cycle to reveal each generation's contribution.";
+        return;
+      }
+      const show = Math.min(serialVisible, values.generations), xs = Array.from({length: show + 1}, (_, g) => g);
+      const shownLogs = values.sizes.slice(0, show + 1).map(Math.log10);
+      P.line(f, xs, shownLogs, P.C.blue, 3); P.points(f, xs, shownLogs, P.C.blue, 4);
+      P.text(f, "bottleneck", 0.08, Math.log10(values.n0) + 0.08, {color:P.C.clay, font:"bold 11px system-ui"});
+      if (show === values.generations) P.text(f, `1:${values.fold} transfer`, Math.max(0.2, values.generations - 1.25), Math.log10(values.sizes.at(-1)) - 0.08, {color:P.C.clay, font:"bold 11px system-ui"});
+      $("#serial-ne-generations").innerHTML = values.intervalSizes.map((size, g) => {
+        const contribution = (1 / size) / values.reciprocalSum;
+        const revealed = g < Math.max(1, show) || show === values.generations;
+        return `<article class="${revealed ? "revealed" : ""}"><small>generation ${g}</small><b>N<sub>${g}</sub> = ${compact(size)}</b><span>1/N<sub>${g}</sub> = ${sci(1 / size, 2)}</span><em>${(100 * contribution).toFixed(1)}% of drift weight</em></article>`;
+      }).join("");
+      if (show < values.generations) {
+        serialCards.forEach(card => { card.textContent = "complete the cycle"; });
+        $("#serial-ne-summary").textContent = `${show} of ${values.generations} doublings revealed. The earliest interval is the smallest population and therefore contributes the largest reciprocal weight.`;
+        return;
+      }
+      const bottleneckShare = (1 / values.n0) / values.reciprocalSum;
+      serialCards[0].innerHTML = values.intervalSizes.map(value => sci(1 / value, 1)).join(" + ") + ` = <em>${sci(values.reciprocalSum, 2)}</em>`;
+      serialCards[1].innerHTML = `${values.generations} / ${sci(values.reciprocalSum, 2)} = <em>${sci(values.nEff, 2)} cells</em>`;
+      serialCards[2].innerHTML = `${sci(1 / values.n0, 2)} / ${sci(values.reciprocalSum, 2)} = <em>${(100 * bottleneckShare).toFixed(1)}%</em>`;
+      $("#serial-ne-summary").textContent = `After ${values.generations} doublings the culture reaches ${compact(values.sizes.at(-1))} cells before its 1:${values.fold} transfer. The cycle effective size is ${compact(values.nEff)}, only ${(values.nEff / values.n0).toFixed(2)} times the bottleneck size.`;
+    }
+
+    function resetSerial() {
+      if (serialTimer) clearInterval(serialTimer);
+      serialTimer = null; serialStarted = false; serialVisible = 0;
+      $("#serial-ne-run").textContent = "Simulate one cycle"; drawSerial();
+    }
+
+    [serialN0, serialDilution].forEach(node => node.addEventListener("input", resetSerial));
+    $("#serial-ne-run").addEventListener("click", event => {
+      const generations = serialValues().generations;
+      if (serialTimer) { clearInterval(serialTimer); serialTimer = null; event.target.textContent = "Resume"; return; }
+      if (!serialStarted || serialVisible >= generations) serialVisible = 0;
+      serialStarted = true; event.target.textContent = "Pause"; drawSerial();
+      serialTimer = setInterval(() => {
+        serialVisible = Math.min(generations, serialVisible + 1); drawSerial();
+        if (serialVisible >= generations) { clearInterval(serialTimer); serialTimer = null; event.target.textContent = "Run again"; }
+      }, 380);
+    });
+    $("#serial-ne-controls").addEventListener("reset", () => setTimeout(resetSerial));
+    addEventListener("resize", () => { drawChemostat(); drawSerial(); });
+    resetChemostat(); resetSerial();
+  }
+
   function dfeExample() {
     const canvas = $("#dfe-canvas");
     if (!canvas) return;
@@ -262,7 +401,6 @@
       P.points(f, grid, gy, P.C.orange, 2.2);
       P.line(f, [mu, mu], [0, 1], P.C.ink, 1.5, 1, [5, 4]);
       P.text(f, `average new-CNV effect s̄ = ${mu.toFixed(3)}`, Math.min(mu + 0.004, 0.105), 0.96, {font: "bold 11px system-ui"});
-      P.text(f, "more common among new CNVs ↑", 0.006, 0.88, {color:P.C.muted, font:"11px system-ui"});
       const total = raw.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
       let cumulative = 0, q90 = xs.at(-1);
       for (let i = 0; i < xs.length; i++) { cumulative += Number.isFinite(raw[i]) ? raw[i] : 0; if (cumulative >= 0.9 * total) { q90 = xs[i]; break; } }
@@ -398,6 +536,7 @@
   chuongStandingVariation();
   chuongEquationExercise();
   chuongCodeExercise();
+  effectivePopulationSimulators();
   dfeExample();
   chuongChallenge();
   zhouModelPlayground();

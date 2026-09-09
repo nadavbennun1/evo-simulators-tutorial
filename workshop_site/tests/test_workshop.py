@@ -254,16 +254,24 @@ def test_chapter_one_revision_contract():
     assert "n = ____  # (1)" in text and "mutated = ____  # (2)" in text and "weighted = ____  # (3)" in text and "n = ____  # (4)" in text
     assert text.count('class="annotated-code-layout"') == 3 and "equivalent NumPy expressions are accepted" in text
     assert "Chuong chemostat data" in text and "simpler model" in text
-    assert "incoming fresh" in text and "mutation flow" in text
+    assert "incoming fresh" in text and "mutation flow" in text and "summation notation is unnecessary" in text
     assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
     assert "Lauer et al. (2018)" in text and "journal.pbio.3000069" in text
     assert "Motivation: repeated" in text and "finite populations <strong>sample</strong>" not in text
     assert "Published fit</button>" in text and "Reference values</button>" in text
     assert 'id="zhou-model-play"' in text and "The plot starts empty" in text
-    assert "The three-state Avecilla model misses the early LTRΔ structure!" in text
+    assert "The three-state Avecilla model misses the LTRΔ structure!" in text and "misses the early LTRΔ structure" not in text
     assert "Chuong&nbsp;WF" in text
     assert "Black-box stress test" not in text and "Can one selection coefficient describe the whole sweep?" in text
     assert "Let <math" in text and "fraction of cells carrying one label" in text and "t</mi><mo>&#x0003D;</mo><mn>900" in text
+    assert 'id="chemostat-ne-simulator"' in text and 'id="chemostat-ne-run"' in text and 'id="chemostat-ne-calculation"' in text
+    assert 'id="serial-ne-simulator"' in text and 'id="serial-ne-run"' in text and 'id="serial-ne-calculation"' in text
+    assert "Published scale" in text and "Visible drift" in text and "bottleneck contribution" in text
+    assert "function effectivePopulationSimulators()" in script and "p * (1 - p) / variance" in script and "generations / reciprocalSum" in script
+    assert "more common among new CNVs" not in script
+    assert "The two solid curves should not coincide" in text
+    assert 'id="evolution-references"' in text
+    assert all(label in text for label in ("Lauer et al. (2018)", "Avecilla et al. (2022)", "Chuong et al. (2025)", "De et al. (2025)"))
     assert "What does s mean?" in text and "fraction of newly formed CNVs" in text
     assert "recurring grammar" not in text and "The executable mechanism" not in text
     assert text.count("Model-fit preview") == 5
