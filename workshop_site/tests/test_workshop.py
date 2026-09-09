@@ -245,6 +245,8 @@ def test_chapter_one_revision_contract():
     assert text.index('data-cell-id="104a1da1"') < text.index('data-cell-id="f9cb77d4"') < text.index('data-cell-id="97c3a42c"')
     assert text.index('id="chuong-equation-exercise"') < text.index('code-fill-exercise') < text.index('id="chuong-standing-variation"')
     assert 'data-model-force="mutation"' in text and 'data-model-force="selection"' in text and 'data-model-force="drift"' in text
+    assert 'class="active" type="button" role="tab"' not in text
+    assert 'data-force-panel="mutation" hidden' in text and 'show("mutation")' not in script
     assert "Mutation moves probability between states" in text and "Selection reweights reproductive contribution" in text
     assert 'id="chuong-standing-variation"' in text and "φ = 10⁻¹²" in text and "φ = 10⁻⁴" in text
     assert 'id="chuong-phi-play"' in text and 'id="chuong-phi" type="range"' in text
@@ -309,7 +311,7 @@ def test_sbi_revision_contract():
     assert "CC BY 4.0" not in text
     assert "Accepted simulations turn a distance threshold into parameter uncertainty" not in text
     assert "NPE returns a joint posterior after one conditioning step" not in text
-    assert 'class="paper-figure abc-framework-figure"' in text and "abc-framework.png" in text
+    assert 'class="paper-figure abc-framework-figure"' in text and 'class="abc-framework-viewport"' in text and "abc-framework.png" in text
     assert '<details class="code-panel" open' not in text
     assert "Run ABC progressively" not in text and ">Run ABC</button>" in text
     assert 'const displayOrder = [1, 0, 2, 3]' in script

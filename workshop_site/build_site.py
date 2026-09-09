@@ -411,7 +411,10 @@ simulations more observation-like but demand a larger simulation budget. This re
 was introduced for population-genetic inference by {paper("tavare")}.
 
 <figure class="paper-figure abc-framework-figure">
-  <img loading="lazy" src="{versioned_asset('assets/chapter/abc-framework.png')}" alt="ABC framework: parameters drawn from a prior enter an evolutionary simulator, simulated data are compared with an observation using a distance threshold, and accepted parameters form the posterior">
+  <h3>ABC framework</h3>
+  <div class="abc-framework-viewport">
+    <img loading="eager" src="{versioned_asset('assets/chapter/abc-framework.png')}" alt="ABC framework: parameters drawn from a prior enter an evolutionary simulator, simulated data are compared with an observation using a distance threshold, and accepted parameters form the posterior">
+  </div>
   <figcaption>Rejection ABC turns prior draws into posterior samples by retaining simulations sufficiently close to the observation.</figcaption>
 </figure>''',
         "8d7d8c01": r'''## Neural posterior estimation learns a conditional density
@@ -608,7 +611,7 @@ larger sampling variance; $N_e$ is an effective drift scale, not automatically a
       <p class="section-kicker">Build one generation</p><h2>From a biological picture to three operators</h2>
       <p class="model-builder-intro">Select an evolutionary force. The highlighted part of the population model becomes a general equation and then the corresponding Avecilla equation.</p>
       <div class="model-force-tabs" role="tablist" aria-label="Evolutionary force">
-        <button class="active" type="button" role="tab" aria-selected="true" data-model-force="mutation">1 · Mutation</button>
+        <button type="button" role="tab" aria-selected="false" data-model-force="mutation">1 · Mutation</button>
         <button type="button" role="tab" aria-selected="false" data-model-force="selection">2 · Selection</button>
         <button type="button" role="tab" aria-selected="false" data-model-force="drift">3 · Drift</button>
       </div>
@@ -619,7 +622,7 @@ larger sampling variance; $N_e$ is an effective drift scale, not automatically a
           <div class="state-vector">x = (x<sub>A</sub>, x<sub>C</sub>, x<sub>B</sub>)<sup>T</sup></div>
         </div>
         <div class="force-equations" aria-live="polite">
-          <article data-force-panel="mutation">{mutation}</article>
+          <article data-force-panel="mutation" hidden>{mutation}</article>
           <article data-force-panel="selection" hidden>{selection}</article>
           <article data-force-panel="drift" hidden>{drift}</article>
         </div>

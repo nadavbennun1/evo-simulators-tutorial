@@ -145,7 +145,9 @@
       nodes.forEach(node => node.classList.toggle("active", node.dataset.forceNode === force));
     }
     buttons.forEach(button => button.addEventListener("click", () => show(button.dataset.modelForce)));
-    show("mutation");
+    buttons.forEach(button => { button.classList.remove("active"); button.setAttribute("aria-selected", "false"); });
+    panels.forEach(panel => { panel.hidden = true; });
+    nodes.forEach(node => node.classList.remove("active"));
   }
 
   function chuongStandingVariation() {

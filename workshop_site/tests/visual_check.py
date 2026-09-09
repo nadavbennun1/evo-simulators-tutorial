@@ -40,6 +40,12 @@ def main() -> None:
                 driver.save_screenshot(f"/tmp/workshop-{page}-{label}.png")
         driver.set_window_size(1200, 900); driver.get(f"{base}/sbi.html"); time.sleep(2)
         driver.find_element("id", "cell-fa1ab176").screenshot("/tmp/workshop-bayes-equation.png")
+        abc_framework = driver.find_element("css selector", ".abc-framework-figure")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", abc_framework)
+        abc_image = driver.find_element("css selector", ".abc-framework-figure img")
+        WebDriverWait(driver, 10).until(lambda d: abc_image.get_property("naturalWidth") > 0)
+        assert abc_framework.size["height"] > 180 and abc_image.is_displayed()
+        abc_framework.screenshot("/tmp/workshop-abc-framework.png")
         inverse_example = driver.find_element("id", "inverse-example")
         inverse_example.screenshot("/tmp/workshop-inverse-example.png")
         prediction_box = driver.find_element("id", "posterior-predictions")
@@ -96,6 +102,8 @@ def main() -> None:
         assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
         driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         driver.get(f"{base}/evolution.html"); time.sleep(2)
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel]:not([hidden])').length") == 0
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-model-force].active').length") == 0
         driver.find_element("id", "cell-6ec896e6").screenshot("/tmp/workshop-continuous-chemostat-equations.png")
         effective_size = driver.find_element("id", "effective-population-size")
         driver.execute_script("arguments[0].scrollIntoView({block:'start'})", effective_size)
