@@ -26,25 +26,22 @@
   }
 
   function avecillaPlayground() {
-    const canvas = $("#evo-canvas");
+    const canvas = $("#evo-canvas"), orderCanvas = $("#evo-order-canvas");
     if (!canvas) return;
     const ids = ["delta-c", "delta-b", "s-c", "s-b", "duration", "ne", "reps", "seed"];
     const el = Object.fromEntries(ids.map(id => [id, `#evo-${id}`]).map(([id, selector]) => [id, $(selector)]));
     let timer = null, visible = 0, trajectories = [], started = false;
 
-    function simulate(seed) {
+    function simulate(seed, mutationFirst) {
       const R = S.mulberry32(seed), nEff = +el.ne.value, duration = +el.duration.value;
       const deltaC = 10 ** (+el["delta-c"].value), deltaB = 10 ** (+el["delta-b"].value);
       const fitness = [1, 1 + +el["s-c"].value, 1 + +el["s-b"].value];
       let p = [1, 0, 0], out = [p.slice()];
       for (let g = 1; g <= duration; g++) {
-        const selected = p.map((x, i) => x * fitness[i]);
-        const mutated = [
-          selected[0] * (1 - deltaC - deltaB),
-          selected[1] + selected[0] * deltaC,
-          selected[2] + selected[0] * deltaB,
-        ];
-        const total = mutated.reduce((a, b) => a + b, 0), q = mutated.map(x => x / total);
+        const mutate = values => [values[0] * (1 - deltaC - deltaB), values[1] + values[0] * deltaC, values[2] + values[0] * deltaB];
+        const select = values => values.map((x, i) => x * fitness[i]);
+        const expected = mutationFirst ? select(mutate(p)) : mutate(select(p));
+        const total = expected.reduce((a, b) => a + b, 0), q = expected.map(x => x / total);
         p = multinomial3(nEff, q, R).map(x => x / nEff);
         out.push(p.slice());
       }
@@ -54,19 +51,25 @@
     function draw() {
       const reps = Math.max(1, Math.min(24, +el.reps.value || 1));
       const duration = +el.duration.value, show = Math.min(visible, duration);
-      const f = P.frame(canvas, 0, 1, 0, duration), xs = Array.from({length: duration + 1}, (_, i) => i);
+      const xs = Array.from({length: duration + 1}, (_, i) => i);
       const colors = [P.C.muted, P.C.orange, P.C.purple];
       if (!started) {
+        P.frame(canvas, 0, 1, 0, duration);
+        P.frame(orderCanvas, 0, 1, 0, duration);
         $("#evo-composition").innerHTML = "";
         $("#evo-summary").textContent = "The plot starts empty. Choose a scenario, then press Play to reveal its evolutionary trajectory.";
         if ($("#evo-driver")) $("#evo-driver").textContent = "No trajectory has been simulated yet.";
         return;
       }
-      trajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i));
-      trajectories.forEach((traj, r) => colors.forEach((color, state) => {
-        P.line(f, xs.slice(0, show + 1), traj.slice(0, show + 1).map(x => x[state]), color, r === 0 ? 2 : 0.9, r === 0 ? 0.9 : 0.16);
-      }));
-      ["Ancestral", "GAP1 CNV", "Other beneficial"].forEach((name, i) => P.text(f, name, duration * 0.69, 0.96 - i * 0.065, {color: colors[i], font: "bold 12px system-ui"}));
+      trajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i, true));
+      const orderTrajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i, false));
+      [[canvas, trajectories], [orderCanvas, orderTrajectories]].forEach(([target, runs]) => {
+        const f = P.frame(target, 0, 1, 0, duration);
+        runs.forEach((traj, r) => colors.forEach((color, state) => {
+          P.line(f, xs.slice(0, show + 1), traj.slice(0, show + 1).map(x => x[state]), color, r === 0 ? 2 : 0.9, r === 0 ? 0.9 : 0.16);
+        }));
+        ["Ancestral", "GAP1 CNV", "Other beneficial"].forEach((name, i) => P.text(f, name, duration * 0.60, 0.96 - i * 0.065, {color: colors[i], font: "bold 11px system-ui"}));
+      });
       const final = trajectories.map(x => x[show]);
       const med = [0, 1, 2].map(state => Workshop.quantile(final.map(x => x[state]), 0.5));
       $("#evo-composition").innerHTML = ["Ancestral", "GAP1 CNV", "Other beneficial"].map((name, i) => `<span><b>${name}</b><br>${(med[i] * 100).toFixed(1)}% median</span>`).join("");
@@ -79,6 +82,10 @@
       else driver = "selection and mutational supply are closely balanced";
       if ($("#evo-driver")) $("#evo-driver").textContent = `This is the Avecilla three-genotype mechanism: ${driver}.`;
       $("#evo-summary").textContent = `${reps} seeded Wright–Fisher replicate${reps > 1 ? "s" : ""}; showing generation ${show}. Median CNV frequency ${(med[1] * 100).toFixed(1)}%. For Nₑ > 10,000 the browser uses a seeded normal approximation to binomial drift.`;
+      const altFinal = orderTrajectories.map(x => x[show]);
+      const altMed = [0, 1, 2].map(state => Workshop.quantile(altFinal.map(x => x[state]), 0.5));
+      const gap = Math.max(...med.map((value, i) => Math.abs(value - altMed[i])));
+      $("#evo-order-summary").textContent = `Largest median frequency difference at generation ${show}: ${(100 * gap).toFixed(2)} percentage points. The order matters because M and selection generally do not commute; at the published small formation rates the difference is usually tiny.`;
     }
 
     function labels(resetView = true) {
@@ -105,6 +112,7 @@
       cnv: [-3.8, -5.5, 0.09, 0.01, 120, 330000000, 8],
       competing: [-4.2, -4.1, 0.055, 0.075, 120, 330000000, 10],
       drift: [-4.2, -4.3, 0.055, 0.05, 120, 1000, 20],
+      order: [-2, -2.15, 0.14, 0.01, 80, 100000, 10],
     };
     $$('[data-evo-preset]').forEach(button => button.addEventListener("click", () => {
       const values = presets[button.dataset.evoPreset];
@@ -125,6 +133,81 @@
     $("#evo-controls").addEventListener("reset", () => setTimeout(labels));
     addEventListener("resize", draw);
     labels();
+  }
+
+  function modelBuilder() {
+    const root = $("#avecilla-model-builder");
+    if (!root) return;
+    const buttons = $$('[data-model-force]', root), panels = $$('[data-force-panel]', root), nodes = $$('[data-force-node]', root);
+    function show(force) {
+      buttons.forEach(button => { const active = button.dataset.modelForce === force; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
+      panels.forEach(panel => { panel.hidden = panel.dataset.forcePanel !== force; });
+      nodes.forEach(node => node.classList.toggle("active", node.dataset.forceNode === force));
+    }
+    buttons.forEach(button => button.addEventListener("click", () => show(button.dataset.modelForce)));
+    show("mutation");
+  }
+
+  function chuongStandingVariation() {
+    const canvas = $("#chuong-phi-canvas");
+    if (!canvas) return;
+    let view = "both";
+    const generations = Array.from({length: 117}, (_, i) => i), logS = -0.74, logDelta = -4.84;
+    function simulate(logPhi) {
+      const s = 10 ** logS, delta = 10 ** logDelta, phi = 10 ** logPhi, fitness = [1, 1+s, 1+s, 1.001];
+      let p = [1-phi, 0, phi, 0], reported = [], total = [];
+      generations.forEach(() => {
+        reported.push(p[1]); total.push(p[1] + p[2]);
+        const selected = p.map((x, i) => x * fitness[i]);
+        const mutated = [selected[0]*(1-delta-1e-5), selected[1]+selected[0]*delta, selected[2], selected[3]+selected[0]*1e-5];
+        const z = mutated.reduce((a,b) => a+b, 0); p = mutated.map(x => x/z);
+      });
+      return {reported, total};
+    }
+    const low = simulate(-8), high = simulate(-4);
+    function draw() {
+      const f = P.frame(canvas, 0, 1, 0, 116), selected = view === "low" ? [["φ=10⁻⁸", low, P.C.blue]] : view === "high" ? [["φ=10⁻⁴", high, P.C.orange]] : [["φ=10⁻⁸", low, P.C.blue], ["φ=10⁻⁴", high, P.C.orange]];
+      selected.forEach(([label, result, color], i) => {
+        P.line(f, generations, result.total, color, 3);
+        P.line(f, generations, result.reported, color, 2, .9, [7,5]);
+        P.text(f, `${label} total GAP1 CNV`, 7, .96-i*.07, {color, font:"bold 11px system-ui"});
+      });
+      P.text(f, "solid: total GAP1 CNV · dashed: reporter-positive CNV⁺", 7, selected.length === 2 ? .80 : .88, {color:P.C.ink, font:"11px system-ui"});
+      const deltaTotal = 100 * (high.total[50] - low.total[50]), deltaReported = 100 * (high.reported[50] - low.reported[50]);
+      $("#chuong-phi-summary").textContent = `At generation 50, changing φ from 10⁻⁸ to 10⁻⁴ changes total GAP1 CNV abundance by ${deltaTotal.toFixed(2)} percentage points, but reporter-positive CNV⁺ abundance by only ${deltaReported.toFixed(2)} points.`;
+      $$('[data-phi-view]').forEach(button => button.classList.toggle("active", button.dataset.phiView === view));
+    }
+    $$('[data-phi-view]').forEach(button => button.addEventListener("click", () => { view = button.dataset.phiView; draw(); }));
+    addEventListener("resize", draw); draw();
+  }
+
+  function chuongEquationExercise() {
+    const root = $("#chuong-equation-exercise");
+    if (!root) return;
+    const buttons = $$('[data-chuong-step]', root), cards = $$('[data-chuong-card]', root), matrix = $(".chuong-matrix", root);
+    let revealed = 0;
+    function render() {
+      cards.forEach(card => { card.hidden = +card.dataset.chuongCard > revealed; });
+      buttons.forEach(button => { const step = +button.dataset.chuongStep; button.disabled = step > revealed + 1 || step <= revealed; });
+      matrix.hidden = revealed < 3;
+    }
+    buttons.forEach(button => button.addEventListener("click", () => { if (+button.dataset.chuongStep === revealed + 1) { revealed++; render(); } }));
+    $("#chuong-equation-reset").addEventListener("click", () => { revealed = 0; render(); });
+    render();
+  }
+
+  function chuongCodeExercise() {
+    const root = $(".code-fill-exercise");
+    if (!root) return;
+    const inputs = $$('[data-code-answer]', root), summary = $("#chuong-code-summary");
+    const normalize = value => value.replace(/\s+/g, "").replace(/'/g, '"');
+    $("#check-chuong-code").addEventListener("click", () => {
+      let correct = 0;
+      inputs.forEach(input => { const okay = normalize(input.value) === normalize(input.dataset.codeAnswer); input.classList.toggle("correct", okay); input.classList.toggle("incorrect", !okay); input.nextElementSibling.textContent = okay ? "Correct" : "Try again"; if (okay) correct++; });
+      summary.textContent = `${correct} of ${inputs.length} biological lines are correct.`;
+    });
+    $("#reveal-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = input.dataset.codeAnswer; input.classList.add("correct"); input.classList.remove("incorrect"); input.nextElementSibling.textContent = "Revealed"; }); summary.textContent = "Answers revealed. Trace mutation, selection, and drift in that order."; });
+    $("#reset-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = ""; input.classList.remove("correct", "incorrect"); input.nextElementSibling.textContent = ""; }); summary.textContent = ""; });
   }
 
   function dfeExample() {
@@ -258,6 +341,10 @@
   }
 
   avecillaPlayground();
+  modelBuilder();
+  chuongStandingVariation();
+  chuongEquationExercise();
+  chuongCodeExercise();
   dfeExample();
   chuongChallenge();
   zhouModelPlayground();

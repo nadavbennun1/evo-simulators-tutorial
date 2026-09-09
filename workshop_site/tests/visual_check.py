@@ -88,20 +88,31 @@ def main() -> None:
         driver.find_element("css selector", 'input[name="diagnosis"][value="well-specified"]').click()
         driver.find_element("id", "ppc-reveal").click()
         assert driver.find_element("id", "ppc-summary").text.startswith("Correct.")
+        driver.find_element("id", "chuong-score").click(); time.sleep(.2)
+        score = driver.find_element("id", "chuong-score-card").text
+        assert "points" in score and "Parameter RMSE" in score
+        assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
+        driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         driver.get(f"{base}/evolution.html"); time.sleep(2)
         assert not driver.find_element("id", "evo-composition").text
         assert "starts empty" in driver.find_element("id", "evo-summary").text
         driver.find_element("id", "evo-play").click(); time.sleep(.4)
         driver.find_element("id", "evo-play").click()
         assert driver.find_element("id", "evo-composition").text
-        for station in ("evolution-playground", "dfe-example", "chuong-parameter-challenge", "zhou-model-playground"):
+        driver.find_element("css selector", '[data-evo-preset="order"]').click()
+        driver.find_element("id", "evo-play").click(); time.sleep(.5)
+        driver.find_element("id", "evo-play").click()
+        assert "percentage points" in driver.find_element("id", "evo-order-summary").text
+        for station in ("evolution-playground", "dfe-example", "chuong-standing-variation", "zhou-model-playground"):
             element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.4)
             element.screenshot(f"/tmp/workshop-{station}.png")
-        driver.find_element("id", "chuong-score").click(); time.sleep(.2)
-        score = driver.find_element("id", "chuong-score-card").text
-        assert "points" in score and "Parameter RMSE" in score
-        assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
-        driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
+        driver.find_element("css selector", '[data-model-force="selection"]').click()
+        assert driver.find_element("css selector", '[data-force-panel="selection"]').is_displayed()
+        driver.find_element("id", "avecilla-model-builder").screenshot("/tmp/workshop-model-builder.png")
+        for step in (1, 2, 3): driver.find_element("css selector", f'[data-chuong-step="{step}"]').click()
+        assert driver.find_element("css selector", ".chuong-matrix").is_displayed()
+        driver.find_element("id", "chuong-equation-exercise").screenshot("/tmp/workshop-chuong-equations.png")
+        driver.find_element("css selector", ".code-fill-exercise").screenshot("/tmp/workshop-chuong-code.png")
         assert driver.execute_script("return document.querySelectorAll('#zhou-model-canvas').length") == 1
         driver.get(f"{base}/index.html"); time.sleep(1)
         driver.find_element("css selector", ".landing-hero").screenshot("/tmp/workshop-landing-hero.png")

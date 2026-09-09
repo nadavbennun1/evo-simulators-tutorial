@@ -158,8 +158,8 @@
       "index": 22,
       "cell_id": "5de3ea7b",
       "type": "markdown",
-      "status": "included",
-      "reason": ""
+      "status": "excluded",
+      "reason": "replaced by the visual chapter walkthrough or deliberately removed from the lesson"
     },
     {
       "index": 23,
@@ -277,8 +277,8 @@
       "index": 39,
       "cell_id": "40f8e547",
       "type": "code",
-      "status": "included",
-      "reason": "notebook code hidden; only its scientific figure or scientific interpretation is used in the presentation"
+      "status": "excluded",
+      "reason": "implementation detail is outside this presentation's learning goals"
     },
     {
       "index": 40,

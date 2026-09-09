@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-08T21:37:27.845833+00:00",
+  "generated_at_utc": "2026-09-09T08:06:26.917631+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -33,7 +33,7 @@
     "assets/fallback/training-viewer.png": "3b518c1f8908ee2d6fecdeb95a3aa8d5fa640e284bbb4f8fbf1c88d50d49cc56",
     "assets/fallback/zhou-model-playground.png": "6a1e65c4371619e7b391db8d6f5c2b8601d523a51e441d2346ce745cef785632",
     "assets/fallback/zhou-schedule-designer.png": "cecf1e50b63fc8770f61c8028b6f36d3a1a9dab648038127887bc2bc34f5fa71",
-    "content_map.json": "0b2aa09db6bd4b1fda66cf361f1d6312a92e56c11fb51674b8d4a8b364f06d5d",
+    "content_map.json": "eca978e84878bb08e80a1d4ef02ed9c0c11e7ac0bf36f8c2a91f87c486f2777f",
     "data/collective_lab.json": "25c22d18309f1f9219ed48a13deb491625f293deea4996c2a16653ea481334c1",
     "data/exercises.json": "3d81472061586685e2051f27175bc40eb97072a7403dfa9920b8216ae962d500",
     "data/training_viewer.json": "5bd1cd4259c82da0f35200336f8025e569d5057ae41236e0f55b9aee76d2abd9",
@@ -41,9 +41,9 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "773cfc0e8963685ac1afbc9df26bfb36ca8bcf465fe5c66c69046aaecd6b11b3",
-    "index.html": "e58ec54cef85b8db0c9c8711c602cc70f91a2c0bdd163355dc1c0421bb41cf63",
-    "sbi.html": "308a7efff92b5e5b950b28a62e0680f1bb28511757a0b71e0c7635e0663fe936"
+    "evolution.html": "39adbfd22997fc9af058b80645db7f3384cb8ddbdac130184aa85482559be87d",
+    "index.html": "a69d978faa44bc5aac8dc95840bae6d6077007cec111048c55fd30afa4e49819",
+    "sbi.html": "f8bcb7dbf6c866dab2faa9a1d04bac6cee78f4d0a1bad211d351a92e0e602a9a"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",

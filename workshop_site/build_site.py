@@ -54,8 +54,17 @@ EVOLUTION_SIMULATOR_CELLS = {"efcdf8fa", "6cfee4f5", "2539f7c5", "5f9d90ff"}
 EVOLUTION_OUTPUT_ONLY = {
     "21748f7d", "b09b721a", "54e9f8de", "da8788a6", "6355cf57", "7b0a27f1",
     "d29cac1e", "f8f106e5", "104a1da1", "97c3a42c", "66cce2fa", "8db7a696",
-    "35d77585", "65a843c6", "7fd6e35c", "2e99f96f", "40f8e547",
+    "35d77585", "65a843c6", "7fd6e35c", "2e99f96f",
 }
+EVOLUTION_CELL_ORDER = [
+    "9bb0927d", "7f319e7c", "cd6f3ea8", "21748f7d", "b09b721a", "3282b174",
+    "efcdf8fa", "54e9f8de", "6ec896e6", "252e23bf", "4ff32a3e", "d29cac1e",
+    "4cd32c54", "f8f106e5", "f9cb77d4", "104a1da1", "97c3a42c", "5de3ea7b",
+    "6cfee4f5", "66cce2fa", "2973e9a8", "e7044463", "8db7a696", "35d77585",
+    "3d886968", "2539f7c5", "65a843c6", "1466cfd7", "705d171d", "7fd6e35c",
+    "b4a01787", "5f9d90ff", "2e99f96f", "629428f4", "da8788a6", "6355cf57",
+    "7b0a27f1", "f37292e6", "49b50682", "40f8e547", "6b93477c",
+]
 SBI_VISIBLE_CODE = {"67d19e3c", "88e4194b", "90cc8760"}
 SBI_OUTPUT_ONLY = {"cdda66b7", "0ba5658f", "da54003d", "098a16bd"}
 
@@ -70,13 +79,12 @@ OUTPUT_CAPTIONS = {
     "f8f106e5": ("LTRΔ populations begin with an early plateau before the CNV sweep", "Chuong experimental trajectories"),
     "104a1da1": ("The three-state Avecilla model misses the early LTRΔ structure", "Avecilla model applied to Chuong data"),
     "97c3a42c": ("A pre-existing CNV pool supplies the missing biological state", "Chuong four-genotype model diagram"),
-    "66cce2fa": ("The four-genotype model captures the observed batch-culture trajectories", "Chuong model fit"),
+    "66cce2fa": ("The four-genotype model captures the observed chemostat trajectories", "Chuong model fit"),
     "8db7a696": ("CNV reporters reveal whether amplification persists after selection is removed", "De et al. reporter trajectories"),
     "35d77585": ("The reversion model follows movement from CNV to single copy", "De et al. two-genotype model diagram"),
     "65a843c6": ("Different reporter loci can imply different reversion dynamics", "De et al. model fit"),
     "7fd6e35c": ("Chromosome loss can resolve through euploid recovery or LOH", "Zhou three-state model diagram"),
     "2e99f96f": ("Three measured states constrain two loss routes and their fitnesses", "Zhou model fit"),
-    "40f8e547": ("Four experiments, one recurring grammar: state, transition, fitness, drift", "Comparison of evolutionary trajectories"),
     "cdda66b7": ("The same parameters produce a family of stochastic observations", "Repeated Wright-Fisher simulations"),
     "0ba5658f": ("A synthetic observation gives us a known answer for checking ABC", "Synthetic trajectory for ABC"),
     "da54003d": ("Accepted simulations turn a distance threshold into parameter uncertainty", "ABC posterior result"),
@@ -207,27 +215,29 @@ def curated_markdown(key: str, cid: str, source: str) -> str | None:
     if cid in {"9bb0927d", "46c3d4e4", "4f69d96e"}:
         return None
     replacements = {
-        "cd6f3ea8": fr'''## Copy-number-variant dynamics in a glutamine-limited chemostat
+        "cd6f3ea8": fr'''## Start with the data: repeated *GAP1* CNV sweeps
 
 In the glutamine-limited populations of {paper("avecilla")}, *GAP1* copy-number
 variants repeatedly rise from rarity. That movie contains three evolutionary forces:
 new variants **appear**, fitter lineages **expand**, and finite populations **sample**
 their next generation.
 
-Nine replicate trajectories let us ask a mechanistic question: can one compact simulator
-turn formation rate, fitness advantage, and population size into the observed sweep?''',
-        "3282b174": r'''## A three-genotype mutation–selection–drift model
+Nine replicate trajectories motivate the model-building question: which biological assumptions
+are sufficient to reproduce the timing and shape of these sweeps? We begin with observable states
+and build one generation from mutation, selection, and drift.''',
+        "3282b174": r'''## Define the biological states
 
-An ancestral cell can form a *GAP1* CNV at rate $\delta_C$ or another beneficial mutation
-at rate $\delta_B$. Relative fitnesses are $1$, $1+s_C$, and $1+s_B$.
+The model partitions every cell into exactly one of three genotypes: ancestral ($A$), *GAP1*
+CNV ($C$), or another beneficial genotype ($B$). Their frequencies form
+$x=(x_A,x_C,x_B)^\mathsf{T}$ with $x_A+x_C+x_B=1$.
 
-$$x_C^\dagger=x_C+\delta_Cx_A,\qquad x_B^\dagger=x_B+\delta_Bx_A$$
-$$x_i^*=\frac{w_i x_i^\dagger}{\sum_j w_jx_j^\dagger},\qquad
-n_{t+1}\sim\mathrm{Multinomial}(N_e,x^*)$$
+This state vector is the model's vocabulary. Mutation moves frequency between states, selection
+changes their expected contributions, and drift samples a finite next generation.''',
+        "629428f4": r'''## Black-box stress test: can one effect describe the whole sweep?
 
-The matrix update supplies the expected next-generation frequencies; the multinomial draw
-is the biological gamble that turns one expectation into many possible histories.''',
-        "629428f4": r'''## A sweep can contain a distribution of fitness effects
+For now, treat fitting as a black box: parameters enter the simulator, and an optimizer searches
+for values whose trajectories resemble the data. Chapter 2 will replace that vague step with a
+full account of posterior inference and uncertainty.
 
 A **distribution of fitness effects (DFE)** assigns a selection coefficient $s$ to each new
 mutation. Its mean describes a typical new variant, while its shape controls how often rare,
@@ -253,17 +263,26 @@ clonal interference, and an incorrectly fixed $\delta_C$ can create related patt
 
 For inference, fit DFE parameters directly or use the windowed-$\hat{s}$ trend as a posterior
 predictive diagnostic of the simpler model.''',
-        "6ec896e6": r'''## Continuous-culture dynamics
+        "6ec896e6": r'''## The continuous chemostat model
 
 A chemostat has overlapping generations and nutrient-limited growth. The corresponding ODE
-tracks ancestral, CNV, and other-beneficial cells together with substrate $S$:
+tracks ancestral, CNV, and other-beneficial cells together with the residual limiting-substrate
+concentration $S(t)$ inside the vessel:
 
-$$\frac{dX_i}{dt}=X_i\bigl(\mu_i(S)-D\bigr)+\text{mutation flow},\qquad
+$$\frac{dX_i}{dt}=X_i\bigl(\mu_i(S)-D\bigr)
++\sum_{j\ne i}q_{ij}\mu_j(S)X_j
+-\sum_{k\ne i}q_{ki}\mu_i(S)X_i,\qquad
 \mu_i(S)=r_i\frac{S}{S+k}$$
 $$\frac{dS}{dt}=D(S_0-S)-\frac{1}{Y}\sum_iX_i\mu_i(S)$$
 
-The ODE explains the reactor biology explicitly. The Wright–Fisher approximation keeps the
-same evolutionary competition on a generation clock and is far cheaper to simulate.''',
+Here $D$ is the dilution rate, $S_0$ is the substrate concentration in the **incoming fresh
+medium**, and $S(t)$ is the generally lower concentration remaining in the vessel. At startup the
+model may set $S(0)=S_0$; after equilibration, the steady-state value is defined by $dS/dt=0$ and
+need not equal $S_0$. The two sums are mutation flow: births of genotype $j$ that produce genotype
+$i$ at probability $q_{ij}$, minus births of genotype $i$ that mutate into another state.
+
+The ODE exposes reactor biology that the Wright–Fisher approximation compresses into a generation
+clock and an effective population size.''',
         "4ff32a3e": r'''### Connecting hours to generations
 
 The two descriptions share interpretable parameters:
@@ -276,28 +295,18 @@ The two descriptions share interpretable parameters:
 
 For frequency-only inference, the discrete simulator is usually sufficient. The ODE remains
 valuable when nutrient concentration and reactor transients are themselves part of the question.''',
-        "4cd32c54": fr'''## The batch-culture data demand one more hidden state
+        "4cd32c54": fr'''## Chuong chemostat data require one more hidden state
 
 In {paper("chuong")}, seven LTRΔ populations were observed at 12 generations through 116.
 Their early plateau cannot emerge from a model that starts with no CNV-bearing cells. The model
 therefore separates newly formed CNV⁺ cells from a small, pre-existing CNV⁻ pool.''',
-        "f9cb77d4": r'''### Why the simpler state space fails
+        "f9cb77d4": r'''### Why the simpler model fails
 
-The mismatch is biological, not merely cosmetic: batch culture changes the drift scale, and
-the earliest observation already contains information about cells present before the measured
-sweep. Adding the CNV⁻ state lets initial frequency $\varphi$ explain that early mass while
-$\delta$ controls de novo formation and $s$ controls the later rise.''',
-        "5de3ea7b": r'''## A four-state model of CNV formation and competition
-
-The population has WT, newly formed CNV⁺, pre-existing CNV⁻, and an SNV competitor. The first
-three inferred parameters are $\theta=(\log_{10}s,\log_{10}\delta,\log_{10}\varphi)$.
-
-$$M=\begin{pmatrix}1-\delta-\mu_{SNV}&0&0&0\\
-\delta&1&0&0\\0&0&1&0\\\mu_{SNV}&0&0&1\end{pmatrix},\qquad
-n_{t+1}\sim\mathrm{Multinomial}\!\left(N_e,\frac{M\,\mathrm{diag}(w)p_t}{|M\,\mathrm{diag}(w)p_t|}\right)$$
-
-The extra state changes what the early trajectory means, while the same mutation–selection–drift
-grammar still drives the simulator.''',
+The mismatch is biological, not merely cosmetic. These are also glutamine-limited chemostats, but
+the reporter distinguishes newly formed CNV⁺ cells from CNV-bearing lineages that lack reporter
+amplification. Adding the CNV⁻ state lets $\varphi$ represent that initially rare hidden component;
+$\delta$ supplies new reported CNVs and $s$ controls their subsequent rise.''',
+        "5de3ea7b": None,
         "2973e9a8": fr'''## Copy-number reversion after selection is removed
 
 {paper("de")} moved CNV strains from the environment that selected the amplification into rich
@@ -313,12 +322,12 @@ E=M\,\mathrm{diag}(1,1+s)$$
 
 Because both parameters accelerate loss of the CNV, trajectory shape and repeated measurements
 are essential for separating reversion rate from fitness advantage.''',
-        "1466cfd7": r'''## Two routes out of aneuploidy
+        "1466cfd7": r'''## Zhou et al. model: two routes out of aneuploidy
 
-The Zhou model follows trisomic cells as they resolve either to wild type or to loss of
+The Zhou et al. model (Selmecki lab, UMN) follows trisomic cells as they resolve either to wild type or to loss of
 heterozygosity (LOH). The observation is now a three-part composition, so every passage reports
 which route gained population share.''',
-        "b4a01787": r'''## A three-state model of competing chromosome-loss routes
+        "b4a01787": r'''## Zhou et al. model of competing chromosome-loss routes
 
 Trisomic cells move to WT at rate $\mu_{WT}$ or LOH at rate $\mu_{LOH}$; the three states then
 compete with relative fitnesses $(w_{Tri},1,w_{LOH})$.
@@ -326,7 +335,7 @@ compete with relative fitnesses $(w_{Tri},1,w_{LOH})$.
 $$M=\begin{pmatrix}1-\mu_{WT}-\mu_{LOH}&0&0\\\mu_{WT}&1&0\\\mu_{LOH}&0&1\end{pmatrix},
 \qquad G=\mathrm{diag}(w_{Tri},1,w_{LOH})M$$
 
-This is the same executable grammar with a different state space: define allowed transitions,
+This is the same mathematical model with different genotype labels: define allowed transitions,
 apply fitness, sample drift, and observe the passages the experiment actually measured.''',
         "49b50682": r'''## Summary
 
@@ -463,6 +472,8 @@ for sensitivity analysis.
 
 
 def mechanism_code(stem: str, source: str, cell_index: int) -> str:
+    if stem == "6cfee4f5":
+        return chuong_code_exercise(cell_index)
     titles = {
         "efcdf8fa": "Three competing genotypes",
         "6cfee4f5": "Standing variation and de novo CNV formation",
@@ -470,13 +481,15 @@ def mechanism_code(stem: str, source: str, cell_index: int) -> str:
         "5f9d90ff": "Two chromosome-loss routes",
     }
     snippets = {
-        "efcdf8fa": [("Parameters become rates", "delta_C = 10 ** log_delta_C\ndelta_B = 10 ** log_delta_B"), ("Selection becomes weights", "w = [1, 1 + s_C, 1 + s_B]"), ("Mutation becomes a matrix", "E = M @ np.diag(w)"), ("Drift becomes a draw", "n = np.random.multinomial(N, p)")],
+        "efcdf8fa": [("Parameters become rates", "delta_C = 10 ** log_delta_C\ndelta_B = 10 ** log_delta_B"), ("Mutation becomes a matrix", "M = [[1-delta_C-delta_B, 0, 0], ...]"), ("Selection follows mutation", "E = np.diag(w) @ M"), ("Drift becomes a draw", "n = np.random.multinomial(N, p)")],
         "6cfee4f5": [("Log parameters enter biology", "s, m, p0 = 10 ** np.array([...])"), ("Standing variation sets the start", "n[0] = N * (1 - p0)\nn[2] = N * p0"), ("Mutation and selection compose", "E = M @ np.diag(w)"), ("Drift creates replicate histories", "n = np.random.multinomial(N, p)")],
         "2539f7c5": [("Reversion points CNV → single copy", "M = [[1-m, 0], [m, 1]]"), ("Fitness favors the revertant", "diag([1.0, 1.0 + s])"), ("Initial rarity is explicit", "n = [N*(1-p0), N*p0]"), ("Drift samples the next generation", "n = np.random.multinomial(N, p)")],
         "5f9d90ff": [("Two routes leave trisomy", "M[1,0] = mu_tri\nM[2,0] = mu_loh"), ("Each state has its fitness", "S = diag([w_tri, 1, w_loh])"), ("Order is declared", "G = S @ M  # mutate, then select"), ("Passages choose observations", "ret = p[ret_gens]")],
     }
+    if stem == "efcdf8fa":
+        source = source.replace("E = M @ np.diag(w)", "E = np.diag(w) @ M  # mutate, then select")
     cards = "".join(f'<article><span>{i:02d}</span><h3>{html.escape(label)}</h3><pre><code>{html.escape(code)}</code></pre></article>' for i,(label,code) in enumerate(snippets[stem],1))
-    return f'''<section class="mechanism-code lesson-cell" data-cell-id="{stem}"><p class="section-kicker">The executable mechanism</p><h2>{titles[stem]}</h2><p class="mechanism-intro">Follow one generation from biological assumption to code.</p><div class="force-code-grid">{cards}</div><details class="code-panel full-simulator"><summary>Open the complete simulator <span>Python · cell {cell_index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{html.escape(source)}</code></pre></details></section>'''
+    return f'''<section class="mechanism-code lesson-cell" data-cell-id="{stem}"><p class="section-kicker">Now in code</p><h2>{titles[stem]}</h2><p class="mechanism-intro">Follow one generation from biological assumption to code.</p><div class="force-code-grid">{cards}</div><details class="code-panel full-simulator"><summary>Open the complete simulator <span>Python · cell {cell_index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{html.escape(source)}</code></pre></details></section>'''
 
 
 def chapter_walkthrough(chapter: str) -> str:
@@ -499,6 +512,129 @@ def chapter_walkthrough(chapter: str) -> str:
         <article class="story-slide"><div class="story-copy"><span>03</span><h2>Neural posterior estimation</h2><p>Learn a conditional density from simulated parameter–trajectory pairs.</p><div class="story-equation typeset-story-equation">{npe_equation}</div></div><div class="network-cartoon" aria-hidden="true"><div><i></i><i></i><i></i></div><b></b><div><i></i><i></i><i></i><i></i></div><b></b><div><i></i><i></i></div></div></article>
         <article class="story-slide story-goal"><div class="story-copy"><span>04</span><h2>Prediction and model checking</h2><p>Propagate posterior uncertainty into trajectories and derived biological quantities.</p></div><div class="predictive-cartoon" role="img" aria-label="Posterior density flows through a simulator into a predictive trajectory band"><svg class="mini-posterior-density" viewBox="0 0 150 150" aria-hidden="true"><line x1="8" y1="137" x2="144" y2="137"/><path d="M10 136 C39 135 45 38 77 38 C109 38 116 135 142 136 Z"/></svg><b>→</b><div class="mini-simulator">simulate</div><b>→</b><div class="mini-predictive"><i></i><span></span><em></em><strong></strong></div></div></article>'''
     return f'<section class="chapter-walkthrough" aria-label="Chapter outline">{slides}</section>'
+
+
+def avecilla_model_builder_section() -> str:
+    mutation = math_to_html(r'''<h3>Mutation moves probability between states</h3>
+<p>In a general discrete-state model, column $j$ of $M$ describes where offspring of genotype
+$j$ go. Thus $M_{ij}=\Pr(i\leftarrow j)$ and mutation alone gives</p>
+$$x^{(m)}=Mx_t.$$
+<p>For the Avecilla states $A,C,B$, only the ancestor creates the two derived genotypes:</p>
+$$M_A=\begin{pmatrix}1-\delta_C-\delta_B&0&0\\
+\delta_C&1&0\\\delta_B&0&1\end{pmatrix},\qquad
+x^{(m)}=M_Ax_t.$$
+<p>$\delta_C$ is the per-generation *GAP1* CNV formation probability and $\delta_B$ is the
+formation probability of another beneficial genotype.</p>''')
+    selection = math_to_html(r'''<h3>Selection reweights reproductive contribution</h3>
+<p>Give each genotype a non-negative relative fitness $w_i$. Selection multiplies its post-mutation
+frequency and then renormalizes:</p>
+$$x_i^{(s)}=\frac{w_i x_i^{(m)}}{\sum_jw_jx_j^{(m)}}.$$
+<p>Avecilla uses the ancestor as reference, so</p>
+$$w_A=1,\qquad w_C=1+s_C,\qquad w_B=1+s_B.$$
+<p>A positive $s_C$ does not guarantee a CNV sweep: the lineage must first be supplied by mutation,
+and it competes with the other beneficial state.</p>''')
+    drift = math_to_html(r'''<h3>Drift turns an expectation into one realized population</h3>
+<p>After mutation and selection define expected frequencies, a Wright–Fisher generation samples
+$N_e$ cells:</p>
+$$n_{t+1}\sim\operatorname{Multinomial}(N_e,x^{(s)}),\qquad
+x_{t+1}=\frac{n_{t+1}}{N_e}.$$
+<p>The expectation remains $x^{(s)}$, but replicate trajectories differ. Smaller $N_e$ produces
+larger sampling variance; $N_e$ is an effective drift scale, not automatically a cell count.</p>''')
+    return f'''<section class="lesson-cell model-builder" id="avecilla-model-builder">
+      <p class="section-kicker">Build one generation</p><h2>From a biological picture to three operators</h2>
+      <p class="model-builder-intro">Select an evolutionary force. The highlighted part of the population model becomes a general equation and then the corresponding Avecilla equation.</p>
+      <div class="model-force-tabs" role="tablist" aria-label="Evolutionary force">
+        <button class="active" type="button" role="tab" aria-selected="true" data-model-force="mutation">1 · Mutation</button>
+        <button type="button" role="tab" aria-selected="false" data-model-force="selection">2 · Selection</button>
+        <button type="button" role="tab" aria-selected="false" data-model-force="drift">3 · Drift</button>
+      </div>
+      <div class="model-builder-grid">
+        <div class="model-illustration" aria-label="Ancestral cells produce CNV and other-beneficial cells, which reproduce unequally before finite sampling">
+          <div class="genotype-stage"><span class="state-a">A<small>ancestral</small></span><i>→</i><span class="state-c">C<small>GAP1 CNV</small></span><span class="state-b">B<small>other beneficial</small></span></div>
+          <div class="operator-stage"><b data-force-node="mutation">mutation<small>new states</small></b><i>→</i><b data-force-node="selection">selection<small>unequal growth</small></b><i>→</i><b data-force-node="drift">drift<small>finite sample</small></b></div>
+          <div class="state-vector">x = (x<sub>A</sub>, x<sub>C</sub>, x<sub>B</sub>)<sup>T</sup></div>
+        </div>
+        <div class="force-equations" aria-live="polite">
+          <article data-force-panel="mutation">{mutation}</article>
+          <article data-force-panel="selection" hidden>{selection}</article>
+          <article data-force-panel="drift" hidden>{drift}</article>
+        </div>
+      </div>
+    </section>'''
+
+
+def fit_scope_note(model_name: str) -> str:
+    return f'''<aside class="fit-scope-note"><strong>Model-fit preview · {html.escape(model_name)}</strong><p>This comparison asks whether the simulator can reproduce the main pattern in the data. Parameter inference and uncertainty are introduced systematically in Chapter 2.</p></aside>'''
+
+
+def chuong_standing_variation_section() -> str:
+    return '''<section class="station" id="chuong-standing-variation">
+      <div class="station-kicker">Interactive mechanism</div><h2>What does the hidden CNV⁻ population change?</h2>
+      <p class="prediction">Hold the LTRΔ selection and formation parameters fixed, then compare an almost absent CNV⁻ population (φ = 10⁻⁸) with standing CNV⁻ variation (φ = 10⁻⁴).</p>
+      <div class="preset-row" role="group" aria-label="Initial CNV-negative frequency"><button type="button" data-phi-view="low">φ = 10⁻⁸</button><button type="button" data-phi-view="high">φ = 10⁻⁴</button><button class="active" type="button" data-phi-view="both">Compare both</button></div>
+      <canvas id="chuong-phi-canvas" width="980" height="430" aria-label="Total GAP1 CNV and reporter-positive CNV trajectories for two initial CNV-negative frequencies"></canvas>
+      <p id="chuong-phi-summary" class="plot-summary" aria-live="polite"></p>
+      <div class="what-changed"><strong>Biological interpretation.</strong> CNV⁻ cells already carry a <em>GAP1</em> amplification but are invisible to the reporter-defined CNV⁺ curve. Their initial frequency can therefore change total CNV abundance and early competition without looking like de novo reporter amplification.</div>
+      <noscript><p class="noscript">Enable JavaScript to compare the two fixed φ values.</p></noscript>
+    </section>'''
+
+
+def chuong_equation_exercise() -> str:
+    matrix = math_to_html(r'''<h3>Matrix form</h3>
+$$M=\begin{pmatrix}1-\delta-\mu_{SNV}&0&0&0\\
+\delta&1&0&0\\0&0&1&0\\\mu_{SNV}&0&0&1\end{pmatrix},\qquad
+w=(1,1+s,1+s,1+s_{SNV})^\mathsf{T}$$
+$$x^{(m)}=Mx_t,\qquad x^{(s)}=\frac{w\odot x^{(m)}}{\sum_jw_jx_j^{(m)}},\qquad
+n_{t+1}\sim\operatorname{Multinomial}(N_e,x^{(s)}).$$''')
+    body = f'''<section class="lesson-cell equation-exercise" id="chuong-equation-exercise">
+      <p class="section-kicker">Exercise pause</p><h2>Build the Chuong update one force at a time</h2>
+      <p>Begin with $x_t=(x_A,x_{{C+}},x_{{C-}},x_B)^\mathsf{{T}}$. Reveal mutation, then selection, then drift; the compact matrix form appears only after the three biological steps are assembled.</p>
+      <div class="equation-reveal-controls"><button type="button" data-chuong-step="1">Reveal mutation</button><button type="button" data-chuong-step="2" disabled>Reveal selection</button><button type="button" data-chuong-step="3" disabled>Reveal drift</button><button type="button" id="chuong-equation-reset">Reset</button></div>
+      <div class="equation-reveal-sequence" aria-live="polite">
+        <article data-chuong-card="1" hidden><b>1 · Mutation</b><p>WT supplies reporter-positive CNVs at $\delta$ and the other-beneficial state at $\mu_{{SNV}}$; CNV⁻ is standing variation.</p></article>
+        <article data-chuong-card="2" hidden><b>2 · Selection</b><p>CNV⁺ and CNV⁻ share fitness $1+s$ because both amplify <em>GAP1</em>; the competitor has fitness $1+s_{{SNV}}$.</p></article>
+        <article data-chuong-card="3" hidden><b>3 · Drift</b><p>A multinomial draw of size $N_e$ creates one stochastic replicate from the expected frequencies.</p></article>
+      </div>
+      <div class="chuong-matrix" hidden>{matrix}</div>
+    </section>'''
+    return math_to_html(body)
+
+
+def chuong_code_exercise(cell_index: int) -> str:
+    blanks = [
+        ("Initial CNV⁻ state", "n = np.array([N*(1-phi), 0, N*phi, 0])"),
+        ("Mutation", "mutated = M @ p"),
+        ("Selection", "weighted = w * mutated"),
+        ("Drift", "n = np.random.multinomial(N, weighted / weighted.sum())"),
+    ]
+    rows = ''.join(f'<label><span>{html.escape(label)}</span><input type="text" autocomplete="off" spellcheck="false" data-code-answer="{html.escape(answer, quote=True)}" aria-label="Complete the {html.escape(label)} line"><small></small></label>' for label, answer in blanks)
+    return f'''<section class="mechanism-code lesson-cell code-fill-exercise" data-cell-id="6cfee4f5"><p class="section-kicker">Now in code</p><h2>Complete one Chuong generation</h2><p class="mechanism-intro">The function structure is visible. Fill the four biological lines before revealing the answers.</p><pre class="code-frame"><code class="language-python">def WF_Chuong(log_s, log_delta, log_phi, N, generations):
+    s, delta, phi = 10 ** np.array([log_s, log_delta, log_phi])
+    w = np.array([1, 1+s, 1+s, 1+S_SNV])
+    M = chuong_mutation_matrix(delta, M_SNV)
+    # complete the initial state and generation loop</code></pre><div class="code-fill-list">{rows}</div><pre class="code-frame code-frame-tail"><code>    return np.asarray(cnv_frequency)</code></pre><div class="button-row"><button type="button" id="check-chuong-code">Check lines</button><button type="button" id="reveal-chuong-code">Reveal answers</button><button type="button" id="reset-chuong-code">Reset</button></div><p id="chuong-code-summary" class="plot-summary" aria-live="polite"></p></section>'''
+
+
+def model_equivalence_section() -> str:
+    source = r'''## The Avecilla and Zhou models are the same three-state operator
+
+The biological labels change, but the transition graph does not: one source genotype can produce
+either of two descendants, the three states have relative fitnesses, and drift samples the next
+population.
+
+| Mathematical role | Avecilla et al. | Zhou et al. |
+|---|---|---|
+| source state | ancestor $A$ | trisomic |
+| first descendant | *GAP1* CNV $C$ | wild type |
+| second descendant | other beneficial $B$ | LOH |
+| two transition rates | $\delta_C,\delta_B$ | $\mu_{WT},\mu_{LOH}$ |
+| relative fitnesses | $1,1+s_C,1+s_B$ | $w_{Tri},1,w_{LOH}$ |
+
+The difference is parameterization, not model topology. In the displayed Avecilla fit, the
+other-beneficial lineage is represented by fixed competitor parameters. Zhou assigns distinct
+route and fitness parameters to the two descendant outcomes rather than using fixed constants for
+a generic second mutant.'''
+    return f'<section class="lesson-cell prose-cell equivalence-box" id="model-equivalence">{math_to_html(source)}</section>'
 
 
 def effective_population_section() -> str:
@@ -593,7 +729,11 @@ overestimates; the between-strain comparison is the more defensible prediction.
 def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, list[dict]]:
     nb = nbformat.read(NOTEBOOKS[key], as_version=4)
     blocks, coverage = [], []
-    for index, cell in enumerate(nb.cells):
+    indexed_cells = list(enumerate(nb.cells))
+    if key == "evolution":
+        rank = {cid: i for i, cid in enumerate(EVOLUTION_CELL_ORDER)}
+        indexed_cells.sort(key=lambda row: rank.get(row[1].get("id"), len(rank) + row[0]))
+    for index, cell in indexed_cells:
         cid = cell.get("id") or f"cell-{index}"
         source = cell.source or ""
         if not source.strip():
@@ -625,6 +765,9 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             elif (key == "evolution" and cid in EVOLUTION_OUTPUT_ONLY) or (key == "sbi" and cid in SBI_OUTPUT_ONLY):
                 output = "".join(output_html(dict(out), cid, j, figures_only=True) for j, out in enumerate(cell.get("outputs", [])))
                 story = OUTPUT_STORIES.get(cid, "")
+                if key == "evolution" and cid in {"54e9f8de", "104a1da1", "66cce2fa", "65a843c6", "2e99f96f"}:
+                    model_labels = {"54e9f8de": "Avecilla Wright–Fisher", "104a1da1": "three-state diagnostic", "66cce2fa": "Chuong Wright–Fisher", "65a843c6": "De Wright–Fisher", "2e99f96f": "Zhou et al."}
+                    blocks.append(fit_scope_note(model_labels[cid]))
                 if story:
                     blocks.append(f'<section class="figure-story lesson-cell" id="{anchor}" data-cell-id="{cid}"><p>{html.escape(story)}</p>{output}</section>')
                 elif output:
@@ -637,12 +780,21 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
                 status, reason = "excluded", "implementation detail is outside this presentation's learning goals"
         coverage.append({"index": index, "cell_id": cid, "type": cell.cell_type,
                          "status": status, "reason": reason})
-        for interaction in interactions.get(cid, []):
-            blocks.append(station_markup(interaction))
-        if key == "evolution" and cid == "4ff32a3e":
+        if key == "evolution" and cid == "3282b174":
+            blocks.append(avecilla_model_builder_section())
             blocks.append(effective_population_section())
+        for interaction in interactions.get(cid, []):
+            if not (key == "evolution" and interaction == "chuong-parameter-challenge"):
+                blocks.append(station_markup(interaction))
+        if key == "evolution" and cid == "104a1da1":
+            blocks.append(chuong_standing_variation_section())
+        if key == "evolution" and cid == "97c3a42c":
+            blocks.append(chuong_equation_exercise())
+        if key == "evolution" and cid == "b4a01787":
+            blocks.append(model_equivalence_section())
         if key == "sbi" and cid == "098a16bd":
             blocks.append(posterior_prediction_section())
+    coverage.sort(key=lambda row: row["index"])
     return "\n".join(blocks), coverage
 
 
@@ -654,7 +806,7 @@ def station_markup(name: str) -> str:
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>'''
     if name == "evolution-playground":
         body = '''<h2>Predict a three-genotype chemostat trajectory</h2><p class="prediction">Question: will the GAP1 CNV, another beneficial lineage, or drift dominate the population?</p>
-        <div class="preset-row evo-presets"><button data-evo-preset="fit">Published fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button></div>
+        <div class="preset-row evo-presets"><button data-evo-preset="fit">Published fit</button><button data-evo-preset="cnv">CNV sweep</button><button data-evo-preset="competing">Competing beneficial</button><button data-evo-preset="drift">Small population</button><button data-evo-preset="order">Order effect</button></div>
         <div class="interactive-grid"><form class="controls" id="evo-controls">
           <label><span>CNV formation log₁₀(δ<sub>C</sub>)</span><output id="evo-delta-c-label"></output><input id="evo-delta-c" type="range" min="-7" max="-2" step="0.05" value="-4.2"></label>
           <label><span>Other-beneficial log₁₀(δ<sub>B</sub>)</span><output id="evo-delta-b-label"></output><input id="evo-delta-b" type="range" min="-7" max="-2" step="0.05" value="-5"></label>
@@ -665,7 +817,7 @@ def station_markup(name: str) -> str:
           <label><span>Replicate trajectories</span><input id="evo-reps" type="number" min="1" max="24" value="8"></label>
           <label><span>Seed</span><input id="evo-seed" type="number" min="0" value="20260825"></label>
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
-          <div class="viz"><canvas id="evo-canvas" width="760" height="440" aria-label="Population frequency trajectories"></canvas><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div></div></div>'''
+          <div class="viz"><div class="plot-pair order-comparison"><figure><figcaption>Mutation → selection → drift</figcaption><canvas id="evo-canvas" width="760" height="440" aria-label="Population-frequency trajectories when mutation occurs before selection"></canvas></figure><figure><figcaption>Selection → mutation → drift</figcaption><canvas id="evo-order-canvas" width="760" height="440" aria-label="Population-frequency trajectories when selection occurs before mutation"></canvas></figure></div><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div><div class="what-changed"><strong>What if selection happens first?</strong> <span id="evo-order-summary">At the published mutation rates the two conventions are nearly indistinguishable; the Order effect preset makes their non-commutativity visible.</span></div></div></div>'''
     elif name == "dfe-example":
         body = '''<h2>An <em>s</em>-DFE at a glance</h2><p class="prediction">The x-axis is the selection coefficient carried by a newly formed CNV; height is its relative probability under a gamma-shaped distribution of fitness effects.</p>
         <div class="interactive-grid"><form class="controls" id="dfe-controls">
@@ -1069,8 +1221,9 @@ def build_content() -> None:
     (SITE/"index.html").write_text(landing_page())
     evo_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="index.html">Workshop home</a><a href="sbi.html">Next: simulation-based inference</a></nav>'
     sbi_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">Evolutionary simulators</a><a href="index.html">Workshop home</a></nav>'
-    (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+chapter_walkthrough("evolution")+evo+evo_nav+'</article></div>',["evolution"]))
-    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+chapter_walkthrough("sbi")+sbi+sbi_nav+'</article></div>',["sbi"]))
+    (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+evo+evo_nav+'</article></div>',["evolution"]))
+    sbi_opening = station_markup("chuong-parameter-challenge")
+    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+sbi_opening+chapter_walkthrough("sbi")+sbi+sbi_nav+'</article></div>',["evolution", "sbi"]))
 
 
 def provenance() -> None:

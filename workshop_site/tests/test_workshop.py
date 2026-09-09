@@ -228,13 +228,29 @@ def test_equations_fallbacks_accessibility_and_no_obsolete_20k_claim():
 
 def test_chapter_one_revision_contract():
     text = (SITE / "evolution.html").read_text()
+    sbi = (SITE / "sbi.html").read_text()
     notebook = (ROOT / "evolution_simulators.ipynb").read_text()
     assert "Predict a three-genotype chemostat trajectory" in text
-    assert 'id="evo-delta-c"' in text and 'id="evo-mut-wt"' not in text
+    assert 'id="evo-delta-c"' in text and 'id="evo-order-canvas"' in text
     assert "An <em>s</em>-DFE at a glance" in text
-    assert "100 / (1 + RMSE)" in text
-    assert text.index('id="chuong-parameter-challenge"') > text.index('data-cell-id="66cce2fa"')
+    assert "100 / (1 + RMSE)" in sbi
+    assert 'id="chuong-parameter-challenge"' not in text
+    assert sbi.index('id="chuong-parameter-challenge"') < sbi.index('class="chapter-walkthrough"')
     assert text.index('id="zhou-model-playground"') > text.index('data-cell-id="2e99f96f"')
+    assert text.index('data-cell-id="21748f7d"') < text.index('id="avecilla-model-builder"')
+    assert text.index('id="avecilla-model-builder"') < text.index('id="effective-population-size"') < text.index('id="evolution-playground"')
+    assert text.index('id="evolution-playground"') < text.index('data-cell-id="6ec896e6"')
+    assert text.index('id="model-equivalence"') < text.index('data-cell-id="629428f4"')
+    assert 'data-model-force="mutation"' in text and 'data-model-force="selection"' in text and 'data-model-force="drift"' in text
+    assert "Mutation moves probability between states" in text and "Selection reweights reproductive contribution" in text
+    assert 'id="chuong-standing-variation"' in text and "φ = 10⁻⁸" in text and "φ = 10⁻⁴" in text
+    assert 'id="chuong-equation-exercise"' in text and 'class="chuong-matrix" hidden' in text
+    assert 'class="code-fill-list"' in text and text.count('data-code-answer=') == 4
+    assert "Chuong chemostat data" in text and "simpler model" in text
+    assert "incoming fresh" in text and "mutation flow" in text
+    assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
+    assert "recurring grammar" not in text and "The executable mechanism" not in text
+    assert text.count("Model-fit preview") == 5
     assert "color=C['avecilla_wf']" in notebook
     assert re.search(r'src="assets/chapter/chuong-fit-orange\.png\?v=[0-9a-f]{12}"', text)
     assert "orange predictions, blue observations" in text
@@ -274,11 +290,11 @@ def test_landing_page_is_focused_on_the_two_lessons():
     assert "75 min" not in home and "15 min" not in home and "60 min" not in home
     assert home.count("Click to open lesson") == 2
     assert "Scan once" not in home
-    for page in (SITE / "evolution.html", SITE / "sbi.html"):
-        chapter = page.read_text()
-        assert 'class="chapter-walkthrough"' in chapter
-        assert chapter.count('class="story-slide') == 4
-        assert 'class="lesson-timing"' not in chapter
+    evolution = (SITE / "evolution.html").read_text()
+    sbi = (SITE / "sbi.html").read_text()
+    assert 'class="chapter-walkthrough"' not in evolution
+    assert sbi.count('class="story-slide') == 4
+    assert 'class="lesson-timing"' not in evolution + sbi
 
 
 def test_presentation_revision_contract():
@@ -295,7 +311,8 @@ def test_presentation_revision_contract():
     assert "Running on Google Colab" not in evolution
     assert len(re.findall(r'<code class="language-python">', evolution)) == 4
     assert len(re.findall(r'<code class="language-python">', sbi)) == 3
-    assert evolution.count('class="force-code-grid"') == 4
+    assert evolution.count('class="force-code-grid"') == 3
+    assert evolution.count('class="code-fill-list"') == 1
     assert "Effective population size belongs to the life cycle" in evolution
     assert "Serial dilution: bottlenecks dominate the harmonic mean" in evolution
     assert "WF = ODE?" not in evolution and "Infer mutation rate via SBI?" not in evolution
