@@ -241,14 +241,24 @@ def test_chapter_one_revision_contract():
     assert text.index('id="avecilla-model-builder"') < text.index('id="effective-population-size"') < text.index('id="evolution-playground"')
     assert text.index('id="evolution-playground"') < text.index('data-cell-id="6ec896e6"')
     assert text.index('id="model-equivalence"') < text.index('data-cell-id="629428f4"')
+    assert text.index('data-cell-id="104a1da1"') < text.index('data-cell-id="f9cb77d4"') < text.index('data-cell-id="97c3a42c"')
+    assert text.index('id="chuong-equation-exercise"') < text.index('code-fill-exercise') < text.index('id="chuong-standing-variation"')
     assert 'data-model-force="mutation"' in text and 'data-model-force="selection"' in text and 'data-model-force="drift"' in text
     assert "Mutation moves probability between states" in text and "Selection reweights reproductive contribution" in text
     assert 'id="chuong-standing-variation"' in text and "φ = 10⁻⁸" in text and "φ = 10⁻⁴" in text
+    assert 'id="chuong-phi-play"' in text and 'id="chuong-phi" type="range"' in text
     assert 'id="chuong-equation-exercise"' in text and 'class="chuong-matrix" hidden' in text
-    assert 'class="code-fill-list"' in text and text.count('data-code-answer=') == 4
+    assert 'class="code-fill-list"' in text and text.count('data-code-answer=') == 4 and text.count('data-check-code-line') == 4
+    assert text.count('class="annotated-code-layout"') == 3 and "equivalent NumPy expressions are accepted" in text
     assert "Chuong chemostat data" in text and "simpler model" in text
     assert "incoming fresh" in text and "mutation flow" in text
     assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
+    assert "Lauer et al. (2018)" in text and "journal.pbio.3000069" in text
+    assert "Motivation: repeated" in text and "finite populations <strong>sample</strong>" not in text
+    assert "Published fit</button>" in text and "Reference values</button>" in text
+    assert 'id="zhou-model-play"' in text and "The plot starts empty" in text
+    assert "The three-state Avecilla model misses the early LTRΔ structure!" in text
+    assert "Chuong&nbsp;WF" in text
     assert "recurring grammar" not in text and "The executable mechanism" not in text
     assert text.count("Model-fit preview") == 5
     assert "color=C['avecilla_wf']" in notebook
@@ -311,7 +321,8 @@ def test_presentation_revision_contract():
     assert "Running on Google Colab" not in evolution
     assert len(re.findall(r'<code class="language-python">', evolution)) == 4
     assert len(re.findall(r'<code class="language-python">', sbi)) == 3
-    assert evolution.count('class="force-code-grid"') == 3
+    assert evolution.count('class="force-code-grid"') == 0
+    assert len(re.findall(r'<pre class="annotated-code(?: |")', evolution)) == 4
     assert evolution.count('class="code-fill-list"') == 1
     assert "Effective population size belongs to the life cycle" in evolution
     assert "Serial dilution: bottlenecks dominate the harmonic mean" in evolution

@@ -105,13 +105,27 @@ def main() -> None:
         assert "percentage points" in driver.find_element("id", "evo-order-summary").text
         for station in ("evolution-playground", "dfe-example", "chuong-standing-variation", "zhou-model-playground"):
             element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.4)
+            if station == "chuong-standing-variation":
+                assert "starts empty" in driver.find_element("id", "chuong-phi-summary").text
+                driver.find_element("id", "chuong-phi-play").click(); time.sleep(.6)
+                driver.find_element("id", "chuong-phi-play").click()
+                assert "Generation" in driver.find_element("id", "chuong-phi-summary").text
+            if station == "zhou-model-playground":
+                assert "starts empty" in driver.find_element("id", "zhou-model-summary").text
+                driver.find_element("id", "zhou-model-play").click(); time.sleep(.7)
+                driver.find_element("id", "zhou-model-play").click()
+                assert "Passage" in driver.find_element("id", "zhou-model-summary").text
             element.screenshot(f"/tmp/workshop-{station}.png")
         driver.find_element("css selector", '[data-model-force="selection"]').click()
         assert driver.find_element("css selector", '[data-force-panel="selection"]').is_displayed()
         driver.find_element("id", "avecilla-model-builder").screenshot("/tmp/workshop-model-builder.png")
+        driver.find_element("css selector", 'section[data-cell-id="efcdf8fa"]').screenshot("/tmp/workshop-avecilla-code.png")
         for step in (1, 2, 3): driver.find_element("css selector", f'[data-chuong-step="{step}"]').click()
         assert driver.find_element("css selector", ".chuong-matrix").is_displayed()
         driver.find_element("id", "chuong-equation-exercise").screenshot("/tmp/workshop-chuong-equations.png")
+        driver.execute_script("document.querySelectorAll('[data-code-answer]').forEach(input => input.value = input.dataset.codeAnswer)")
+        for button in driver.find_elements("css selector", "[data-check-code-line]"): button.click()
+        assert "4 of 4" in driver.find_element("id", "chuong-code-summary").text
         driver.find_element("css selector", ".code-fill-exercise").screenshot("/tmp/workshop-chuong-code.png")
         assert driver.execute_script("return document.querySelectorAll('#zhou-model-canvas').length") == 1
         driver.get(f"{base}/index.html"); time.sleep(1)

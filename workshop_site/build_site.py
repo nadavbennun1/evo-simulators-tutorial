@@ -43,6 +43,7 @@ SEED = 20260825
 PUBLIC_URL = "https://nadavbennun1.github.io/evo-simulators-tutorial/"
 
 PAPERS = {
+    "lauer": ("Lauer et al. (2018)", "https://doi.org/10.1371/journal.pbio.3000069"),
     "avecilla": ("Avecilla et al. (2022)", "https://doi.org/10.1371/journal.pbio.3001633"),
     "chuong": ("Chuong et al. (2025)", "https://doi.org/10.7554/eLife.98934"),
     "de": ("De et al. (2025)", "https://doi.org/10.1101/2025.07.21.665951"),
@@ -59,7 +60,7 @@ EVOLUTION_OUTPUT_ONLY = {
 EVOLUTION_CELL_ORDER = [
     "9bb0927d", "7f319e7c", "cd6f3ea8", "21748f7d", "b09b721a", "3282b174",
     "efcdf8fa", "54e9f8de", "6ec896e6", "252e23bf", "4ff32a3e", "d29cac1e",
-    "4cd32c54", "f8f106e5", "f9cb77d4", "104a1da1", "97c3a42c", "5de3ea7b",
+    "4cd32c54", "f8f106e5", "104a1da1", "f9cb77d4", "97c3a42c", "5de3ea7b",
     "6cfee4f5", "66cce2fa", "2973e9a8", "e7044463", "8db7a696", "35d77585",
     "3d886968", "2539f7c5", "65a843c6", "1466cfd7", "705d171d", "7fd6e35c",
     "b4a01787", "5f9d90ff", "2e99f96f", "629428f4", "da8788a6", "6355cf57",
@@ -69,7 +70,7 @@ SBI_VISIBLE_CODE = {"67d19e3c", "88e4194b", "90cc8760"}
 SBI_OUTPUT_ONLY = {"cdda66b7", "0ba5658f", "da54003d", "098a16bd"}
 
 OUTPUT_CAPTIONS = {
-    "21748f7d": ("GAP1 CNV frequency across chemostat populations", "Replicate GAP1 CNV trajectories from the Avecilla study"),
+    "21748f7d": ("GAP1 CNV frequency in Lauer et al. (2018) chemostat populations", "Replicate GAP1 CNV trajectories from Lauer et al. 2018"),
     "b09b721a": ("The Avecilla model connects mutation, selection, drift, and continuous culture", "Avecilla evolutionary-model diagram"),
     "54e9f8de": ("A compact three-genotype simulator reproduces the main sweep dynamics", "Avecilla model fit"),
     "da8788a6": ("A distribution of effects creates many competing CNV lineages", "DFE trajectory comparison"),
@@ -77,7 +78,7 @@ OUTPUT_CAPTIONS = {
     "7b0a27f1": ("Selection enriches the upper tail of the DFE as the sweep progresses", "DFE and fitted selection through time"),
     "d29cac1e": ("Continuous chemostat dynamics and discrete Wright–Fisher dynamics can tell the same frequency story", "Chemostat ODE and Wright-Fisher comparison"),
     "f8f106e5": ("LTRΔ populations begin with an early plateau before the CNV sweep", "Chuong experimental trajectories"),
-    "104a1da1": ("The three-state Avecilla model misses the early LTRΔ structure", "Avecilla model applied to Chuong data"),
+    "104a1da1": ("The three-state Avecilla model misses the early LTRΔ structure!", "Avecilla model applied to Chuong data"),
     "97c3a42c": ("A pre-existing CNV pool supplies the missing biological state", "Chuong four-genotype model diagram"),
     "66cce2fa": ("The four-genotype model captures the observed chemostat trajectories", "Chuong model fit"),
     "8db7a696": ("CNV reporters reveal whether amplification persists after selection is removed", "De et al. reporter trajectories"),
@@ -215,12 +216,12 @@ def curated_markdown(key: str, cid: str, source: str) -> str | None:
     if cid in {"9bb0927d", "46c3d4e4", "4f69d96e"}:
         return None
     replacements = {
-        "cd6f3ea8": fr'''## Start with the data: repeated *GAP1* CNV sweeps
+        "cd6f3ea8": fr'''## Motivation: repeated *GAP1* CNV sweeps
 
-In the glutamine-limited populations of {paper("avecilla")}, *GAP1* copy-number
-variants repeatedly rise from rarity. That movie contains three evolutionary forces:
-new variants **appear**, fitter lineages **expand**, and finite populations **sample**
-their next generation.
+In the glutamine-limited chemostats of {paper("lauer")}, *GAP1* copy-number variants repeatedly
+rise from rarity. These trajectories motivate three mechanistic questions: how new variants
+**appear**, why fitter lineages **expand**, and how stochastic change arises in a finite population.
+Each experimental measurement also observes only a finite sample of that population.
 
 Nine replicate trajectories motivate the model-building question: which biological assumptions
 are sufficient to reproduce the timing and shape of these sweeps? We begin with observable states
@@ -339,7 +340,7 @@ This is the same mathematical model with different genotype labels: define allow
 apply fitness, sample drift, and observe the passages the experiment actually measured.''',
         "49b50682": r'''## Summary
 
-| | Avecilla WF | Avecilla ODE | Chuong WF | De WF | Zhou WF |
+| | Avecilla WF | Avecilla ODE | Chuong&nbsp;WF | De WF | Zhou WF |
 |---|---|---|---|---|---|
 | **Genotypes** | 3 | 3 | 4 | 2 | 3 |
 | **Time axis** | generations | hours | generations | generations | passages |
@@ -481,15 +482,32 @@ def mechanism_code(stem: str, source: str, cell_index: int) -> str:
         "5f9d90ff": "Two chromosome-loss routes",
     }
     snippets = {
-        "efcdf8fa": [("Parameters become rates", "delta_C = 10 ** log_delta_C\ndelta_B = 10 ** log_delta_B"), ("Mutation becomes a matrix", "M = [[1-delta_C-delta_B, 0, 0], ...]"), ("Selection follows mutation", "E = np.diag(w) @ M"), ("Drift becomes a draw", "n = np.random.multinomial(N, p)")],
-        "6cfee4f5": [("Log parameters enter biology", "s, m, p0 = 10 ** np.array([...])"), ("Standing variation sets the start", "n[0] = N * (1 - p0)\nn[2] = N * p0"), ("Mutation and selection compose", "E = M @ np.diag(w)"), ("Drift creates replicate histories", "n = np.random.multinomial(N, p)")],
-        "2539f7c5": [("Reversion points CNV → single copy", "M = [[1-m, 0], [m, 1]]"), ("Fitness favors the revertant", "diag([1.0, 1.0 + s])"), ("Initial rarity is explicit", "n = [N*(1-p0), N*p0]"), ("Drift samples the next generation", "n = np.random.multinomial(N, p)")],
-        "5f9d90ff": [("Two routes leave trisomy", "M[1,0] = mu_tri\nM[2,0] = mu_loh"), ("Each state has its fitness", "S = diag([w_tri, 1, w_loh])"), ("Order is declared", "G = S @ M  # mutate, then select"), ("Passages choose observations", "ret = p[ret_gens]")],
+        "efcdf8fa": [
+            ("setup", "delta_C, delta_B = 10**log_delta_C, 10**log_delta_B\nw = np.array([1.0, 1.0+s_C, 1.0+s_B])\np = np.array([1.0, 0.0, 0.0])", "State and parameters", "The vector p stores ancestral, GAP1 CNV, and other-beneficial frequencies."),
+            ("mutation", "M = np.array([[1-delta_C-delta_B, 0, 0],\n              [delta_C, 1, 0],\n              [delta_B, 0, 1]])\np_mut = M @ p", "Mutation", "M moves ancestral offspring into either derived genotype."),
+            ("selection", "p_sel = w * p_mut\np_sel /= p_sel.sum()", "Selection", "Fitness reweights the post-mutation frequencies and normalization restores a composition."),
+            ("drift", "n = rng.multinomial(N_e, p_sel)\np = n / N_e", "Drift", "A multinomial draw turns expected frequencies into one realized finite population."),
+        ],
+        "2539f7c5": [
+            ("setup", "delta, s = 10**log_delta, 10**log_s\np = np.array([1.0-p0, p0])", "State and parameters", "The two entries are CNV and single-copy frequencies at the start of a transfer."),
+            ("mutation", "M = np.array([[1-delta, 0],\n              [delta, 1]])\np_mut = M @ p", "Mutation", "Reversion transfers probability from the CNV state to the single-copy state."),
+            ("selection", "w = np.array([1.0, 1.0+s])\np_sel = w * p_mut\np_sel /= p_sel.sum()", "Selection", "The revertant's fitness advantage changes its expected contribution."),
+            ("drift", "n = rng.multinomial(N_e, p_sel)\np = n / N_e", "Drift", "Finite sampling generates a different reversion history in each replicate."),
+        ],
+        "5f9d90ff": [
+            ("setup", "p = np.array([p_tri, p_wt, p_loh])\nw = np.array([w_tri, 1.0, w_loh])", "State and parameters", "The composition records trisomic, wild-type, and LOH cells."),
+            ("mutation", "M = np.array([[1-mu_wt-mu_loh, 0, 0],\n              [mu_wt, 1, 0],\n              [mu_loh, 0, 1]])\np_mut = M @ p", "Mutation", "Two chromosome-loss routes leave the trisomic state."),
+            ("selection", "p_sel = w * p_mut\np_sel /= p_sel.sum()", "Selection", "The three relative fitnesses reshape the descendant mixture."),
+            ("drift", "n = rng.multinomial(N_e, p_sel)\np = n / N_e", "Drift", "One finite draw produces the next passage-level population."),
+        ],
     }
     if stem == "efcdf8fa":
         source = source.replace("E = M @ np.diag(w)", "E = np.diag(w) @ M  # mutate, then select")
-    cards = "".join(f'<article><span>{i:02d}</span><h3>{html.escape(label)}</h3><pre><code>{html.escape(code)}</code></pre></article>' for i,(label,code) in enumerate(snippets[stem],1))
-    return f'''<section class="mechanism-code lesson-cell" data-cell-id="{stem}"><p class="section-kicker">Now in code</p><h2>{titles[stem]}</h2><p class="mechanism-intro">Follow one generation from biological assumption to code.</p><div class="force-code-grid">{cards}</div><details class="code-panel full-simulator"><summary>Open the complete simulator <span>Python · cell {cell_index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code class="language-python">{html.escape(source)}</code></pre></details></section>'''
+    code_lines, notes = [], []
+    for force, code, label, meaning in snippets[stem]:
+        code_lines.append(f'<span class="annotated-code-block code-{force}"><i>{html.escape(label)}</i>{html.escape(code)}</span>')
+        notes.append(f'<article class="code-note code-{force}"><b>{html.escape(label)}</b><p>{html.escape(meaning)}</p></article>')
+    return f'''<section class="mechanism-code lesson-cell" data-cell-id="{stem}"><p class="section-kicker">Now in code</p><h2>{titles[stem]}</h2><p class="mechanism-intro">The highlighted blocks are the biological operators in one generation.</p><div class="annotated-code-layout"><pre class="annotated-code"><code class="language-python">{"".join(code_lines)}</code></pre><div class="code-annotations">{"".join(notes)}</div></div><details class="code-panel full-simulator"><summary>Open the complete simulator <span>Python · cell {cell_index}</span></summary><div class="code-toolbar"><span>Reproducible source</span><button class="copy-code" type="button">Copy</button></div><pre><code>{html.escape(source)}</code></pre></details></section>'''
 
 
 def chapter_walkthrough(chapter: str) -> str:
@@ -570,49 +588,60 @@ def fit_scope_note(model_name: str) -> str:
 def chuong_standing_variation_section() -> str:
     return '''<section class="station" id="chuong-standing-variation">
       <div class="station-kicker">Interactive mechanism</div><h2>What does the hidden CNV⁻ population change?</h2>
-      <p class="prediction">Hold the LTRΔ selection and formation parameters fixed, then compare an almost absent CNV⁻ population (φ = 10⁻⁸) with standing CNV⁻ variation (φ = 10⁻⁴).</p>
-      <div class="preset-row" role="group" aria-label="Initial CNV-negative frequency"><button type="button" data-phi-view="low">φ = 10⁻⁸</button><button type="button" data-phi-view="high">φ = 10⁻⁴</button><button class="active" type="button" data-phi-view="both">Compare both</button></div>
-      <canvas id="chuong-phi-canvas" width="980" height="430" aria-label="Total GAP1 CNV and reporter-positive CNV trajectories for two initial CNV-negative frequencies"></canvas>
-      <p id="chuong-phi-summary" class="plot-summary" aria-live="polite"></p>
+      <p class="prediction">Hold the LTRΔ selection and formation parameters fixed. Compare an almost absent CNV⁻ population (φ = 10⁻⁸) with standing variation (φ = 10⁻⁴ by default), then watch both simulations unfold.</p>
+      <div class="interactive-grid"><form class="controls" id="chuong-phi-controls"><div class="preset-row" role="group" aria-label="Initial CNV-negative frequency presets"><button type="button" data-phi-preset="-8">Nearly absent</button><button type="button" data-phi-preset="-4">Standing variation</button></div><label>Comparison log₁₀(φ) <output id="chuong-phi-label">−4.0</output><input id="chuong-phi" type="range" min="-8" max="-3" step="0.1" value="-4"></label><div class="button-row"><button id="chuong-phi-play" type="button">Play comparison</button><button type="reset">Reset</button></div></form><div class="viz"><canvas id="chuong-phi-canvas" width="760" height="430" aria-label="Animated total GAP1 CNV and reporter-positive CNV trajectories for two initial CNV-negative frequencies"></canvas><p id="chuong-phi-summary" class="plot-summary" aria-live="polite">The plot starts empty. Choose φ, then play the comparison.</p></div></div>
       <div class="what-changed"><strong>Biological interpretation.</strong> CNV⁻ cells already carry a <em>GAP1</em> amplification but are invisible to the reporter-defined CNV⁺ curve. Their initial frequency can therefore change total CNV abundance and early competition without looking like de novo reporter amplification.</div>
-      <noscript><p class="noscript">Enable JavaScript to compare the two fixed φ values.</p></noscript>
+      <noscript><p class="noscript">Enable JavaScript to animate the φ comparison.</p></noscript>
     </section>'''
 
 
 def chuong_equation_exercise() -> str:
-    matrix = math_to_html(r'''<h3>Matrix form</h3>
-$$M=\begin{pmatrix}1-\delta-\mu_{SNV}&0&0&0\\
-\delta&1&0&0\\0&0&1&0\\\mu_{SNV}&0&0&1\end{pmatrix},\qquad
-w=(1,1+s,1+s,1+s_{SNV})^\mathsf{T}$$
-$$x^{(m)}=Mx_t,\qquad x^{(s)}=\frac{w\odot x^{(m)}}{\sum_jw_jx_j^{(m)}},\qquad
-n_{t+1}\sim\operatorname{Multinomial}(N_e,x^{(s)}).$$''')
+    mutation = math_to_html(r'''<h3>1 · Mutation</h3><p>WT supplies reporter-positive CNVs at $\delta$ and the other-beneficial state at $\mu_{SNV}$; CNV⁻ is standing variation.</p>
+$$x^{(m)}=Mx_t,\qquad M=\begin{pmatrix}1-\delta-\mu_{SNV}&0&0&0\\
+\delta&1&0&0\\0&0&1&0\\\mu_{SNV}&0&0&1\end{pmatrix}.$$''')
+    selection = math_to_html(r'''<h3>2 · Selection</h3><p>CNV⁺ and CNV⁻ share fitness $1+s$ because both amplify <em>GAP1</em>; the competitor has fitness $1+s_{SNV}$.</p>
+$$W=\operatorname{diag}(1,1+s,1+s,1+s_{SNV}),\qquad
+x^{(s)}=\frac{Wx^{(m)}}{\mathbf 1^\mathsf{T}Wx^{(m)}}.$$''')
+    drift = math_to_html(r'''<h3>3 · Drift</h3><p>A multinomial draw of size $N_e$ creates one stochastic replicate from the expected frequencies.</p>
+$$n_{t+1}\sim\operatorname{Multinomial}(N_e,x^{(s)}),\qquad x_{t+1}=n_{t+1}/N_e.$$''')
+    complete = math_to_html(r'''<h3>Complete one-generation update</h3>
+$$x_t\xrightarrow{\ M\ }x^{(m)}\xrightarrow{\ W\ }x^{(s)}
+\xrightarrow{\ \operatorname{Multinomial}(N_e,\,\cdot)\ }x_{t+1}.$$''')
     body = f'''<section class="lesson-cell equation-exercise" id="chuong-equation-exercise">
       <p class="section-kicker">Exercise pause</p><h2>Build the Chuong update one force at a time</h2>
-      <p>Begin with $x_t=(x_A,x_{{C+}},x_{{C-}},x_B)^\mathsf{{T}}$. Reveal mutation, then selection, then drift; the compact matrix form appears only after the three biological steps are assembled.</p>
+      <p>Begin with $x_t=(x_A,x_{{C+}},x_{{C-}},x_B)^\mathsf{{T}}$. Each click reveals the biological statement together with its equation and operator form.</p>
       <div class="equation-reveal-controls"><button type="button" data-chuong-step="1">Reveal mutation</button><button type="button" data-chuong-step="2" disabled>Reveal selection</button><button type="button" data-chuong-step="3" disabled>Reveal drift</button><button type="button" id="chuong-equation-reset">Reset</button></div>
       <div class="equation-reveal-sequence" aria-live="polite">
-        <article data-chuong-card="1" hidden><b>1 · Mutation</b><p>WT supplies reporter-positive CNVs at $\delta$ and the other-beneficial state at $\mu_{{SNV}}$; CNV⁻ is standing variation.</p></article>
-        <article data-chuong-card="2" hidden><b>2 · Selection</b><p>CNV⁺ and CNV⁻ share fitness $1+s$ because both amplify <em>GAP1</em>; the competitor has fitness $1+s_{{SNV}}$.</p></article>
-        <article data-chuong-card="3" hidden><b>3 · Drift</b><p>A multinomial draw of size $N_e$ creates one stochastic replicate from the expected frequencies.</p></article>
+        <article data-chuong-card="1" hidden>{mutation}</article>
+        <article data-chuong-card="2" hidden>{selection}</article>
+        <article data-chuong-card="3" hidden>{drift}</article>
       </div>
-      <div class="chuong-matrix" hidden>{matrix}</div>
+      <div class="chuong-matrix" hidden>{complete}</div>
     </section>'''
     return math_to_html(body)
 
 
 def chuong_code_exercise(cell_index: int) -> str:
     blanks = [
-        ("Initial CNV⁻ state", "n = np.array([N*(1-phi), 0, N*phi, 0])"),
-        ("Mutation", "mutated = M @ p"),
-        ("Selection", "weighted = w * mutated"),
-        ("Drift", "n = np.random.multinomial(N, weighted / weighted.sum())"),
+        ("Initial state", r'$$n_0=N(1-\varphi,0,\varphi,0)$$', "n", "phi sets the standing CNV⁻ count; the other derived states begin at zero.", "np.array([N*(1-phi),0,N*phi,0])", ["np.array([N*(1-phi),0,N*phi,0])", "[N*(1-phi),0,N*phi,0]", "np.asarray([N*(1-phi),0,N*phi,0])"]),
+        ("Mutation", r'$$x^{(m)}=Mx_t$$', "mutated", "p is the current frequency vector and M is the four-state mutation matrix.", "M @ p", ["M@p", "np.matmul(M,p)", "M.dot(p)"]),
+        ("Selection", r'$$u=w\odot x^{(m)}$$', "weighted", "w is the relative-fitness vector; normalization is deferred to the drift line.", "w * mutated", ["w*mutated", "np.multiply(w,mutated)", "mutated*w"]),
+        ("Drift", r'$$n_{t+1}\sim\mathrm{Multinomial}(N,u/\sum_j u_j)$$', "n", "N is the effective population size and weighted.sum() normalizes the sampling probabilities.", "np.random.multinomial(N, weighted / weighted.sum())", ["np.random.multinomial(N,weighted/weighted.sum())", "rng.multinomial(N,weighted/weighted.sum())", "np.random.multinomial(N,weighted/np.sum(weighted))"]),
     ]
-    rows = ''.join(f'<label><span>{html.escape(label)}</span><input type="text" autocomplete="off" spellcheck="false" data-code-answer="{html.escape(answer, quote=True)}" aria-label="Complete the {html.escape(label)} line"><small></small></label>' for label, answer in blanks)
-    return f'''<section class="mechanism-code lesson-cell code-fill-exercise" data-cell-id="6cfee4f5"><p class="section-kicker">Now in code</p><h2>Complete one Chuong generation</h2><p class="mechanism-intro">The function structure is visible. Fill the four biological lines before revealing the answers.</p><pre class="code-frame"><code class="language-python">def WF_Chuong(log_s, log_delta, log_phi, N, generations):
+    rows = []
+    for index, (label, equation, lhs, meaning, answer, alternatives) in enumerate(blanks, 1):
+        rows.append(f'''<article class="code-fill-row" data-code-line="{index}"><header><span>{index}</span><div><b>{html.escape(label)}</b>{math_to_html(equation)}</div></header><p>{html.escape(meaning)}</p><div class="code-line-entry"><code>{html.escape(lhs)} =</code><input type="text" autocomplete="off" spellcheck="false" data-code-lhs="{html.escape(lhs)}" data-code-answer="{html.escape(answer, quote=True)}" data-code-alternatives="{html.escape('|||'.join(alternatives), quote=True)}" aria-label="Complete the {html.escape(label)} expression" placeholder="right-hand side"><button type="button" data-check-code-line>Check</button><small aria-live="polite"></small></div></article>''')
+    scaffold = '''<span class="code-setup">def WF_Chuong(log_s, log_delta, log_phi, N, generations):
     s, delta, phi = 10 ** np.array([log_s, log_delta, log_phi])
     w = np.array([1, 1+s, 1+s, 1+S_SNV])
-    M = chuong_mutation_matrix(delta, M_SNV)
-    # complete the initial state and generation loop</code></pre><div class="code-fill-list">{rows}</div><pre class="code-frame code-frame-tail"><code>    return np.asarray(cnv_frequency)</code></pre><div class="button-row"><button type="button" id="check-chuong-code">Check lines</button><button type="button" id="reveal-chuong-code">Reveal answers</button><button type="button" id="reset-chuong-code">Reset</button></div><p id="chuong-code-summary" class="plot-summary" aria-live="polite"></p></section>'''
+    M = chuong_mutation_matrix(delta, M_SNV)</span>
+<span class="code-mutation">    n = [1 · initial state]</span>
+<span class="code-setup">    for _ in range(generations):
+        p = n / n.sum()</span>
+<span class="code-mutation">        mutated = [2 · mutation]</span>
+<span class="code-selection">        weighted = [3 · selection]</span>
+<span class="code-drift">        n = [4 · drift]</span>'''
+    return f'''<section class="mechanism-code lesson-cell code-fill-exercise" data-cell-id="6cfee4f5"><p class="section-kicker">Now in code</p><h2>Complete one Chuong generation</h2><p class="mechanism-intro">The code first exposes where each biological operation belongs. Complete only each right-hand side; equivalent NumPy expressions are accepted.</p><div class="code-variable-key"><span><b>p</b> current frequencies</span><span><b>M</b> mutation matrix</span><span><b>w</b> fitness vector</span><span><b>N</b> effective population size</span><span><b>φ</b> initial CNV⁻ frequency</span></div><pre class="annotated-code code-exercise-scaffold"><code class="language-python">{scaffold}</code></pre><div class="code-fill-list">{"".join(rows)}</div><div class="button-row"><button type="button" id="reveal-chuong-code">Reveal all</button><button type="button" id="reset-chuong-code">Reset</button></div><p id="chuong-code-summary" class="plot-summary" aria-live="polite"></p></section>'''
 
 
 def model_equivalence_section() -> str:
@@ -786,10 +815,10 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
         for interaction in interactions.get(cid, []):
             if not (key == "evolution" and interaction == "chuong-parameter-challenge"):
                 blocks.append(station_markup(interaction))
-        if key == "evolution" and cid == "104a1da1":
-            blocks.append(chuong_standing_variation_section())
         if key == "evolution" and cid == "97c3a42c":
             blocks.append(chuong_equation_exercise())
+        if key == "evolution" and cid == "6cfee4f5":
+            blocks.append(chuong_standing_variation_section())
         if key == "evolution" and cid == "b4a01787":
             blocks.append(model_equivalence_section())
         if key == "sbi" and cid == "098a16bd":
@@ -837,15 +866,15 @@ def station_markup(name: str) -> str:
         <div class="what-changed"><strong>Score.</strong> RMSE is computed directly across the three log₁₀ parameters; points = 100 / (1 + RMSE). A perfect guess earns 100.</div>'''
     elif name == "zhou-model-playground":
         body = '''<h2>Explore competing chromosome-loss routes</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
-        <div class="preset-row"><button data-zhou-model-preset="fit">Published fit</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
+        <div class="preset-row"><button data-zhou-model-preset="fit">Reference values</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
         <div class="interactive-grid"><form class="controls" id="zhou-model-controls">
           <label>Tri → WT log₁₀ rate <output id="zhou-model-mu-wt-label"></output><input id="zhou-model-mu-wt" type="range" min="-6" max="-2.5" step="0.05" value="-3.47"></label>
           <label>Tri → LOH log₁₀ rate <output id="zhou-model-mu-loh-label"></output><input id="zhou-model-mu-loh" type="range" min="-6" max="-2.5" step="0.05" value="-3.28"></label>
           <label>Trisomic fitness <output id="zhou-model-w-tri-label"></output><input id="zhou-model-w-tri" type="range" min="0.85" max="1.05" step="0.002" value="0.92"></label>
           <label>LOH fitness <output id="zhou-model-w-loh-label"></output><input id="zhou-model-w-loh" type="range" min="0.85" max="1.05" step="0.002" value="0.986"></label>
           <label>Initial trisomic fraction <output id="zhou-model-p0-label"></output><input id="zhou-model-p0" type="range" min="0.7" max="1" step="0.01" value="0.99"></label>
-          <button type="reset">Reset</button></form>
-          <div class="viz"><canvas id="zhou-model-canvas" width="760" height="430" aria-label="Interactive Zhou trisomic, wild-type, and LOH trajectories"></canvas><p id="zhou-model-summary" class="plot-summary" aria-live="polite"></p><div class="composition" id="zhou-model-composition"></div></div></div>
+          <div class="button-row"><button id="zhou-model-play" type="button">Play</button><button type="reset">Reset</button></div></form>
+          <div class="viz"><canvas id="zhou-model-canvas" width="760" height="430" aria-label="Animated Zhou trisomic, wild-type, and LOH trajectories"></canvas><p id="zhou-model-summary" class="plot-summary" aria-live="polite">The plot starts empty. Choose a scenario, then press Play.</p><div class="composition" id="zhou-model-composition"></div></div></div>
         <div class="what-changed"><strong>What changed?</strong> <span id="zhou-model-change"></span></div>'''
     elif name == "training-viewer":
         body = '''<h2>100 epochs of learning</h2><p class="prediction">Prediction: when does lower validation loss begin to produce useful posterior predictions?</p>

@@ -63,12 +63,12 @@
       }
       trajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i, true));
       const orderTrajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i, false));
-      [[canvas, trajectories], [orderCanvas, orderTrajectories]].forEach(([target, runs]) => {
+      [[canvas, trajectories], [orderCanvas, orderTrajectories]].forEach(([target, runs], panelIndex) => {
         const f = P.frame(target, 0, 1, 0, duration);
         runs.forEach((traj, r) => colors.forEach((color, state) => {
           P.line(f, xs.slice(0, show + 1), traj.slice(0, show + 1).map(x => x[state]), color, r === 0 ? 2 : 0.9, r === 0 ? 0.9 : 0.16);
         }));
-        ["Ancestral", "GAP1 CNV", "Other beneficial"].forEach((name, i) => P.text(f, name, duration * 0.60, 0.96 - i * 0.065, {color: colors[i], font: "bold 11px system-ui"}));
+        if (panelIndex === 0) ["Ancestral", "GAP1 CNV", "Other beneficial"].forEach((name, i) => P.text(f, name, duration * 0.05, 0.58 - i * 0.075, {color: colors[i], font: "bold 11px system-ui"}));
       });
       const final = trajectories.map(x => x[show]);
       const med = [0, 1, 2].map(state => Workshop.quantile(final.map(x => x[state]), 0.5));
@@ -151,7 +151,8 @@
   function chuongStandingVariation() {
     const canvas = $("#chuong-phi-canvas");
     if (!canvas) return;
-    let view = "both";
+    const phi = $("#chuong-phi"), play = $("#chuong-phi-play");
+    let timer = null, started = false, visible = 0;
     const generations = Array.from({length: 117}, (_, i) => i), logS = -0.74, logDelta = -4.84;
     function simulate(logPhi) {
       const s = 10 ** logS, delta = 10 ** logDelta, phi = 10 ** logPhi, fitness = [1, 1+s, 1+s, 1.001];
@@ -164,21 +165,42 @@
       });
       return {reported, total};
     }
-    const low = simulate(-8), high = simulate(-4);
     function draw() {
-      const f = P.frame(canvas, 0, 1, 0, 116), selected = view === "low" ? [["φ=10⁻⁸", low, P.C.blue]] : view === "high" ? [["φ=10⁻⁴", high, P.C.orange]] : [["φ=10⁻⁸", low, P.C.blue], ["φ=10⁻⁴", high, P.C.orange]];
+      const comparisonLogPhi = +phi.value, low = simulate(-8), comparison = simulate(comparisonLogPhi);
+      const f = P.frame(canvas, 0, 1, 0, 116), selected = [["φ=10⁻⁸", low, P.C.blue], [`φ=10^${comparisonLogPhi.toFixed(1)}`, comparison, P.C.orange]];
+      $("#chuong-phi-label").textContent = comparisonLogPhi.toFixed(1).replace("-", "−");
+      if (!started) {
+        $("#chuong-phi-summary").textContent = "The plot starts empty. Choose φ, then play the comparison.";
+        return;
+      }
+      const show = Math.min(visible, 116), shownGenerations = generations.slice(0, show + 1);
       selected.forEach(([label, result, color], i) => {
-        P.line(f, generations, result.total, color, 3);
-        P.line(f, generations, result.reported, color, 2, .9, [7,5]);
+        P.line(f, shownGenerations, result.total.slice(0, show + 1), color, 3);
+        P.line(f, shownGenerations, result.reported.slice(0, show + 1), color, 2, .9, [7,5]);
         P.text(f, `${label} total GAP1 CNV`, 7, .96-i*.07, {color, font:"bold 11px system-ui"});
       });
-      P.text(f, "solid: total GAP1 CNV · dashed: reporter-positive CNV⁺", 7, selected.length === 2 ? .80 : .88, {color:P.C.ink, font:"11px system-ui"});
-      const deltaTotal = 100 * (high.total[50] - low.total[50]), deltaReported = 100 * (high.reported[50] - low.reported[50]);
-      $("#chuong-phi-summary").textContent = `At generation 50, changing φ from 10⁻⁸ to 10⁻⁴ changes total GAP1 CNV abundance by ${deltaTotal.toFixed(2)} percentage points, but reporter-positive CNV⁺ abundance by only ${deltaReported.toFixed(2)} points.`;
-      $$('[data-phi-view]').forEach(button => button.classList.toggle("active", button.dataset.phiView === view));
+      P.text(f, "solid: total GAP1 CNV · dashed: reporter-positive CNV⁺", 7, .80, {color:P.C.ink, font:"11px system-ui"});
+      const deltaTotal = 100 * (comparison.total[show] - low.total[show]), deltaReported = 100 * (comparison.reported[show] - low.reported[show]);
+      $("#chuong-phi-summary").textContent = `Generation ${show}: changing log₁₀(φ) from −8 to ${comparisonLogPhi.toFixed(1).replace("-", "−")} changes total GAP1 CNV abundance by ${deltaTotal.toFixed(2)} percentage points and reporter-positive CNV⁺ abundance by ${deltaReported.toFixed(2)} points.`;
     }
-    $$('[data-phi-view]').forEach(button => button.addEventListener("click", () => { view = button.dataset.phiView; draw(); }));
-    addEventListener("resize", draw); draw();
+    function resetView() {
+      if (timer) clearInterval(timer);
+      timer = null; started = false; visible = 0; play.textContent = "Play comparison"; draw();
+    }
+    phi.addEventListener("input", resetView);
+    $$('[data-phi-preset]').forEach(button => button.addEventListener("click", () => { phi.value = button.dataset.phiPreset; resetView(); }));
+    play.addEventListener("click", () => {
+      if (timer) { clearInterval(timer); timer = null; play.textContent = "Resume"; return; }
+      if (!started || visible >= 116) visible = 0;
+      started = true; play.textContent = "Pause";
+      timer = setInterval(() => {
+        visible = Math.min(116, visible + 2); draw();
+        if (visible >= 116) { clearInterval(timer); timer = null; play.textContent = "Replay"; }
+      }, 100);
+      draw();
+    });
+    $("#chuong-phi-controls").addEventListener("reset", () => setTimeout(resetView));
+    addEventListener("resize", draw); resetView();
   }
 
   function chuongEquationExercise() {
@@ -188,7 +210,7 @@
     let revealed = 0;
     function render() {
       cards.forEach(card => { card.hidden = +card.dataset.chuongCard > revealed; });
-      buttons.forEach(button => { const step = +button.dataset.chuongStep; button.disabled = step > revealed + 1 || step <= revealed; });
+      buttons.forEach(button => { const step = +button.dataset.chuongStep; button.disabled = step > revealed + 1 || step <= revealed; button.classList.toggle("revealed", step <= revealed); });
       matrix.hidden = revealed < 3;
     }
     buttons.forEach(button => button.addEventListener("click", () => { if (+button.dataset.chuongStep === revealed + 1) { revealed++; render(); } }));
@@ -200,14 +222,20 @@
     const root = $(".code-fill-exercise");
     if (!root) return;
     const inputs = $$('[data-code-answer]', root), summary = $("#chuong-code-summary");
-    const normalize = value => value.replace(/\s+/g, "").replace(/'/g, '"');
-    $("#check-chuong-code").addEventListener("click", () => {
-      let correct = 0;
-      inputs.forEach(input => { const okay = normalize(input.value) === normalize(input.dataset.codeAnswer); input.classList.toggle("correct", okay); input.classList.toggle("incorrect", !okay); input.nextElementSibling.textContent = okay ? "Correct" : "Try again"; if (okay) correct++; });
-      summary.textContent = `${correct} of ${inputs.length} biological lines are correct.`;
-    });
-    $("#reveal-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = input.dataset.codeAnswer; input.classList.add("correct"); input.classList.remove("incorrect"); input.nextElementSibling.textContent = "Revealed"; }); summary.textContent = "Answers revealed. Trace mutation, selection, and drift in that order."; });
-    $("#reset-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = ""; input.classList.remove("correct", "incorrect"); input.nextElementSibling.textContent = ""; }); summary.textContent = ""; });
+    const normalize = value => value.replace(/\s+/g, "").replace(/'/g, '"').replace(/;$/, "");
+    function statusNode(input) { return $("small", input.closest(".code-line-entry")); }
+    function check(input) {
+      let value = normalize(input.value), lhs = `${normalize(input.dataset.codeLhs)}=`;
+      if (value.startsWith(lhs)) value = value.slice(lhs.length);
+      const okay = input.dataset.codeAlternatives.split("|||").map(normalize).includes(value);
+      input.classList.toggle("correct", okay); input.classList.toggle("incorrect", !okay);
+      statusNode(input).textContent = okay ? "Correct" : "Try an equivalent expression using the variables above";
+      const correct = inputs.filter(node => node.classList.contains("correct")).length;
+      summary.textContent = `${correct} of ${inputs.length} lines checked correctly.`;
+    }
+    $$('[data-check-code-line]', root).forEach(button => button.addEventListener("click", () => check($("input", button.closest(".code-fill-row")))));
+    $("#reveal-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = input.dataset.codeAnswer; input.classList.add("correct"); input.classList.remove("incorrect"); statusNode(input).textContent = "Revealed"; }); summary.textContent = "All four lines revealed. Each line now matches its displayed equation."; });
+    $("#reset-chuong-code").addEventListener("click", () => { inputs.forEach(input => { input.value = ""; input.classList.remove("correct", "incorrect"); statusNode(input).textContent = ""; }); summary.textContent = ""; });
   }
 
   function dfeExample() {
@@ -303,27 +331,39 @@
     if (!canvas) return;
     const ids = ["mu-wt", "mu-loh", "w-tri", "w-loh", "p0"];
     const el = Object.fromEntries(ids.map(id => [id, $(`#zhou-model-${id}`)]));
+    const play = $("#zhou-model-play");
+    let timer = null, started = false, visible = 0;
 
     function draw() {
       const theta = [+el["mu-wt"].value, +el["w-tri"].value, +el["w-loh"].value, +el["mu-loh"].value];
       const tri0 = +el.p0.value, p0 = [tri0, (1 - tri0) * 0.6, (1 - tri0) * 0.4];
       const trajectory = S.zhouDeterministic(theta, p0, 120).filter((_, i) => i % 10 === 0);
       const xs = Array.from({length: 13}, (_, i) => i), colors = [P.C.muted, P.C.orange, P.C.purple], f = P.frame(canvas, 0, 1, 0, 12);
-      colors.forEach((color, state) => P.line(f, xs, trajectory.map(x => x[state]), color, 2.7));
-      ["Trisomic", "Wild type", "LOH"].forEach((name, i) => P.text(f, name, 8.4, 0.96 - i * 0.065, {color: colors[i], font: "bold 12px system-ui"}));
-      const final = trajectory.at(-1);
-      $("#zhou-model-composition").innerHTML = ["Trisomic", "Wild type", "LOH"].map((name, i) => `<span><b>${name}</b><br>${(final[i] * 100).toFixed(1)}% at P12</span>`).join("");
       $("#zhou-model-mu-wt-label").textContent = (+el["mu-wt"].value).toFixed(2);
       $("#zhou-model-mu-loh-label").textContent = (+el["mu-loh"].value).toFixed(2);
       $("#zhou-model-w-tri-label").textContent = (+el["w-tri"].value).toFixed(3);
       $("#zhou-model-w-loh-label").textContent = (+el["w-loh"].value).toFixed(3);
       $("#zhou-model-p0-label").textContent = `${(tri0 * 100).toFixed(0)}%`;
-      const route = final[1] > final[2] * 1.25 ? "euploid recovery dominates" : final[2] > final[1] * 1.25 ? "LOH dominates" : "both chromosome-loss routes remain important";
-      $("#zhou-model-change").textContent = `At passage 12, ${route}; transition rates set mutational supply while relative fitness reshapes the descendants after they appear.`;
-      $("#zhou-model-summary").textContent = `Deterministic Zhou trajectory sampled every 10 generations. Final composition: ${(final[0] * 100).toFixed(1)}% trisomic, ${(final[1] * 100).toFixed(1)}% wild type, ${(final[2] * 100).toFixed(1)}% LOH.`;
+      if (!started) {
+        $("#zhou-model-composition").innerHTML = "";
+        $("#zhou-model-summary").textContent = "The plot starts empty. Choose a scenario, then press Play.";
+        $("#zhou-model-change").textContent = "The trajectory will reveal how transition rates and fitness jointly determine the route out of trisomy.";
+        return;
+      }
+      const show = Math.min(visible, 12), current = trajectory[show];
+      colors.forEach((color, state) => P.line(f, xs.slice(0, show + 1), trajectory.slice(0, show + 1).map(x => x[state]), color, 2.7));
+      ["Trisomic", "Wild type", "LOH"].forEach((name, i) => P.text(f, name, 0.45, 0.58 - i * 0.075, {color: colors[i], font: "bold 12px system-ui"}));
+      $("#zhou-model-composition").innerHTML = ["Trisomic", "Wild type", "LOH"].map((name, i) => `<span><b>${name}</b><br>${(current[i] * 100).toFixed(1)}% at P${show}</span>`).join("");
+      const route = current[1] > current[2] * 1.25 ? "euploid recovery dominates" : current[2] > current[1] * 1.25 ? "LOH dominates" : "both chromosome-loss routes remain important";
+      $("#zhou-model-change").textContent = `At passage ${show}, ${route}; transition rates set mutational supply while relative fitness reshapes the descendants after they appear.`;
+      $("#zhou-model-summary").textContent = `Passage ${show} of 12: ${(current[0] * 100).toFixed(1)}% trisomic, ${(current[1] * 100).toFixed(1)}% wild type, ${(current[2] * 100).toFixed(1)}% LOH.`;
     }
 
-    Object.values(el).forEach(node => node.addEventListener("input", draw));
+    function resetView() {
+      if (timer) clearInterval(timer);
+      timer = null; started = false; visible = 0; play.textContent = "Play"; draw();
+    }
+    Object.values(el).forEach(node => node.addEventListener("input", resetView));
     const presets = {
       fit: [-3.47, -3.28, 0.92, 0.986, 0.99],
       wt: [-2.9, -5.2, 0.92, 0.96, 0.99],
@@ -333,11 +373,21 @@
     $$('[data-zhou-model-preset]').forEach(button => button.addEventListener("click", () => {
       const values = presets[button.dataset.zhouModelPreset];
       [el["mu-wt"], el["mu-loh"], el["w-tri"], el["w-loh"], el.p0].forEach((node, i) => { node.value = values[i]; });
-      draw();
+      resetView();
     }));
-    $("#zhou-model-controls").addEventListener("reset", () => setTimeout(draw));
+    play.addEventListener("click", () => {
+      if (timer) { clearInterval(timer); timer = null; play.textContent = "Resume"; return; }
+      if (!started || visible >= 12) visible = 0;
+      started = true; play.textContent = "Pause";
+      timer = setInterval(() => {
+        visible = Math.min(12, visible + 1); draw();
+        if (visible >= 12) { clearInterval(timer); timer = null; play.textContent = "Replay"; }
+      }, 220);
+      draw();
+    });
+    $("#zhou-model-controls").addEventListener("reset", () => setTimeout(resetView));
     addEventListener("resize", draw);
-    draw();
+    resetView();
   }
 
   avecillaPlayground();
