@@ -154,6 +154,7 @@
     const phi = $("#chuong-phi"), play = $("#chuong-phi-play");
     let timer = null, started = false, visible = 0;
     const generations = Array.from({length: 117}, (_, i) => i), logS = -0.74, logDelta = -4.84;
+    const superscript = value => String(value).replace("-", "⁻").replace("0", "⁰").replace("1", "¹").replace("2", "²").replace("3", "³").replace("4", "⁴").replace("5", "⁵").replace("6", "⁶").replace("7", "⁷").replace("8", "⁸").replace("9", "⁹");
     function simulate(logPhi) {
       const s = 10 ** logS, delta = 10 ** logDelta, phi = 10 ** logPhi, fitness = [1, 1+s, 1+s, 1.001];
       let p = [1-phi, 0, phi, 0], reported = [], total = [];
@@ -166,22 +167,23 @@
       return {reported, total};
     }
     function draw() {
-      const comparisonLogPhi = +phi.value, low = simulate(-8), comparison = simulate(comparisonLogPhi);
-      const f = P.frame(canvas, 0, 1, 0, 116), selected = [["φ=10⁻⁸", low, P.C.blue], [`φ=10^${comparisonLogPhi.toFixed(1)}`, comparison, P.C.orange]];
+      const comparisonLogPhi = +phi.value, baseline = simulate(-12), comparison = simulate(comparisonLogPhi);
+      const f = P.frame(canvas, 0, 1, 0, 116);
       $("#chuong-phi-label").textContent = comparisonLogPhi.toFixed(1).replace("-", "−");
       if (!started) {
         $("#chuong-phi-summary").textContent = "The plot starts empty. Choose φ, then play the comparison.";
         return;
       }
       const show = Math.min(visible, 116), shownGenerations = generations.slice(0, show + 1);
-      selected.forEach(([label, result, color], i) => {
-        P.line(f, shownGenerations, result.total.slice(0, show + 1), color, 3);
-        P.line(f, shownGenerations, result.reported.slice(0, show + 1), color, 2, .9, [7,5]);
-        P.text(f, `${label} total GAP1 CNV`, 7, .96-i*.07, {color, font:"bold 11px system-ui"});
-      });
-      P.text(f, "solid: total GAP1 CNV · dashed: reporter-positive CNV⁺", 7, .80, {color:P.C.ink, font:"11px system-ui"});
-      const deltaTotal = 100 * (comparison.total[show] - low.total[show]), deltaReported = 100 * (comparison.reported[show] - low.reported[show]);
-      $("#chuong-phi-summary").textContent = `Generation ${show}: changing log₁₀(φ) from −8 to ${comparisonLogPhi.toFixed(1).replace("-", "−")} changes total GAP1 CNV abundance by ${deltaTotal.toFixed(2)} percentage points and reporter-positive CNV⁺ abundance by ${deltaReported.toFixed(2)} points.`;
+      P.line(f, shownGenerations, baseline.reported.slice(0, show + 1), P.C.blue, 3);
+      P.line(f, shownGenerations, comparison.total.slice(0, show + 1), P.C.orange, 3);
+      P.line(f, shownGenerations, comparison.reported.slice(0, show + 1), P.C.orange, 2, .95, [7,5]);
+      const exp = comparisonLogPhi.toFixed(Number.isInteger(comparisonLogPhi) ? 0 : 1);
+      P.text(f, "φ=0 baseline", 7, .96, {color:P.C.blue, font:"bold 11px system-ui"});
+      P.text(f, `φ=10${superscript(exp)} total`, 7, .89, {color:P.C.orange, font:"bold 11px system-ui"});
+      P.text(f, `φ=10${superscript(exp)} observed (dashed)`, 7, .82, {color:P.C.orange, font:"bold 11px system-ui"});
+      const deltaTotal = 100 * (comparison.total[show] - baseline.total[show]), deltaReported = 100 * (comparison.reported[show] - baseline.reported[show]);
+      $("#chuong-phi-summary").textContent = `Generation ${show}: relative to the φ≈0 baseline, φ=10${superscript(exp)} changes total GAP1 CNV abundance by ${deltaTotal.toFixed(2)} percentage points and observed CNV⁺ abundance by ${deltaReported.toFixed(2)} points.`;
     }
     function resetView() {
       if (timer) clearInterval(timer);
@@ -259,14 +261,15 @@
       });
       P.points(f, grid, gy, P.C.orange, 2.2);
       P.line(f, [mu, mu], [0, 1], P.C.ink, 1.5, 1, [5, 4]);
-      P.text(f, `mean s̄ = ${mu.toFixed(3)}`, Math.min(mu + 0.004, 0.13), 0.96, {font: "bold 11px system-ui"});
+      P.text(f, `average new-CNV effect s̄ = ${mu.toFixed(3)}`, Math.min(mu + 0.004, 0.105), 0.96, {font: "bold 11px system-ui"});
+      P.text(f, "more common among new CNVs ↑", 0.006, 0.88, {color:P.C.muted, font:"11px system-ui"});
       const total = raw.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
       let cumulative = 0, q90 = xs.at(-1);
       for (let i = 0; i < xs.length; i++) { cumulative += Number.isFinite(raw[i]) ? raw[i] : 0; if (cumulative >= 0.9 * total) { q90 = xs[i]; break; } }
       $("#dfe-mean-label").textContent = mu.toFixed(3);
       $("#dfe-shape-label").textContent = k.toFixed(1);
-      $("#dfe-summary").textContent = `Example gamma s-DFE: mean ${mu.toFixed(3)}, shape ${k.toFixed(1)}, approximate 90th percentile ${q90.toFixed(3)}. Dots show the 25-class discretization used by the teaching simulator.`;
-      $("#dfe-change").textContent = k < 1.2 ? "Most new CNVs have tiny effects, with a long beneficial tail." : k > 3.5 ? "Effects cluster tightly around the mean." : "The distribution is right-skewed: many modest effects and a smaller high-fitness tail.";
+      $("#dfe-summary").textContent = `The average newly formed CNV has s=${mu.toFixed(3)}. About 10% of new CNVs have effects above s=${q90.toFixed(3)}. The 25 dots are the fitness classes represented in the simulation.`;
+      $("#dfe-change").textContent = k < 1.2 ? "Most new CNVs are nearly neutral, while a small minority confer much larger growth advantages. Those rare lineages can later dominate the population." : k > 3.5 ? "New CNVs have relatively similar growth advantages, so selection changes their relative abundance more slowly." : "Many new CNVs have modest advantages and a smaller group has substantially larger effects. Selection progressively enriches that high-fitness group.";
     }
     [mean, shape].forEach(node => node.addEventListener("input", draw));
     $("#dfe-controls").addEventListener("reset", () => setTimeout(draw));

@@ -93,9 +93,9 @@ OUTPUT_CAPTIONS = {
 }
 
 OUTPUT_STORIES = {
-    "da8788a6": "A single mutation rate can feed many CNV classes. Their effects are drawn once from the DFE; selection then changes which classes remain visible.",
-    "6355cf57": "Now fit a constant-s model to short windows. If the biological effect really is constant, the local estimate should stay flat.",
-    "7b0a27f1": "Under a DFE, weak lineages disappear and strong lineages dominate. The rising local estimate is therefore a population-level signature of sorting within the DFE.",
+    "da8788a6": "New GAP1 CNVs are assigned to 25 fitness classes. The class weights describe the variation present when CNVs first arise; selection has not yet changed their representation.",
+    "6355cf57": "A constant-s model is fitted independently to successive 30-generation intervals. A stable biological effect should produce similar estimates across intervals; systematic change indicates that the composition of the CNV population is changing.",
+    "7b0a27f1": "Both models reproduce the broad increase in CNV frequency, but their internal biology differs. Constant-s simulations retain the same inferred advantage through time. Under a DFE, higher-fitness CNV lineages progressively dominate, so the mean advantage within the CNV population rises; the Lauer trajectories show the same qualitative pattern.",
 }
 
 
@@ -234,26 +234,33 @@ $x=(x_A,x_C,x_B)^\mathsf{T}$ with $x_A+x_C+x_B=1$.
 
 This state vector is the model's vocabulary. Mutation moves frequency between states, selection
 changes their expected contributions, and drift samples a finite next generation.''',
-        "629428f4": r'''## Black-box stress test: can one effect describe the whole sweep?
+        "629428f4": r'''## Can one selection coefficient describe the whole sweep?
 
-For now, treat fitting as a black box: parameters enter the simulator, and an optimizer searches
-for values whose trajectories resemble the data. Chapter 2 will replace that vague step with a
-full account of posterior inference and uncertainty.
+The comparisons in this section ask a limited question: can the simulator reproduce the observed
+trajectory? Chapter 2 develops the inference procedure and quantifies parameter uncertainty.
 
-A **distribution of fitness effects (DFE)** assigns a selection coefficient $s$ to each new
-mutation. Its mean describes a typical new variant, while its shape controls how often rare,
-large-effect mutations occur.
+A *GAP1* CNV is not a single molecular genotype. Independently arising CNVs can differ in copy
+number, length, and breakpoint, and those differences can produce different growth advantages.
+A **distribution of fitness effects (DFE)** describes that biological variation at the moment new
+CNVs arise. Imagine collecting many newly formed CNVs before selection has had time to amplify
+some lineages and eliminate others. Each CNV has a selection coefficient $s$: fitness $1+s$
+relative to the ancestor. The DFE records what fraction of those new CNVs have small, intermediate,
+or large effects.
 
-For CNVs this matters because breakpoint, copy number, and amplicon size differ among lineages.
-If new CNVs draw $s_k$ from a gamma DFE, their contribution is reweighted by selection:
+The mean of this distribution is the average advantage among **new mutation events**. It need not
+equal the mean advantage among CNV cells later in the experiment: selection preferentially expands
+lineages with larger $s$. Divide the new CNVs into fitness classes, with class $k$ containing CNVs
+that share effect $s_k$. The fraction of CNV cells descended from class $k$ after $t$ generations is
 
 $$\Pr(k\mid\mathrm{{CNV\ at\ }}t)=
 \frac{{\Pr(k\mid\mathrm{{new\ CNV}})(1+s_k)^t}}
 {{\sum_j\Pr(j\mid\mathrm{{new\ CNV}})(1+s_j)^t}}$$
 
-The DFE itself stays fixed, but the CNV-bearing population becomes enriched for its upper tail.
-That creates a testable prediction: a constant-$s$ fit applied to successive windows should
-rise through time for DFE-generated data, but remain flat for truly constant-$s$ data.''',
+The numerator combines how frequently class $k$ arises with how much it multiplies. The denominator
+adds that same contribution across every class, converting the values into fractions that sum to one.
+Thus, the distribution among new mutations stays fixed, but the CNV-bearing population becomes
+enriched for its higher-fitness classes. A constant-$s$ fit applied to successive time windows should
+therefore rise for DFE-generated data and remain flat when every CNV truly has the same $s$.''',
         "f37292e6": r'''The full trajectory alone cannot reliably separate one large constant effect from a DFE
 with a lower mean and a compensating upper tail. Windowed fits add a temporal diagnostic.
 
@@ -588,8 +595,8 @@ def fit_scope_note(model_name: str) -> str:
 def chuong_standing_variation_section() -> str:
     return '''<section class="station" id="chuong-standing-variation">
       <div class="station-kicker">Interactive mechanism</div><h2>What does the hidden CNV⁻ population change?</h2>
-      <p class="prediction">Hold the LTRΔ selection and formation parameters fixed. Compare an almost absent CNV⁻ population (φ = 10⁻⁸) with standing variation (φ = 10⁻⁴ by default), then watch both simulations unfold.</p>
-      <div class="interactive-grid"><form class="controls" id="chuong-phi-controls"><div class="preset-row" role="group" aria-label="Initial CNV-negative frequency presets"><button type="button" data-phi-preset="-8">Nearly absent</button><button type="button" data-phi-preset="-4">Standing variation</button></div><label>Comparison log₁₀(φ) <output id="chuong-phi-label">−4.0</output><input id="chuong-phi" type="range" min="-8" max="-3" step="0.1" value="-4"></label><div class="button-row"><button id="chuong-phi-play" type="button">Play comparison</button><button type="reset">Reset</button></div></form><div class="viz"><canvas id="chuong-phi-canvas" width="760" height="430" aria-label="Animated total GAP1 CNV and reporter-positive CNV trajectories for two initial CNV-negative frequencies"></canvas><p id="chuong-phi-summary" class="plot-summary" aria-live="polite">The plot starts empty. Choose φ, then play the comparison.</p></div></div>
+      <p class="prediction">Hold the LTRΔ selection and formation parameters fixed. The blue baseline uses φ = 10⁻¹², effectively no standing CNV⁻ cells; the comparison uses φ = 10⁻⁴ by default.</p>
+      <div class="interactive-grid"><form class="controls" id="chuong-phi-controls"><div class="preset-row" role="group" aria-label="Initial CNV-negative frequency presets"><button type="button" data-phi-preset="-12">No standing variation</button><button type="button" data-phi-preset="-4">Standing variation</button></div><label>Comparison log₁₀(φ) <output id="chuong-phi-label">−4.0</output><input id="chuong-phi" type="range" min="-12" max="-3" step="0.1" value="-4"></label><div class="button-row"><button id="chuong-phi-play" type="button">Play comparison</button><button type="reset">Reset</button></div></form><div class="viz"><canvas id="chuong-phi-canvas" width="760" height="430" aria-label="Animated total and observed GAP1 CNV trajectories with and without standing CNV-negative cells"></canvas><p id="chuong-phi-summary" class="plot-summary" aria-live="polite">The plot starts empty. Choose φ, then play the comparison.</p></div></div>
       <div class="what-changed"><strong>Biological interpretation.</strong> CNV⁻ cells already carry a <em>GAP1</em> amplification but are invisible to the reporter-defined CNV⁺ curve. Their initial frequency can therefore change total CNV abundance and early competition without looking like de novo reporter amplification.</div>
       <noscript><p class="noscript">Enable JavaScript to animate the φ comparison.</p></noscript>
     </section>'''
@@ -623,7 +630,7 @@ $$x_t\xrightarrow{\ M\ }x^{(m)}\xrightarrow{\ W\ }x^{(s)}
 
 def chuong_code_exercise(cell_index: int) -> str:
     blanks = [
-        ("Initial state", r'$$n_0=N(1-\varphi,0,\varphi,0)$$', "n", "phi sets the standing CNV⁻ count; the other derived states begin at zero.", "np.array([N*(1-phi),0,N*phi,0])", ["np.array([N*(1-phi),0,N*phi,0])", "[N*(1-phi),0,N*phi,0]", "np.asarray([N*(1-phi),0,N*phi,0])"]),
+        ("Initial state", r'$$n=\left(N\ast(1-\varphi),\ 0,\ N\ast\varphi,\ 0\right)$$', "n", "phi sets the standing CNV⁻ count; the other derived states begin at zero.", "np.array([N*(1-phi),0,N*phi,0])", ["np.array([N*(1-phi),0,N*phi,0])", "[N*(1-phi),0,N*phi,0]", "np.asarray([N*(1-phi),0,N*phi,0])"]),
         ("Mutation", r'$$x^{(m)}=Mx_t$$', "mutated", "p is the current frequency vector and M is the four-state mutation matrix.", "M @ p", ["M@p", "np.matmul(M,p)", "M.dot(p)"]),
         ("Selection", r'$$u=w\odot x^{(m)}$$', "weighted", "w is the relative-fitness vector; normalization is deferred to the drift line.", "w * mutated", ["w*mutated", "np.multiply(w,mutated)", "mutated*w"]),
         ("Drift", r'$$n_{t+1}\sim\mathrm{Multinomial}(N,u/\sum_j u_j)$$', "n", "N is the effective population size and weighted.sum() normalizes the sampling probabilities.", "np.random.multinomial(N, weighted / weighted.sum())", ["np.random.multinomial(N,weighted/weighted.sum())", "rng.multinomial(N,weighted/weighted.sum())", "np.random.multinomial(N,weighted/np.sum(weighted))"]),
@@ -635,12 +642,12 @@ def chuong_code_exercise(cell_index: int) -> str:
     s, delta, phi = 10 ** np.array([log_s, log_delta, log_phi])
     w = np.array([1, 1+s, 1+s, 1+S_SNV])
     M = chuong_mutation_matrix(delta, M_SNV)</span>
-<span class="code-mutation">    n = [1 · initial state]</span>
+<span class="code-mutation">    n = ____  # (1)</span>
 <span class="code-setup">    for _ in range(generations):
         p = n / n.sum()</span>
-<span class="code-mutation">        mutated = [2 · mutation]</span>
-<span class="code-selection">        weighted = [3 · selection]</span>
-<span class="code-drift">        n = [4 · drift]</span>'''
+<span class="code-mutation">        mutated = ____  # (2)</span>
+<span class="code-selection">        weighted = ____  # (3)</span>
+<span class="code-drift">        n = ____  # (4)</span>'''
     return f'''<section class="mechanism-code lesson-cell code-fill-exercise" data-cell-id="6cfee4f5"><p class="section-kicker">Now in code</p><h2>Complete one Chuong generation</h2><p class="mechanism-intro">The code first exposes where each biological operation belongs. Complete only each right-hand side; equivalent NumPy expressions are accepted.</p><div class="code-variable-key"><span><b>p</b> current frequencies</span><span><b>M</b> mutation matrix</span><span><b>w</b> fitness vector</span><span><b>N</b> effective population size</span><span><b>φ</b> initial CNV⁻ frequency</span></div><pre class="annotated-code code-exercise-scaffold"><code class="language-python">{scaffold}</code></pre><div class="code-fill-list">{"".join(rows)}</div><div class="button-row"><button type="button" id="reveal-chuong-code">Reveal all</button><button type="button" id="reset-chuong-code">Reset</button></div><p id="chuong-code-summary" class="plot-summary" aria-live="polite"></p></section>'''
 
 
@@ -674,11 +681,30 @@ experiment. It is not automatically the largest cell count—or even the census 
 
 ### Chemostat: match the variance of neutral frequency change
 
-{paper("avecilla")} simulated two neutral alleles at chemostat steady state and matched their
-one-generation conditional variance:
+{paper("avecilla")} estimated the drift scale by labeling two otherwise identical, neutral
+lineages. Let $p$ be the fraction of cells carrying one label in the **current** generation; the
+other label has frequency $1-p$. Let $p'$ be the fraction carrying that same label one generation
+later. Because neither label has a fitness advantage, changes from $p$ to $p'$ measure drift alone.
+Here, $p$ is simply a lineage frequency—not a model parameter and not the CNV frequency.
 
-$$\mathrm{{Var}}(p'\mid p)=\frac{{p(1-p)}}{{N_e}},\qquad
-\widehat N_e=\frac{{p(1-p)}}{{\frac1t\sum_{{j=1}}^t\mathrm{{Var}}(p'_j\mid p_j)}}.$$
+For an ideal haploid Wright–Fisher population, the one-generation variance is
+
+$$\mathrm{{Var}}(p'\mid p)=\frac{{p(1-p)}}{{N_e}}.$$
+
+Large random changes imply a small $N_e$; small changes imply a large $N_e$. The neutral lineages
+begin at $p=1/2$. After the chemostat reaches steady state, the analysis retains $t=900$
+generation-to-generation transitions. For transition $j$, $p_j$ is the current frequency and
+$p'_j=p_{{j+1}}$ is the next frequency. Their conditional variances are averaged:
+
+$$\overline V=\frac1t\sum_{{j=1}}^t\mathrm{{Var}}(p'_j\mid p_j).$$
+
+The Wright–Fisher population size is then chosen to reproduce that average chemostat variance:
+
+$$\widehat N_e=\frac{{p(1-p)}}{{\overline V}}.$$
+
+The paper writes an unsubscripted $p$ in this last expression: it is the neutral-lineage frequency
+at which the Wright–Fisher variance is matched. In this very large population it remains close to
+its initial value $1/2$; $p_j$ identifies the frequency in a particular retained transition.
 
 Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the steady-state census.
 
@@ -848,13 +874,14 @@ def station_markup(name: str) -> str:
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
           <div class="viz"><div class="plot-pair order-comparison"><figure><figcaption>Mutation → selection → drift</figcaption><canvas id="evo-canvas" width="760" height="440" aria-label="Population-frequency trajectories when mutation occurs before selection"></canvas></figure><figure><figcaption>Selection → mutation → drift</figcaption><canvas id="evo-order-canvas" width="760" height="440" aria-label="Population-frequency trajectories when selection occurs before mutation"></canvas></figure></div><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div><div class="what-changed"><strong>What if selection happens first?</strong> <span id="evo-order-summary">At the published mutation rates the two conventions are nearly indistinguishable; the Order effect preset makes their non-commutativity visible.</span></div></div></div>'''
     elif name == "dfe-example":
-        body = '''<h2>An <em>s</em>-DFE at a glance</h2><p class="prediction">The x-axis is the selection coefficient carried by a newly formed CNV; height is its relative probability under a gamma-shaped distribution of fitness effects.</p>
+        body = '''<h2>Fitness effects differ among newly formed CNVs</h2><p class="prediction">Imagine measuring the growth advantage of a very large collection of independent GAP1 CNVs immediately after they arise, before selection changes their abundance. Each CNV contributes one value of s. High regions of the curve correspond to effects that occur commonly among these new mutation events; low regions correspond to rarer effects.</p>
+        <div class="dfe-biological-key"><article><b>What does s mean?</b><p>A CNV with s = 0.04 has relative fitness 1.04: under this model it contributes about 4% more descendants per generation than the ancestor.</p></article><article><b>What does an interval mean?</b><p>The area of the curve between two s values is the expected fraction of newly formed CNVs whose effects fall in that range.</p></article></div>
         <div class="interactive-grid"><form class="controls" id="dfe-controls">
           <label>Mean effect s̄ <output id="dfe-mean-label"></output><input id="dfe-mean" type="range" min="0.01" max="0.09" step="0.0025" value="0.045"></label>
-          <label>Gamma shape <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
+          <label>Spread and skew (gamma shape) <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
           <button type="reset">Reset</button></form>
-          <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Gamma-shaped distribution of selection coefficients"></canvas><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <div class="what-changed"><strong>Evolutionary consequence.</strong> <span id="dfe-change"></span></div>'''
+          <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Distribution of growth advantages among newly formed GAP1 CNVs"></canvas><div class="dfe-axis-caption"><span>smaller growth advantage</span><b>selection coefficient s</b><span>larger growth advantage</span></div><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
+        <div class="what-changed"><strong>Consequence for the evolving population.</strong> <span id="dfe-change"></span></div>'''
     elif name == "chuong-parameter-challenge":
         body = '''<h2>Infer selection, formation, and initial frequency</h2><p class="prediction">Each round generates a synthetic CNV-frequency dataset. Estimate log₁₀(s), log₁₀(δ), and log₁₀(φ); the score is determined by parameter RMSE.</p>
         <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">

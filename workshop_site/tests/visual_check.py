@@ -94,6 +94,9 @@ def main() -> None:
         assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
         driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         driver.get(f"{base}/evolution.html"); time.sleep(2)
+        effective_size = driver.find_element("id", "effective-population-size")
+        driver.execute_script("arguments[0].scrollIntoView({block:'start'})", effective_size)
+        effective_size.screenshot("/tmp/workshop-effective-population-size.png")
         assert not driver.find_element("id", "evo-composition").text
         assert "starts empty" in driver.find_element("id", "evo-summary").text
         driver.find_element("id", "evo-play").click(); time.sleep(.4)

@@ -229,10 +229,11 @@ def test_equations_fallbacks_accessibility_and_no_obsolete_20k_claim():
 def test_chapter_one_revision_contract():
     text = (SITE / "evolution.html").read_text()
     sbi = (SITE / "sbi.html").read_text()
+    script = (SITE / "js" / "evolution.js").read_text()
     notebook = (ROOT / "evolution_simulators.ipynb").read_text()
     assert "Predict a three-genotype chemostat trajectory" in text
     assert 'id="evo-delta-c"' in text and 'id="evo-order-canvas"' in text
-    assert "An <em>s</em>-DFE at a glance" in text
+    assert "Fitness effects differ among newly formed CNVs" in text
     assert "100 / (1 + RMSE)" in sbi
     assert 'id="chuong-parameter-challenge"' not in text
     assert sbi.index('id="chuong-parameter-challenge"') < sbi.index('class="chapter-walkthrough"')
@@ -245,10 +246,12 @@ def test_chapter_one_revision_contract():
     assert text.index('id="chuong-equation-exercise"') < text.index('code-fill-exercise') < text.index('id="chuong-standing-variation"')
     assert 'data-model-force="mutation"' in text and 'data-model-force="selection"' in text and 'data-model-force="drift"' in text
     assert "Mutation moves probability between states" in text and "Selection reweights reproductive contribution" in text
-    assert 'id="chuong-standing-variation"' in text and "φ = 10⁻⁸" in text and "φ = 10⁻⁴" in text
+    assert 'id="chuong-standing-variation"' in text and "φ = 10⁻¹²" in text and "φ = 10⁻⁴" in text
     assert 'id="chuong-phi-play"' in text and 'id="chuong-phi" type="range"' in text
+    assert "baseline = simulate(-12)" in script and '"φ=0 baseline"' in script and "observed (dashed)" in script
     assert 'id="chuong-equation-exercise"' in text and 'class="chuong-matrix" hidden' in text
     assert 'class="code-fill-list"' in text and text.count('data-code-answer=') == 4 and text.count('data-check-code-line') == 4
+    assert "n = ____  # (1)" in text and "mutated = ____  # (2)" in text and "weighted = ____  # (3)" in text and "n = ____  # (4)" in text
     assert text.count('class="annotated-code-layout"') == 3 and "equivalent NumPy expressions are accepted" in text
     assert "Chuong chemostat data" in text and "simpler model" in text
     assert "incoming fresh" in text and "mutation flow" in text
@@ -259,6 +262,9 @@ def test_chapter_one_revision_contract():
     assert 'id="zhou-model-play"' in text and "The plot starts empty" in text
     assert "The three-state Avecilla model misses the early LTRΔ structure!" in text
     assert "Chuong&nbsp;WF" in text
+    assert "Black-box stress test" not in text and "Can one selection coefficient describe the whole sweep?" in text
+    assert "Let <math" in text and "fraction of cells carrying one label" in text and "t</mi><mo>&#x0003D;</mo><mn>900" in text
+    assert "What does s mean?" in text and "fraction of newly formed CNVs" in text
     assert "recurring grammar" not in text and "The executable mechanism" not in text
     assert text.count("Model-fit preview") == 5
     assert "color=C['avecilla_wf']" in notebook
