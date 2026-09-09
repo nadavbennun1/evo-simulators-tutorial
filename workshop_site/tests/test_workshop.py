@@ -312,6 +312,8 @@ def test_sbi_revision_contract():
     assert "Accepted simulations turn a distance threshold into parameter uncertainty" not in text
     assert "NPE returns a joint posterior after one conditioning step" not in text
     assert 'class="paper-figure abc-framework-figure"' in text and 'class="abc-framework-viewport"' in text and "abc-framework.png" in text
+    assert ".abc-framework-viewport{overflow:hidden" in (SITE / "css" / "workshop.css").read_text()
+    assert ".abc-framework-viewport img{position:static;display:block;width:100%;max-width:100%;height:auto" in (SITE / "css" / "workshop.css").read_text()
     assert '<details class="code-panel" open' not in text
     assert "Run ABC progressively" not in text and ">Run ABC</button>" in text
     assert 'const displayOrder = [1, 0, 2, 3]' in script
