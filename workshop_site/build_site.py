@@ -219,10 +219,19 @@ def curated_markdown(key: str, cid: str, source: str) -> str | None:
     replacements = {
         "cd6f3ea8": fr'''## Motivation: repeated *GAP1* CNV sweeps
 
-In the glutamine-limited chemostats of {paper("lauer")}, *GAP1* copy-number variants repeatedly
-rise from rarity. These trajectories motivate three mechanistic questions: how new variants
-**appear**, why fitter lineages **expand**, and how stochastic change arises in a finite population.
-Each experimental measurement also observes only a finite sample of that population.
+{paper("lauer")} evolved nine replicate yeast populations in glutamine-limited chemostats. A
+fluorescent reporter linked to *GAP1* made cells carrying an amplification brighter, allowing flow
+cytometry to estimate the frequency of *GAP1* copy-number variants in samples collected through time.
+
+<figure class="paper-figure experimental-primer-figure">
+  <img loading="eager" src="{versioned_asset('assets/chapter/lauer-experimental-primer.jpg')}" alt="Experimental workflow: a fluorescent GAP1 copy-number reporter is followed through replicate chemostat evolution by sampling and flow cytometry, producing CNV-frequency trajectories">
+  <figcaption>Experimental origin of the <em>GAP1</em> CNV trajectories used in this chapter.</figcaption>
+</figure>
+
+The resulting trajectories show *GAP1* copy-number variants repeatedly rising from rarity. They
+motivate three mechanistic questions: how new variants **appear**, why fitter lineages **expand**,
+and how stochastic change arises in a finite population. Each experimental measurement also
+observes only a finite sample of that population.
 
 Nine replicate trajectories motivate the model-building question: which biological assumptions
 are sufficient to reproduce the timing and shape of these sweeps? We begin with observable states

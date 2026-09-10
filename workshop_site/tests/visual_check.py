@@ -102,6 +102,11 @@ def main() -> None:
         assert driver.execute_script("return document.querySelectorAll('#chuong-score-card .score-breakdown span').length") == 3
         driver.find_element("id", "chuong-parameter-challenge").screenshot("/tmp/workshop-chuong-scored.png")
         driver.get(f"{base}/evolution.html"); time.sleep(2)
+        lauer_primer = driver.find_element("css selector", ".experimental-primer-figure")
+        lauer_image = driver.find_element("css selector", ".experimental-primer-figure img")
+        WebDriverWait(driver, 10).until(lambda d: lauer_image.get_property("naturalWidth") == 1280)
+        assert lauer_image.size["width"] <= lauer_primer.size["width"]
+        lauer_primer.screenshot("/tmp/workshop-lauer-experimental-primer.png")
         assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel]:not([hidden])').length") == 0
         assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-model-force].active').length") == 0
         driver.find_element("id", "cell-6ec896e6").screenshot("/tmp/workshop-continuous-chemostat-equations.png")

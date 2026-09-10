@@ -260,6 +260,9 @@ def test_chapter_one_revision_contract():
     assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
     assert "Lauer et al. (2018)" in text and "journal.pbio.3000069" in text
     assert "Motivation: repeated" in text and "finite populations <strong>sample</strong>" not in text
+    assert 'class="paper-figure experimental-primer-figure"' in text
+    assert "lauer-experimental-primer.jpg" in text and "fluorescent reporter linked to <em>GAP1</em>" in text
+    assert text.index("Motivation: repeated") < text.index("lauer-experimental-primer.jpg") < text.index("The resulting trajectories")
     assert "Published fit</button>" in text and "Reference values</button>" in text
     assert 'id="zhou-model-play"' in text and "The plot starts empty" in text
     assert "The three-state Avecilla model misses the LTRΔ structure!" in text and "misses the early LTRΔ structure" not in text
