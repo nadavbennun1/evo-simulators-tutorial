@@ -1,13 +1,13 @@
 # Assessment data dictionary and privacy boundary
 
-The unit of storage is an append-only event. A consenting run normally produces one `started` row and one `completed` row. `id` is the immutable submission/event key; `run_id` joins those two rows. `received_at` is assigned by PostgreSQL and is the canonical event timestamp.
+The unit of storage is an append-only event. A consenting run normally produces one `started` row and one `completed` row in a private Google Sheet. `id` is the immutable submission/event key; `run_id` joins those two rows. The bound Apps Script assigns `received_at` as a canonical UTC ISO timestamp.
 
 ## Database columns
 
 | Column | Type | Allowed values / meaning |
 | --- | --- | --- |
 | `id` | UUID | Cryptographically random client event ID; primary key |
-| `received_at` | TIMESTAMPTZ | Server default `now()`; analyze in UTC |
+| `received_at` | UTC ISO string | Server-created time from the bound Apps Script |
 | `run_id` | UUID | Random assessment-run ID |
 | `participant_id` | UUID | Random anonymous same-device pairing ID |
 | `phase` | TEXT | `pre`, `post` |
@@ -16,7 +16,7 @@ The unit of storage is an append-only event. A consenting run normally produces 
 | `assessment_version` | TEXT | Semantic version of the immutable bank |
 | `workshop_git_sha` | TEXT | 40-character deployed Git SHA (`development` only in local builds) |
 | `consent_version` | TEXT | Version of the notice shown before opt-in |
-| `payload` | JSONB | Event-specific values below; maximum 64 KiB |
+| `payload` | JSON string | Event-specific values below; maximum 64 KiB |
 
 ## Completed payload
 
@@ -36,6 +36,8 @@ The unit of storage is an append-only event. A consenting run normally produces 
 | `answers.post_evaluation` | array | Two post-only 1–5 ratings; empty for pre |
 
 Every answer object contains `question_id`, `question_revision`, `variant_id`, `displayed_order`, `response`, and `duration_ms`. Responses are IDs, arrays of IDs, mappings between IDs, or integers; no free text is accepted.
+
+For convenience, the Sheet repeats each response and total client duration in clearly named columns to the right of `payload`. These are display columns derived from the authoritative payload, not additional measurements. The scorer always uses `payload`.
 
 ## Explicit privacy boundary
 

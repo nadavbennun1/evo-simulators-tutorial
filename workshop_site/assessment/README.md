@@ -1,6 +1,6 @@
 # Anonymous workshop assessment
 
-This directory contains the mobile-first pre/post assessment for **SBI for experimental evolution**. It is a static application served by GitHub Pages; anonymous events are sent to a separate Supabase/Postgres project through the isolated adapter in `backend.js`.
+This directory contains the mobile-first pre/post assessment for **SBI for experimental evolution**. It is a static application served by GitHub Pages; anonymous events are appended to a private Google Sheet through the small bound Apps Script in `google-sheets/Code.gs`.
 
 The application supports:
 
@@ -13,7 +13,7 @@ The application supports:
 
 ## Data collected
 
-Each database event contains the fields below. PostgreSQL creates `received_at`; it is the canonical UTC-capable server timestamp.
+Each Sheet row is an event. The bound Apps Script creates `received_at` as the canonical UTC server timestamp.
 
 | Field | Purpose |
 | --- | --- |
@@ -35,7 +35,7 @@ Every raw answer contains `question_id`, `question_revision`, `variant_id`, `dis
 
 The assessment does not collect names, email addresses, phone numbers, university usernames, departments, labs, age, gender, career stage, precise geolocation, coordinates, IP addresses as study variables, browser user agents, screen dimensions, referrers, timezone, advertising identifiers, analytics identifiers, or free text. It uses no cookies, analytics, fingerprinting, session replay, or advertising scripts.
 
-GitHub Pages, Supabase, and other hosting/network providers can receive ordinary network metadata such as IP addresses in operational logs. Those provider logs are **not part of this research dataset** and must not be joined to or imported into assessment exports. Configure provider log retention according to the applicable institutional policy.
+GitHub Pages, Google Apps Script, and other hosting/network providers can receive ordinary network metadata such as IP addresses in operational logs. Those provider logs are **not part of this research dataset** and must not be joined to or imported into assessment exports. Configure provider log retention according to the applicable institutional policy.
 
 The notice is versioned centrally in `config.js` as `consentVersion` and `consent`. Its wording can be updated after ethics review by releasing a new consent version. The repository does not claim that ethics approval has been obtained.
 
@@ -45,21 +45,25 @@ After opt-in, the browser creates a random UUID with `crypto.randomUUID()` and s
 
 The pre completion also displays a cryptographically randomized code such as `WOLF-K7PM-4Q2X`. A participant may enter it on a second device. That device still receives a fresh random participant UUID; the offline scorer pairs the two records by the voluntarily entered anonymous code. A post response can always continue without a code and remains an unpaired observation.
 
-## Configure Supabase once
+## Connect your private Google Sheet once
 
-1. Create a dedicated Supabase project in the institutionally appropriate region and account.
-2. Run `supabase/001_assessment_events.sql` in its SQL editor.
-3. In `config.js`, set `supabaseUrl` and the **public anon key**. Never place a service-role key in this repository or browser code.
-4. Confirm with a disposable project that an anonymous REST request can `INSERT`, while anonymous `SELECT`, `UPDATE`, and `DELETE` requests are denied.
-5. Rebuild, test, commit, and deploy.
+No SQL or database console is required.
 
-The migration revokes every table privilege from `anon`, grants only `INSERT`, enables and forces row-level security, and supplies one insert policy. The primary key deduplicates network retries. A public anon key is safe here only while these restrictions remain in place.
+1. Create a blank Google Sheet in the Google account that should own the responses. Keep its sharing setting **Restricted**.
+2. In that Sheet, open **Extensions → Apps Script**.
+3. Replace the editor contents with `google-sheets/Code.gs`, save, then choose **Deploy → New deployment → Web app**.
+4. Set **Execute as: Me** and **Who has access: Anyone**. Authorize the script and copy the deployed URL ending in `/exec`.
+5. Paste that URL into `googleSheetsEndpoint` in `config.js`, rebuild, commit, and push.
 
-If Supabase is not configured or is temporarily unavailable, completed events remain in the browser’s local retry queue. The participant sees the exact state of the submission. The queue is retried when the browser next loads the assessment or returns online. Clearing site storage before a retry will remove that local copy.
+The script automatically creates an `assessment_events` tab with readable columns. It executes with the Sheet owner’s permissions, so participants can append validated events without receiving permission to open the private spreadsheet. Visiting the endpoint returns only a health message—never response data. Event UUIDs are checked before append, so retries do not duplicate rows.
+
+If the Sheet endpoint is not configured or is temporarily unavailable, completed events remain in the browser’s local retry queue. The participant sees the exact state of the submission. The queue is retried when the browser next loads the assessment or returns online. Clearing site storage before a retry will remove that local copy.
 
 ## Export and score an event
 
-An authorized researcher can export `assessment_events` from the Supabase dashboard as CSV, or query it with a protected researcher/service connection. Export only the event and date range required for that workshop. Keep raw exports in approved research storage, not in Git.
+Open the private Google Sheet and select the `assessment_events` tab. Each completed event has one row, with the six knowledge responses, confidence ratings, and post-only ratings repeated in readable columns after the authoritative `payload` column. Filter `event_type` to `completed` to inspect finished assessments.
+
+To aggregate the data, use **File → Download → Comma-separated values (.csv)** while that tab is active. Export only the rows required for the workshop being analyzed and keep raw exports in approved research storage, not in Git.
 
 Run the aggregate scorer locally:
 
@@ -68,15 +72,15 @@ python workshop_site/assessment/analysis/score_assessment.py assessment_events.c
 python workshop_site/assessment/analysis/score_assessment.py assessment_events.csv --group-by-venue
 ```
 
-It accepts Supabase CSV, a JSON array, or JSONL. By default it prints aggregates only: pre/post N, matched N, means/medians, within-person change, item-level correct percentages, and confidence means. It never prints participant rows. Raw answers remain authoritative; the browser’s post score is only friendly feedback.
+It accepts the Google Sheet CSV, a JSON array, or JSONL. By default it prints aggregates only: pre/post N, matched N, means/medians, within-person change, item-level correct percentages, and confidence means. It never prints participant rows. Raw answers remain authoritative; the browser’s post score is only friendly feedback.
 
 For multiple deployed assessment versions, run the matching immutable question bank separately. The event’s `assessment_version` and `question_bank_hash` identify it.
 
 ## Versioning and reproducibility
 
-`questions/v1.0.0.json` is a released, immutable question bank. Do not silently edit it. Any change to wording, scoring, choices, variants, or illustrations requires:
+`questions/v1.0.0.json` is the original released bank. `questions/v1.1.0.json` introduces parallel pre/post forms and is the active released bank. Do not silently edit either file. Any change to wording, scoring, choices, variants, or illustrations requires:
 
-1. copy the file to a new semantic version, for example `questions/v1.1.0.json`;
+1. copy the active file to a new semantic version, for example `questions/v1.2.0.json`;
 2. update `assessmentVersion` and `questionBankPath` in `config.js`;
 3. update the scorer default or explicitly supply `--question-bank`;
 4. rebuild and run the checks;
@@ -121,4 +125,4 @@ python workshop_site/tests/run_checks.py
 python workshop_site/tests/visual_check.py
 ```
 
-The reproducible checklist in `manual-test-checklist.md` covers database permissions, mobile interactions, offline recovery, JavaScript-disabled behavior, and accessibility/Lighthouse review.
+The reproducible checklist in `manual-test-checklist.md` covers Sheet privacy, mobile interactions, offline recovery, JavaScript-disabled behavior, and accessibility/Lighthouse review.

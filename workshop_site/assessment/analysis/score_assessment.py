@@ -55,10 +55,11 @@ def answer_map(record: dict[str, Any], family: str) -> dict[str, Any]:
 
 def score_record(record: dict[str, Any], question_bank: dict[str, Any]) -> tuple[int, dict[str, bool]]:
     actual = answer_map(record, "knowledge")
-    item_scores = {
-        question["question_id"]: canonical(actual.get(question["question_id"])) == canonical(question["correct_response"])
-        for question in question_bank["knowledge_questions"]
-    }
+    item_scores = {}
+    for question in question_bank["knowledge_questions"]:
+        variant = question.get("variants", {}).get(record["phase"], {})
+        expected = variant["correct_response"] if "correct_response" in variant else question["correct_response"]
+        item_scores[question["question_id"]] = canonical(actual.get(question["question_id"])) == canonical(expected)
     return sum(item_scores.values()), item_scores
 
 
@@ -138,8 +139,8 @@ def summarize(records: list[dict[str, Any]], question_bank: dict[str, Any], grou
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("export", type=Path, help="Supabase CSV, JSON array, or JSONL export")
-    parser.add_argument("--question-bank", type=Path, default=Path(__file__).parents[1] / "questions" / "v1.0.0.json")
+    parser.add_argument("export", type=Path, help="Google Sheet CSV, JSON array, or JSONL export")
+    parser.add_argument("--question-bank", type=Path, default=Path(__file__).parents[1] / "questions" / "v1.1.0.json")
     parser.add_argument("--group-by-venue", action="store_true")
     args = parser.parse_args()
     bank_bytes = args.question_bank.read_bytes()

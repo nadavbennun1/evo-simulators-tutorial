@@ -36,9 +36,10 @@ Record the date, commit SHA, browser versions, device/viewport, tester, and resu
 
 - [ ] Simulate offline mode, complete the assessment, and confirm the local-save message.
 - [ ] Restore connectivity/revisit and confirm the queued event is inserted.
-- [ ] Retry an identical event UUID and confirm there is only one database row.
-- [ ] With the public anon key, `INSERT` succeeds and `SELECT`, `UPDATE`, and `DELETE` fail.
-- [ ] Started and completed rows have database-created `received_at` timestamps.
+- [ ] Retry an identical event UUID and confirm there is only one Sheet row.
+- [ ] Opening the Apps Script endpoint returns only its health response and never Sheet contents.
+- [ ] People without Sheet permission cannot open the private spreadsheet.
+- [ ] Started and completed rows have Apps-Script-created UTC `received_at` timestamps.
 
 ## Regression and accessibility
 

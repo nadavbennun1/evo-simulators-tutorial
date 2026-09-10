@@ -182,14 +182,19 @@ def test_static_pages_are_subpath_safe_and_assets_exist():
 
 def test_assessment_is_versioned_private_by_design_and_recomputable():
     assessment = SITE / "assessment"
-    bank_path = assessment / "questions" / "v1.0.0.json"
+    bank_path = assessment / "questions" / "v1.1.0.json"
     bank = _json(bank_path)
     meta = _json(assessment / "build-meta.json")
-    assert bank["schema_version"] == "1.0" and bank["assessment_version"] == "1.0.0"
+    assert bank["schema_version"] == "1.0" and bank["assessment_version"] == "1.1.0"
     assert len(bank["knowledge_questions"]) == 6
     assert len(bank["confidence_questions"]) == 2
     assert len(bank["post_evaluation_questions"]) == 2
     assert len({question["question_id"] for question in bank["knowledge_questions"]}) == 6
+    assert all(question["variants"]["pre"]["variant_id"] != question["variants"]["post"]["variant_id"] for question in bank["knowledge_questions"])
+    assert all(question["variants"]["pre"]["title"] != question["variants"]["post"]["title"] for question in bank["knowledge_questions"])
+    design = next(question for question in bank["knowledge_questions"] if question["question_id"] == "observation_design")
+    assert design["variants"]["pre"]["correct_response"] == "middle"
+    assert design["variants"]["post"]["correct_response"] == "late"
     assert meta["assessment_version"] == bank["assessment_version"]
     assert meta["question_bank_sha256"] == hashlib.sha256(bank_path.read_bytes()).hexdigest()
     assert meta["workshop_git_sha"] == "development" or re.fullmatch(r"[0-9a-f]{40}", meta["workshop_git_sha"])
@@ -200,7 +205,7 @@ def test_assessment_is_versioned_private_by_design_and_recomputable():
     script = (assessment / "app.js").read_text()
     config = (assessment / "config.js").read_text()
     backend = (assessment / "backend.js").read_text()
-    migration = (assessment / "supabase" / "001_assessment_events.sql").read_text().lower()
+    receiver = (assessment / "google-sheets" / "Code.gs").read_text()
     assert 'href="assessment/?phase=pre"' in index
     assert "assessment-pre-qr.svg" in index and "workshop-qr.svg" in index
     assert 'href="assessment/?phase=post"' in sbi and "assessment-post-qr.svg" in sbi
@@ -218,10 +223,11 @@ def test_assessment_is_versioned_private_by_design_and_recomputable():
     assert all(forbidden not in script for forbidden in (
         "navigator.userAgent", "screen.width", "document.referrer", "Intl.DateTimeFormat", "geolocation.getCurrentPosition"
     ))
-    assert "localstorage" in backend.lower() and "return=minimal" in backend.lower()
-    assert "grant insert" in migration and "to anon" in migration
-    assert "grant select" not in migration and "grant update" not in migration and "grant delete" not in migration
-    assert "enable row level security" in migration and "force row level security" in migration
+    assert "localstorage" in backend.lower() and "googleSheetsEndpoint" in config
+    assert "mode: \"no-cors\"" in backend and "AssessmentAck_" in backend
+    assert "function doPost" in receiver and "function doGet" in receiver
+    assert "new Date().toISOString()" in receiver and "JSON.stringify(record.payload)" in receiver
+    assert "duplicate" in receiver and "data: 'not-readable'" in receiver
     subprocess.run(["node", "--check", str(assessment / "app.js")], check=True)
     subprocess.run(["node", "--check", str(assessment / "backend.js")], check=True)
 
@@ -230,15 +236,17 @@ def test_assessment_is_versioned_private_by_design_and_recomputable():
     module = importlib.util.module_from_spec(spec)
     assert spec.loader is not None
     spec.loader.exec_module(module)
-    correct = [{
-        "question_id": question["question_id"], "response": question["correct_response"]
-    } for question in bank["knowledge_questions"]]
     confidence = [{"question_id": question["question_id"], "response": 3} for question in bank["confidence_questions"]]
     records = []
     for phase, suffix in (("pre", "1"), ("post", "2")):
+        correct = []
+        for question in bank["knowledge_questions"]:
+            variant = question["variants"][phase]
+            expected = variant["correct_response"] if "correct_response" in variant else question["correct_response"]
+            correct.append({"question_id": question["question_id"], "response": expected})
         records.append({
             "id": "event-" + suffix, "participant_id": "anonymous", "received_at": f"2026-09-10T08:00:0{suffix}Z",
-            "phase": phase, "event_type": "completed", "venue": "NYU", "assessment_version": "1.0.0",
+            "phase": phase, "event_type": "completed", "venue": "NYU", "assessment_version": "1.1.0",
             "payload": {"pairing_code": "WOLF-TEST-CODE", "answers": {"knowledge": correct, "confidence": confidence}}
         })
     summary = module.summarize(records, bank, True)

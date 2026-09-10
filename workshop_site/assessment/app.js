@@ -89,6 +89,11 @@
     return icon ? `<span class="card-icon" aria-hidden="true">${icons[icon] || "•"}</span>` : "";
   }
 
+  function questionForPhase(question) {
+    const variant = question.variants && question.variants[phase];
+    return variant ? Object.assign({}, question, variant) : question;
+  }
+
   function venueScreen() {
     updateProgress(0, 9);
     const cards = venues.map((venue) => `<button class="venue-card" type="button" data-venue="${venue.id}" aria-pressed="${state.venue === venue.id}">
@@ -161,7 +166,7 @@
     });
   }
 
-  async function startRun() {
+  function startRun() {
     state.runId = uuid();
     state.runStartedAtClientMs = Date.now();
     state.currentQuestion = 0;
@@ -169,7 +174,8 @@
       assessment_schema_version: config.assessmentSchemaVersion,
       question_bank_hash: state.meta.question_bank_sha256
     });
-    await window.AssessmentBackend.enqueue(event);
+    window.AssessmentBackend.queue(event);
+    window.AssessmentBackend.flush();
     renderQuestion();
   }
 
@@ -223,7 +229,7 @@
   }
 
   function renderQuestion() {
-    const question = state.bank.knowledge_questions[state.currentQuestion];
+    const question = questionForPhase(state.bank.knowledge_questions[state.currentQuestion]);
     const number = state.currentQuestion + 1;
     updateProgress(number, 9);
     if (!state.orders[question.question_id]) {
@@ -297,7 +303,10 @@
     return `<div class="choice-bank" aria-label="Cards to place">${bankCards(question, used)}</div><div class="flow-board" aria-label="Simulation-based inference flow diagram">${slot("parameters")}<span class="flow-arrow a1" aria-hidden="true">→</span>${slot("simulator")}<span class="flow-arrow a2" aria-hidden="true">→</span>${slot("simulated")}${slot("observed")}<span class="flow-arrow a3" aria-hidden="true">+</span>${slot("compare")}<span class="flow-arrow a4" aria-hidden="true">→</span>${slot("posterior")}</div>`;
   }
 
-  function identifiabilityPlot() {
+  function identifiabilityPlot(variant) {
+    if (variant === "sparse") {
+      return `<svg class="science-plot" viewBox="0 0 620 255" role="img" aria-label="Three differently shaped trajectories remain consistent with four sparse observations"><line class="axis" x1="55" y1="215" x2="590" y2="215"/><line class="axis" x1="55" y1="215" x2="55" y2="25"/><path class="hypothesis h1" d="M60 205 C150 204 215 194 286 142 S420 54 585 47"/><path class="hypothesis h2" d="M60 205 C205 205 245 181 310 126 S430 56 585 47"/><path class="hypothesis h3" d="M60 204 C125 198 207 177 272 132 S395 70 585 45"/><g><circle class="observation" cx="105" cy="202" r="7"/><circle class="observation" cx="260" cy="159" r="7"/><circle class="observation" cx="405" cy="72" r="7"/><circle class="observation" cx="555" cy="48" r="7"/></g><text x="515" y="242">Time</text><text x="72" y="45">Frequency</text></svg>`;
+    }
     return `<svg class="science-plot" viewBox="0 0 620 255" role="img" aria-label="Three different smooth trajectories pass close to the same five observed timepoints"><line class="axis" x1="55" y1="215" x2="590" y2="215"/><line class="axis" x1="55" y1="215" x2="55" y2="25"/><path class="hypothesis h1" d="M60 204 C160 201 205 179 265 126 S380 52 585 43"/><path class="hypothesis h2" d="M60 205 C175 205 225 190 285 128 S410 48 585 45"/><path class="hypothesis h3" d="M60 202 C120 197 205 174 280 132 S390 66 585 42"/><g><circle class="observation" cx="100" cy="201" r="7"/><circle class="observation" cx="222" cy="175" r="7"/><circle class="observation" cx="300" cy="117" r="7"/><circle class="observation" cx="430" cy="57" r="7"/><circle class="observation" cx="560" cy="45" r="7"/></g><text x="515" y="242">Time</text><text x="72" y="45">Frequency</text></svg>`;
   }
 
@@ -305,11 +314,14 @@
     const selected = state.answers[question.question_id];
     const lookup = Object.fromEntries(question.choices.map((choice) => [choice.id, choice]));
     const choices = state.orders[question.question_id].map((id, index) => `<button class="large-choice" type="button" data-choice="${id}" aria-pressed="${selected === id}"><b>${String.fromCharCode(65 + index)}</b><span>${escapeHtml(lookup[id].label)}</span></button>`).join("");
-    return `${identifiabilityPlot()}<div class="large-choice-grid">${choices}</div>`;
+    return `${identifiabilityPlot(question.visual_variant)}<div class="large-choice-grid">${choices}</div>`;
   }
 
-  function observationPlot(selected) {
+  function observationPlot(selected, variant) {
     const markerX = {early: 150, middle: 320, late: 505}[selected];
+    if (variant === "late") {
+      return `<svg class="science-plot observation-design-plot" viewBox="0 0 620 275" role="img" aria-label="Three hypotheses agree early and separate clearly in the late interval"><line class="axis" x1="55" y1="225" x2="590" y2="225"/><line class="axis" x1="55" y1="225" x2="55" y2="28"/><rect class="region${selected === "early" ? " selected" : ""}" data-region-drop="early" x="58" y="28" width="175" height="197"/><rect class="region${selected === "middle" ? " selected" : ""}" data-region-drop="middle" x="233" y="28" width="175" height="197"/><rect class="region${selected === "late" ? " selected" : ""}" data-region-drop="late" x="408" y="28" width="178" height="197"/><path class="hypothesis h1" d="M60 210 C190 209 292 197 382 150 S493 54 585 39"/><path class="hypothesis h2" d="M60 211 C190 210 291 199 383 158 S493 100 585 91"/><path class="hypothesis h3" d="M60 209 C190 208 292 196 381 153 S492 145 585 151"/><g><circle class="observation" cx="105" cy="209" r="7"/><circle class="observation" cx="300" cy="193" r="7"/></g>${selected ? `<line class="sample-marker" x1="${markerX}" y1="38" x2="${markerX}" y2="217"/><path class="sample-head" d="M${markerX - 9} 38h18l-9 12Z"/>` : ""}<text x="120" y="251">Early</text><text x="300" y="251">Middle</text><text x="490" y="251">Late</text><text x="72" y="48">Frequency</text></svg>`;
+    }
     return `<svg class="science-plot observation-design-plot" viewBox="0 0 620 275" role="img" aria-label="Three hypotheses are similar early and late but clearly separate in the middle"><line class="axis" x1="55" y1="225" x2="590" y2="225"/><line class="axis" x1="55" y1="225" x2="55" y2="28"/><rect class="region${selected === "early" ? " selected" : ""}" data-region-drop="early" x="58" y="28" width="175" height="197"/><rect class="region${selected === "middle" ? " selected" : ""}" data-region-drop="middle" x="233" y="28" width="175" height="197"/><rect class="region${selected === "late" ? " selected" : ""}" data-region-drop="late" x="408" y="28" width="178" height="197"/><path class="hypothesis h1" d="M60 210 C170 208 210 190 270 112 S410 45 585 42"/><path class="hypothesis h2" d="M60 211 C165 208 230 203 305 169 S430 64 585 43"/><path class="hypothesis h3" d="M60 209 C160 207 224 180 300 78 S430 41 585 42"/><g><circle class="observation" cx="105" cy="209" r="7"/><circle class="observation" cx="535" cy="43" r="7"/></g>${selected ? `<line class="sample-marker" x1="${markerX}" y1="38" x2="${markerX}" y2="217"/><path class="sample-head" d="M${markerX - 9} 38h18l-9 12Z"/>` : ""}<text x="120" y="251">Early</text><text x="300" y="251">Middle</text><text x="490" y="251">Late</text><text x="72" y="48">Frequency</text></svg>`;
   }
 
@@ -317,7 +329,7 @@
     const selected = state.answers[question.question_id];
     const lookup = Object.fromEntries(question.choices.map((choice) => [choice.id, choice]));
     const buttons = state.orders[question.question_id].map((id) => `<button class="large-choice" type="button" data-choice="${id}" aria-pressed="${selected === id}"><b aria-hidden="true">+</b><span>${lookup[id].label}</span></button>`).join("");
-    return `<div class="choice-bank"><button class="move-card" type="button" data-sampling-marker aria-pressed="false"><span class="card-icon" aria-hidden="true">↓</span><span>New sampling time</span></button></div>${observationPlot(selected)}<div class="large-choice-grid">${buttons}</div>`;
+    return `<div class="choice-bank"><button class="move-card" type="button" data-sampling-marker aria-pressed="false"><span class="card-icon" aria-hidden="true">↓</span><span>New sampling time</span></button></div>${observationPlot(selected, question.visual_variant)}<div class="large-choice-grid">${buttons}</div>`;
   }
 
   function bindQuestion(question) {
@@ -462,15 +474,18 @@
   }
 
   function rawAnswers() {
-    const variant = state.bank.variants[phase];
-    const knowledge = state.bank.knowledge_questions.map((question) => ({
+    const knowledge = state.bank.knowledge_questions.map((definition) => {
+      const question = questionForPhase(definition);
+      return ({
       question_id: question.question_id,
       question_revision: question.question_revision,
-      variant_id: `${question.question_id}-${variant}`,
+      variant_id: question.variant_id || `${question.question_id}-${phase}`,
       displayed_order: state.orders[question.question_id],
       response: state.answers[question.question_id],
       duration_ms: state.durations[question.question_id] || 0
-    }));
+      });
+    });
+    const variant = phase + "-a";
     const confidence = state.bank.confidence_questions.map((question, index) => ({
       question_id: question.question_id,
       question_revision: question.question_revision,
@@ -525,7 +540,10 @@
       setScreen(`${metaLine("Check-in complete")}<p class="assessment-kicker">Ready for the workshop</p><h1>Thanks — we’ll revisit these ideas at the end.</h1>${submission}<div class="pairing-panel"><strong>Your optional anonymous pairing code</strong><br><code class="pair-code">${escapeHtml(state.pairingCode)}</code><p>Save this only if you might complete the final check on another device.</p></div><div class="assessment-actions"><a class="primary-link primary-action" href="${config.chapterOneUrl}">Start the workshop →</a></div>`);
       return;
     }
-    const results = state.bank.knowledge_questions.map((question) => ({question: question, correct: equalResponse(state.answers[question.question_id], question.correct_response)}));
+    const results = state.bank.knowledge_questions.map((definition) => {
+      const question = questionForPhase(definition);
+      return {question: question, correct: equalResponse(state.answers[question.question_id], question.correct_response)};
+    });
     const score = results.filter((item) => item.correct).length;
     const feedback = results.map((item) => `<article class="${item.correct ? "" : "missed"}"><h3>${item.correct ? "✓" : "→"} ${escapeHtml(item.question.title)}</h3><p>${escapeHtml(item.question.feedback)}</p></article>`).join("");
     setScreen(`${metaLine("Final check complete")}<p class="assessment-kicker">A gentle reflection</p><h1>${score} / 6 concepts</h1><div class="result-score"><strong>${score}</strong><span>of 6 workshop concepts</span></div><p class="assessment-subtitle">You built the forward model, inverted it with simulations, and reasoned about uncertainty and informative sampling.</p>${submission}<div class="feedback-list">${feedback}</div><div class="assessment-actions"><a class="primary-link primary-action" href="${config.workshopHomeUrl}">Back to workshop →</a></div>`);

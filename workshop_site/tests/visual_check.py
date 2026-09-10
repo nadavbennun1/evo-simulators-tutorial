@@ -203,7 +203,7 @@ def main() -> None:
             driver.find_element("id", "question-next").click()
             for index, card in enumerate(("prior", "simulate", "compare", "keep")): place(card, str(index))
             driver.find_element("id", "question-next").click()
-            driver.find_element("css selector", '[data-choice="middle"]').click()
+            driver.find_element("css selector", f'[data-choice="{"middle" if "phase=pre" in driver.current_url else "late"}"]').click()
             driver.find_element("id", "question-next").click()
             assert_mobile_fit()
 

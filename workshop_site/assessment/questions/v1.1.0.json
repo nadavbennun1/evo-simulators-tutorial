@@ -1,0 +1,241 @@
+{
+  "schema_version": "1.0",
+  "assessment_version": "1.1.0",
+  "title": "SBI for experimental evolution learning assessment",
+  "released": "2026-09-10",
+  "knowledge_questions": [
+    {
+      "question_id": "forces_match",
+      "question_revision": "1.1",
+      "type": "matching",
+      "variants": {
+        "pre": {
+          "variant_id": "forces-pre-a",
+          "title": "What does each evolutionary force do?",
+          "prompt": "Match each biological force to its main role in the simulator.",
+          "cards": [
+            {"id": "mutation", "label": "Mutation / formation", "icon": "spark"},
+            {"id": "selection", "label": "Selection", "icon": "growth"},
+            {"id": "drift", "label": "Drift / effective population size", "icon": "dice"}
+          ],
+          "targets": [
+            {"id": "supplies_variants", "label": "Supplies new variants"},
+            {"id": "changes_contribution", "label": "Changes expected reproductive contribution"},
+            {"id": "stochastic_trajectories", "label": "Makes finite-population trajectories stochastic"}
+          ]
+        },
+        "post": {
+          "variant_id": "forces-post-a",
+          "title": "Reconnect force and consequence",
+          "prompt": "The labels changed, but the biological roles did not. Match them again.",
+          "cards": [
+            {"id": "mutation", "label": "Formation of a heritable variant", "icon": "spark"},
+            {"id": "selection", "label": "A difference in relative fitness", "icon": "growth"},
+            {"id": "drift", "label": "Finite effective population size", "icon": "dice"}
+          ],
+          "targets": [
+            {"id": "supplies_variants", "label": "Introduces a new population state"},
+            {"id": "changes_contribution", "label": "Reweights expected offspring among states"},
+            {"id": "stochastic_trajectories", "label": "Makes replicate paths differ by chance"}
+          ]
+        }
+      },
+      "correct_response": {
+        "mutation": "supplies_variants",
+        "selection": "changes_contribution",
+        "drift": "stochastic_trajectories"
+      },
+      "feedback": "Mutation supplies variants, selection changes their expected reproductive contribution, and finite-population sampling produces drift."
+    },
+    {
+      "question_id": "generation_order",
+      "question_revision": "1.1",
+      "type": "ordering",
+      "variants": {
+        "pre": {
+          "variant_id": "generation-pre-a",
+          "title": "Build one generation",
+          "prompt": "Arrange one simulator generation using the convention used in this workshop.",
+          "cards": [
+            {"id": "mutation", "label": "Mutation", "icon": "spark"},
+            {"id": "selection", "label": "Selection", "icon": "growth"},
+            {"id": "drift", "label": "Drift", "icon": "dice"}
+          ]
+        },
+        "post": {
+          "variant_id": "generation-post-a",
+          "title": "Advance the population once",
+          "prompt": "Rebuild the workshop’s one-generation convention from its operations.",
+          "cards": [
+            {"id": "mutation", "label": "Move probability into newly formed states", "icon": "spark"},
+            {"id": "selection", "label": "Weight states by relative fitness", "icon": "growth"},
+            {"id": "drift", "label": "Sample a finite population", "icon": "dice"}
+          ]
+        }
+      },
+      "correct_response": ["mutation", "selection", "drift"],
+      "feedback": "This workshop advances each generation as mutation, then selection, then drift; changing that convention can change a discrete-time model."
+    },
+    {
+      "question_id": "inverse_process",
+      "question_revision": "1.1",
+      "type": "flow",
+      "slots": ["parameters", "simulator", "simulated", "observed", "compare", "posterior"],
+      "variants": {
+        "pre": {
+          "variant_id": "inverse-pre-a",
+          "title": "Now run the logic backwards",
+          "prompt": "You observed an evolutionary trajectory. How can simulations help you learn what generated it?",
+          "cards": [
+            {"id": "parameters", "label": "Parameters θ drawn from plausible values"},
+            {"id": "simulator", "label": "Evolutionary simulator"},
+            {"id": "simulated", "label": "Simulated trajectories"},
+            {"id": "observed", "label": "Observed trajectory"},
+            {"id": "compare", "label": "Compare / learn from simulations"},
+            {"id": "posterior", "label": "Posterior over plausible parameters"}
+          ]
+        },
+        "post": {
+          "variant_id": "inverse-post-a",
+          "title": "Trace evidence back to mechanism",
+          "prompt": "Place the parallel pieces that connect a measured frequency history to plausible biological causes.",
+          "cards": [
+            {"id": "parameters", "label": "Plausible rates and fitnesses θ"},
+            {"id": "simulator", "label": "Forward population model"},
+            {"id": "simulated", "label": "Synthetic frequency histories"},
+            {"id": "observed", "label": "Measured frequency history"},
+            {"id": "compare", "label": "Learn which simulations resemble the data"},
+            {"id": "posterior", "label": "Uncertainty over compatible θ values"}
+          ]
+        }
+      },
+      "correct_response": {
+        "parameters": "parameters",
+        "simulator": "simulator",
+        "simulated": "simulated",
+        "observed": "observed",
+        "compare": "compare",
+        "posterior": "posterior"
+      },
+      "feedback": "Candidate parameters generate simulated data. SBI compares those simulations with the observation and returns uncertainty over plausible parameters."
+    },
+    {
+      "question_id": "identifiability",
+      "question_revision": "1.1",
+      "type": "choice",
+      "variants": {
+        "pre": {
+          "variant_id": "identifiability-pre-a",
+          "visual_variant": "crossing",
+          "title": "Several explanations fit",
+          "prompt": "Three different parameter combinations explain the measured trajectory almost equally well. What should we conclude?",
+          "choices": [
+            {"id": "pick", "label": "Pick the parameter set whose curve looks best."},
+            {"id": "average", "label": "Average the three parameter values."},
+            {"id": "uncertainty", "label": "Keep uncertainty over the plausible parameter combinations."}
+          ]
+        },
+        "post": {
+          "variant_id": "identifiability-post-a",
+          "visual_variant": "sparse",
+          "title": "One dataset, several mechanisms",
+          "prompt": "Separated parameter regions produce trajectories consistent with these sparse observations. What should the inference retain?",
+          "choices": [
+            {"id": "pick", "label": "Only the region with the narrowest-looking curve."},
+            {"id": "average", "label": "One midpoint between all parameter regions."},
+            {"id": "uncertainty", "label": "Probability across the distinct plausible regions."}
+          ]
+        }
+      },
+      "correct_response": "uncertainty",
+      "feedback": "When several parameter combinations are consistent with the data, the posterior should preserve that uncertainty instead of forcing one answer."
+    },
+    {
+      "question_id": "abc_order",
+      "question_revision": "1.1",
+      "type": "ordering",
+      "variants": {
+        "pre": {
+          "variant_id": "abc-pre-a",
+          "title": "Build rejection ABC",
+          "prompt": "Put the simulation recipe in order.",
+          "cards": [
+            {"id": "prior", "label": "Draw parameters from the prior", "icon": "draw"},
+            {"id": "simulate", "label": "Simulate a trajectory", "icon": "trajectory"},
+            {"id": "compare", "label": "Compare it with the observation", "icon": "compare"},
+            {"id": "keep", "label": "Keep parameters whose simulations are close", "icon": "keep"}
+          ]
+        },
+        "post": {
+          "variant_id": "abc-post-a",
+          "title": "Reconstruct the ABC filter",
+          "prompt": "Arrange the same logic using a new description of each operation.",
+          "cards": [
+            {"id": "prior", "label": "Sample a candidate from scientific prior knowledge", "icon": "draw"},
+            {"id": "simulate", "label": "Run the experiment in silico", "icon": "trajectory"},
+            {"id": "compare", "label": "Measure discrepancy from the real trajectory", "icon": "compare"},
+            {"id": "keep", "label": "Retain candidates with small discrepancy", "icon": "keep"}
+          ]
+        }
+      },
+      "correct_response": ["prior", "simulate", "compare", "keep"],
+      "feedback": "Rejection ABC draws from the prior, simulates, compares with the observation, and retains parameters from sufficiently close simulations."
+    },
+    {
+      "question_id": "observation_design",
+      "question_revision": "1.1",
+      "type": "plot_choice",
+      "variants": {
+        "pre": {
+          "variant_id": "design-pre-middle",
+          "visual_variant": "middle",
+          "title": "Design the observation",
+          "prompt": "You can afford one additional measurement. Where would you put it?",
+          "choices": [
+            {"id": "early", "label": "Early"},
+            {"id": "middle", "label": "Middle"},
+            {"id": "late", "label": "Late"}
+          ],
+          "correct_response": "middle"
+        },
+        "post": {
+          "variant_id": "design-post-late",
+          "visual_variant": "late",
+          "title": "Place one informative sample",
+          "prompt": "A new set of mechanisms agrees at first and diverges later. Where is one added sample most informative?",
+          "choices": [
+            {"id": "early", "label": "Early"},
+            {"id": "middle", "label": "Middle"},
+            {"id": "late", "label": "Late"}
+          ],
+          "correct_response": "late"
+        }
+      },
+      "feedback": "Measure where competing hypotheses predict the largest separation. That location can change with the hypotheses being compared."
+    }
+  ],
+  "confidence_questions": [
+    {
+      "question_id": "confidence_simulator",
+      "question_revision": "1.0",
+      "statement": "I can turn a biological hypothesis about evolution into a stochastic simulator."
+    },
+    {
+      "question_id": "confidence_inverse",
+      "question_revision": "1.0",
+      "statement": "I can reason from an observed trajectory to uncertainty about the evolutionary processes or parameters that generated it."
+    }
+  ],
+  "post_evaluation_questions": [
+    {
+      "question_id": "impact_models_data",
+      "question_revision": "1.0",
+      "statement": "This workshop changed how I think about connecting mechanistic models with experimental data."
+    },
+    {
+      "question_id": "research_relevance",
+      "question_revision": "1.0",
+      "statement": "I can imagine using at least one idea from this workshop in my own research."
+    }
+  ]
+}

@@ -1378,7 +1378,7 @@ def build_assessment_assets() -> None:
     from qrcode.image.svg import SvgPathImage
 
     assessment = SITE / "assessment"
-    question_bank = assessment / "questions" / "v1.0.0.json"
+    question_bank = assessment / "questions" / "v1.1.0.json"
     assessment_version = json.loads(question_bank.read_text())["assessment_version"]
     candidate_sha = os.environ.get("WORKSHOP_GIT_SHA") or os.environ.get("GITHUB_SHA")
     if not candidate_sha:
@@ -1396,7 +1396,7 @@ def build_assessment_assets() -> None:
         "workshop_git_sha": candidate_sha.lower(),
         "build_timestamp_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "assessment_version": assessment_version,
-        "question_bank": "questions/v1.0.0.json",
+        "question_bank": "questions/v1.1.0.json",
         "question_bank_sha256": sha256(question_bank),
     })
 

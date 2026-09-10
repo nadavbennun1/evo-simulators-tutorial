@@ -4,12 +4,11 @@
 
   window.ASSESSMENT_CONFIG = Object.freeze({
     assessmentSchemaVersion: "1.0",
-    assessmentVersion: "1.0.0",
+    assessmentVersion: "1.1.0",
     consentVersion: CONSENT_VERSION,
-    questionBankPath: "questions/v1.0.0.json",
+    questionBankPath: "questions/v1.1.0.json",
     buildMetaPath: "build-meta.json",
-    supabaseUrl: "",
-    supabaseAnonKey: "",
+    googleSheetsEndpoint: "",
     participantIdKey: "evoSbiWorkshopParticipantId",
     pairingCodeKey: "evoSbiWorkshopPairingCode",
     queueKey: "evoSbiWorkshopAssessmentQueueV1",
