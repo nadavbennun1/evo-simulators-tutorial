@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 150" role="img" aria-labelledby="title description">
+  <title id="title">A cheerful lone wolf at a laptop</title>
+  <desc id="description">An original small cartoon of a friendly wolf joining the workshop online.</desc>
+  <rect width="240" height="150" rx="26" fill="#e4eadf"/>
+  <ellipse cx="120" cy="132" rx="76" ry="8" fill="#cbd5c4" opacity=".7"/>
+  <path d="M73 56 61 21l30 20M166 55l14-34-32 21" fill="#607069" stroke="#21312c" stroke-width="5" stroke-linejoin="round"/>
+  <path d="M69 65c8-33 91-40 104 2 8 29-12 55-50 55-40 0-62-25-54-57Z" fill="#9caf92" stroke="#21312c" stroke-width="5"/>
+  <path d="M91 52c12-10 46-10 59 1l-7 24-22 12-23-12Z" fill="#fffdf8" opacity=".78"/>
+  <circle cx="99" cy="68" r="4" fill="#21312c"/><circle cx="145" cy="68" r="4" fill="#21312c"/>
+  <path d="m117 77 6-4 6 4-6 7Z" fill="#21312c"/><path d="M108 87c8 8 22 8 30 0" fill="none" stroke="#21312c" stroke-width="4" stroke-linecap="round"/>
+  <path d="M52 101h136l-13 35H65Z" fill="#577d91" stroke="#21312c" stroke-width="5" stroke-linejoin="round"/>
+  <circle cx="120" cy="118" r="7" fill="#fffdf8"/><path d="M202 112c18-5 22-20 12-29-5 13-13 11-21 7" fill="none" stroke="#607069" stroke-width="9" stroke-linecap="round"/>
+</svg>

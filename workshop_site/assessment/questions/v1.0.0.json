@@ -1,0 +1,141 @@
+{
+  "schema_version": "1.0",
+  "assessment_version": "1.0.0",
+  "title": "SBI for experimental evolution learning assessment",
+  "released": "2026-09-10",
+  "knowledge_questions": [
+    {
+      "question_id": "forces_match",
+      "question_revision": "1.0",
+      "type": "matching",
+      "title": "What does each evolutionary force do?",
+      "prompt": "Match each biological force to its main role in the simulator.",
+      "cards": [
+        {"id": "mutation", "label": "Mutation / formation", "icon": "spark"},
+        {"id": "selection", "label": "Selection", "icon": "growth"},
+        {"id": "drift", "label": "Drift / effective population size", "icon": "dice"}
+      ],
+      "targets": [
+        {"id": "supplies_variants", "label": "Supplies new variants"},
+        {"id": "changes_contribution", "label": "Changes expected reproductive contribution"},
+        {"id": "stochastic_trajectories", "label": "Makes finite-population trajectories stochastic"}
+      ],
+      "correct_response": {
+        "mutation": "supplies_variants",
+        "selection": "changes_contribution",
+        "drift": "stochastic_trajectories"
+      },
+      "feedback": "Mutation supplies variants, selection changes their expected reproductive contribution, and finite-population sampling produces drift."
+    },
+    {
+      "question_id": "generation_order",
+      "question_revision": "1.0",
+      "type": "ordering",
+      "title": "Build one generation",
+      "prompt": "Arrange one simulator generation using the convention used in this workshop.",
+      "cards": [
+        {"id": "mutation", "label": "Mutation", "icon": "spark"},
+        {"id": "selection", "label": "Selection", "icon": "growth"},
+        {"id": "drift", "label": "Drift", "icon": "dice"}
+      ],
+      "correct_response": ["mutation", "selection", "drift"],
+      "feedback": "This workshop advances each generation as mutation, then selection, then drift; changing that convention can change a discrete-time model."
+    },
+    {
+      "question_id": "inverse_process",
+      "question_revision": "1.0",
+      "type": "flow",
+      "title": "Now run the logic backwards",
+      "prompt": "You observed an evolutionary trajectory. How can simulations help you learn what generated it?",
+      "cards": [
+        {"id": "parameters", "label": "Parameters θ drawn from plausible values"},
+        {"id": "simulator", "label": "Evolutionary simulator"},
+        {"id": "simulated", "label": "Simulated trajectories"},
+        {"id": "observed", "label": "Observed trajectory"},
+        {"id": "compare", "label": "Compare / learn from simulations"},
+        {"id": "posterior", "label": "Posterior over plausible parameters"}
+      ],
+      "slots": ["parameters", "simulator", "simulated", "observed", "compare", "posterior"],
+      "correct_response": {
+        "parameters": "parameters",
+        "simulator": "simulator",
+        "simulated": "simulated",
+        "observed": "observed",
+        "compare": "compare",
+        "posterior": "posterior"
+      },
+      "feedback": "Candidate parameters generate simulated data. SBI compares those simulations with the observation and returns uncertainty over plausible parameters."
+    },
+    {
+      "question_id": "identifiability",
+      "question_revision": "1.0",
+      "type": "choice",
+      "title": "Several explanations fit",
+      "prompt": "Three different parameter combinations explain the measured trajectory almost equally well. What should we conclude?",
+      "choices": [
+        {"id": "pick", "label": "Pick the parameter set whose curve looks best."},
+        {"id": "average", "label": "Average the three parameter values."},
+        {"id": "uncertainty", "label": "Keep uncertainty over the plausible parameter combinations."}
+      ],
+      "correct_response": "uncertainty",
+      "feedback": "When several parameter combinations are consistent with the data, the posterior should preserve that uncertainty instead of forcing one answer."
+    },
+    {
+      "question_id": "abc_order",
+      "question_revision": "1.0",
+      "type": "ordering",
+      "title": "Build rejection ABC",
+      "prompt": "Put the simulation recipe in order.",
+      "cards": [
+        {"id": "prior", "label": "Draw parameters from the prior", "icon": "draw"},
+        {"id": "simulate", "label": "Simulate a trajectory", "icon": "trajectory"},
+        {"id": "compare", "label": "Compare it with the observation", "icon": "compare"},
+        {"id": "keep", "label": "Keep parameters whose simulations are close", "icon": "keep"}
+      ],
+      "correct_response": ["prior", "simulate", "compare", "keep"],
+      "feedback": "Rejection ABC draws from the prior, simulates, compares with the observation, and retains parameters from sufficiently close simulations."
+    },
+    {
+      "question_id": "observation_design",
+      "question_revision": "1.0",
+      "type": "plot_choice",
+      "title": "Design the observation",
+      "prompt": "You can afford one additional measurement. Where would you put it?",
+      "choices": [
+        {"id": "early", "label": "Early"},
+        {"id": "middle", "label": "Middle"},
+        {"id": "late", "label": "Late"}
+      ],
+      "correct_response": "middle",
+      "feedback": "Measure where competing hypotheses predict the largest separation: here, that is the middle interval."
+    }
+  ],
+  "confidence_questions": [
+    {
+      "question_id": "confidence_simulator",
+      "question_revision": "1.0",
+      "statement": "I can turn a biological hypothesis about evolution into a stochastic simulator."
+    },
+    {
+      "question_id": "confidence_inverse",
+      "question_revision": "1.0",
+      "statement": "I can reason from an observed trajectory to uncertainty about the evolutionary processes or parameters that generated it."
+    }
+  ],
+  "post_evaluation_questions": [
+    {
+      "question_id": "impact_models_data",
+      "question_revision": "1.0",
+      "statement": "This workshop changed how I think about connecting mechanistic models with experimental data."
+    },
+    {
+      "question_id": "research_relevance",
+      "question_revision": "1.0",
+      "statement": "I can imagine using at least one idea from this workshop in my own research."
+    }
+  ],
+  "variants": {
+    "pre": "pre-a",
+    "post": "post-a"
+  }
+}

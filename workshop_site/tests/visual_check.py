@@ -11,6 +11,7 @@ from pathlib import Path
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 
 SITE = Path(__file__).resolve().parents[1]
@@ -164,6 +165,75 @@ def main() -> None:
         lesson_cards = driver.find_element("css selector", ".chapter-cards")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", lesson_cards)
         lesson_cards.screenshot("/tmp/workshop-lesson-cards.png")
+
+        # Complete both assessment phases at an iPhone-sized viewport using the
+        # tap/keyboard path. Pointer dragging is covered by the manual release
+        # checklist because synthetic browser drags do not emulate touch reliably.
+        driver.set_window_size(390, 844)
+        driver.get(f"{base}/assessment/?phase=pre")
+        WebDriverWait(driver, 8).until(lambda d: d.find_elements("css selector", "[data-venue]"))
+        driver.execute_script("localStorage.clear()")
+        driver.refresh()
+        WebDriverWait(driver, 8).until(lambda d: d.find_elements("css selector", "[data-venue]"))
+        driver.find_element("css selector", '[data-venue="NYU"]').click()
+        driver.find_element("id", "participate").click()
+
+        def assert_mobile_fit():
+            assert not driver.execute_script("return document.documentElement.scrollWidth > document.documentElement.clientWidth")
+
+        def place(card, target, keyboard=False):
+            card_element = driver.find_element("css selector", f'[data-card="{card}"]')
+            target_element = driver.find_element("css selector", f'[data-drop="{target}"]')
+            if keyboard:
+                card_element.send_keys(Keys.ENTER); target_element.send_keys(Keys.ENTER)
+            else:
+                card_element.click(); target_element.click()
+
+        def complete_knowledge():
+            assert_mobile_fit()
+            place("mutation", "supplies_variants", keyboard=True)
+            place("selection", "changes_contribution")
+            place("drift", "stochastic_trajectories")
+            driver.find_element("id", "question-next").click()
+            for index, card in enumerate(("mutation", "selection", "drift")): place(card, str(index))
+            driver.find_element("id", "question-next").click()
+            for slot in ("parameters", "simulator", "simulated", "observed", "compare", "posterior"): place(slot, slot)
+            driver.find_element("id", "question-next").click()
+            driver.find_element("css selector", '[data-choice="uncertainty"]').click()
+            driver.find_element("id", "question-next").click()
+            for index, card in enumerate(("prior", "simulate", "compare", "keep")): place(card, str(index))
+            driver.find_element("id", "question-next").click()
+            driver.find_element("css selector", '[data-choice="middle"]').click()
+            driver.find_element("id", "question-next").click()
+            assert_mobile_fit()
+
+        complete_knowledge()
+        driver.find_element("css selector", '[data-rating="confidence_simulator"][data-value="4"]').click()
+        driver.find_element("css selector", '[data-rating="confidence_inverse"][data-value="4"]').click()
+        driver.find_element("id", "confidence-next").click()
+        WebDriverWait(driver, 8).until(lambda d: "we’ll revisit" in d.find_element("css selector", ".assessment-card h1").text)
+        assert not driver.find_elements("css selector", ".result-score")
+        assert "saved on this device" in driver.find_element("css selector", ".submission-status").text
+        participant_id = driver.execute_script("return localStorage.getItem('evoSbiWorkshopParticipantId')")
+        assert participant_id
+        driver.save_screenshot("/tmp/workshop-assessment-pre-mobile.png")
+
+        driver.get(f"{base}/assessment/?phase=post")
+        WebDriverWait(driver, 8).until(lambda d: d.find_elements("css selector", "[data-venue]"))
+        driver.find_element("css selector", '[data-venue="NYU"]').click()
+        driver.find_element("id", "participate").click()
+        complete_knowledge()
+        driver.find_element("css selector", '[data-rating="confidence_simulator"][data-value="5"]').click()
+        driver.find_element("css selector", '[data-rating="confidence_inverse"][data-value="5"]').click()
+        driver.find_element("id", "confidence-next").click()
+        driver.find_element("css selector", '[data-rating="impact_models_data"][data-value="5"]').click()
+        driver.find_element("css selector", '[data-rating="research_relevance"][data-value="5"]').click()
+        driver.find_element("id", "evaluation-submit").click()
+        WebDriverWait(driver, 8).until(lambda d: d.find_elements("css selector", ".result-score"))
+        assert driver.find_element("css selector", ".assessment-card h1").text == "6 / 6 concepts"
+        assert driver.execute_script("return localStorage.getItem('evoSbiWorkshopParticipantId')") == participant_id
+        assert_mobile_fit()
+        driver.save_screenshot("/tmp/workshop-assessment-post-mobile.png")
         print("Visual smoke check passed; screenshots written to /tmp/workshop-*.png")
     finally:
         driver.quit(); server.shutdown(); server.server_close(); thread.join(timeout=3)

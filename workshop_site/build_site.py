@@ -18,6 +18,7 @@ import pickle
 import platform
 import re
 import shutil
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -1312,10 +1313,11 @@ def page_shell(title: str, eyebrow: str, active: str, content: str, scripts: lis
 
 
 def landing_page() -> str:
-    content = '''<section class="landing-hero"><div><h1>Simulation-based inference for experimental evolution</h1><div class="button-row lesson-choice"><a class="secondary-link" href="evolution.html">Chapter 01</a><a class="secondary-link" href="sbi.html">Chapter 02</a></div></div><div class="hero-orbit" aria-hidden="true"><span></span><span></span><span></span><b>θ</b></div></section>
+    content = '''<section class="phone-entry phone-entry--checkin"><div><p class="section-kicker">Start here</p><h2>3-minute anonymous workshop check-in</h2><p>Six small challenges before we begin. No names, scores, or answer feedback.</p><a class="qr-direct-link" href="assessment/?phase=pre">Open the check-in directly</a></div><a class="qr-image-link" href="assessment/?phase=pre" aria-label="Open the pre-workshop assessment"><img src="assets/assessment-pre-qr.svg" alt="QR code for the anonymous pre-workshop assessment" width="220" height="220"></a><strong class="qr-instruction">Scan before we begin</strong></section>
+    <section class="landing-hero"><div><h1>Simulation-based inference for experimental evolution</h1><div class="button-row lesson-choice"><a class="secondary-link" href="evolution.html">Chapter 01</a><a class="secondary-link" href="sbi.html">Chapter 02</a></div></div><div class="hero-orbit" aria-hidden="true"><span></span><span></span><span></span><b>θ</b></div></section>
     <section class="objectives"><p class="section-kicker">Workshop outcomes</p><h2>What you will be able to do</h2><div class="objective-grid"><article><b>01</b><h3>Read the mechanism</h3><p>Translate mutation, selection, and drift into population-frequency trajectories.</p></article><article><b>02</b><h3>Reason with uncertainty</h3><p>Compare ABC, NPE, collective evidence, and posterior predictive checks.</p></article><article><b>03</b><h3>Design observations</h3><p>See how a passage mask changes what the same experiment can identify.</p></article></div></section>
     <section class="chapter-cards" aria-label="Choose a lesson"><a href="evolution.html"><span>Chapter 01</span><h2>Evolutionary simulators</h2><p>Mechanistic models of allele-frequency change.</p><strong>Click to open lesson</strong></a><a href="sbi.html"><span>Chapter 02</span><h2>Simulation-based inference</h2><p>Posterior inference from stochastic simulators.</p><strong>Click to open lesson</strong></a></section>
-    <section class="phone-entry"><div><p class="section-kicker">Bring the workshop to your bench</p><h2>Open this page on your phone</h2><code>nadavbennun1.github.io/evo-simulators-tutorial</code></div><a href="https://nadavbennun1.github.io/evo-simulators-tutorial/" aria-label="Open the workshop landing page"><img src="assets/workshop-qr.svg" alt="QR code for this workshop landing page" width="220" height="220"></a></section>
+    <section class="phone-entry home-qr-footer"><div><p class="section-kicker">Keep the workshop</p><h2>Workshop website</h2><code>nadavbennun1.github.io/evo-simulators-tutorial</code></div><a href="https://nadavbennun1.github.io/evo-simulators-tutorial/" aria-label="Open the workshop landing page"><img src="assets/workshop-qr.svg" alt="QR code for this workshop landing page" width="220" height="220"></a></section>
     <section class="primer-journey" id="foundations-primer"><header class="primer-heading"><div><p class="section-kicker">Foundations</p><h2>One population, one continuous inference story</h2><p>Follow a CNV from its first appearance to a testable posterior prediction.</p></div><span class="time-badge">15 minutes</span></header><div class="primer-story">
       <article class="primer-step"><div class="step-marker">01</div><div class="step-copy"><p class="scene-label">Begin with a culture</p><h3>A population is a changing composition</h3><p>Each colored cell represents a <strong>genotype</strong>, a heritable state. Its <strong>frequency</strong> is its fraction of the population, and all state frequencies sum to one.</p><dl class="concept-notes"><div><dt>Mutation rate</dt><dd>Probability per generation that one state produces another.</dd></div><div><dt>Fitness and <em>s</em></dt><dd>Expected reproductive success; <em>s</em> measures advantage relative to a reference.</dd></div></dl></div><div class="primer-illustration population-sketch" role="img" aria-label="A mostly ancestral population changes into a mixture of three genotypes"><div class="dot-row"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><b></b></div><span>generations</span><div class="dot-row late"><i></i><i></i><b></b><b></b><em></em><em></em><b></b><em></em></div></div></article>
       <article class="primer-step"><div class="step-marker">02</div><div class="step-copy"><p class="scene-label">Advance one generation</p><h3>Mechanism sets the expectation; drift selects one future</h3><p>A Wright–Fisher simulator applies mutation and selection, normalizes the expected frequencies, and samples a finite next generation. <strong>Genetic drift</strong> is this sampling variation.</p><div class="primer-equation">p<sub>t</sub> → mutation → selection → Multinomial(N<sub>e</sub>, p*)</div><dl class="concept-notes"><div><dt>Effective population size, N<sub>e</sub></dt><dd>The idealized size producing the experiment’s drift variance—not necessarily its census.</dd></div><div><dt>Simulator</dt><dd>An executable generative model from parameters and random draws to synthetic data.</dd></div></dl></div><div class="force-cartoon primer-force" aria-hidden="true"><div>mutation<small>states appear</small></div><b>→</b><div>selection<small>growth differs</small></div><b>→</b><div>drift<small>sample N<sub>e</sub></small></div></div></article>
@@ -1328,6 +1330,10 @@ def landing_page() -> str:
     # The former foundations walkthrough will be redistributed between the two lessons.
     content = content.split('<section class="primer-journey"', 1)[0]
     return page_shell("Simulation-based inference for experimental evolution", "", "home", content, [])
+
+
+def post_assessment_card() -> str:
+    return '''<section class="post-assessment-card" id="post-assessment"><div><p class="section-kicker">One last experiment</p><h2>Let’s see what changed.</h2><p>Take the 3-minute post-workshop check.</p><p class="pairing-hint" hidden>On this device, your responses will be paired anonymously with your check-in.</p><a class="primary-link" href="assessment/?phase=post">What did you learn? · 3 minute check</a></div><a class="post-qr-link" href="assessment/?phase=post" aria-label="Open the post-workshop assessment"><img src="assets/assessment-post-qr.svg" alt="QR code for the anonymous post-workshop assessment" width="190" height="190"></a></section>'''
 
 
 def implementation_notebook(chapter: str) -> str:
@@ -1362,7 +1368,48 @@ def build_content() -> None:
     sbi_nav='<nav class="chapter-nav" aria-label="Chapter navigation"><a href="evolution.html">Evolutionary simulators</a><a href="index.html">Workshop home</a></nav>'
     (SITE/"evolution.html").write_text(page_shell("Evolutionary simulators","Chapter 01","evolution",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+evo+evo_nav+'</article></div>',["evolution"]))
     sbi_opening = station_markup("chuong-parameter-challenge")
-    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+sbi_opening+chapter_outline_heading()+chapter_walkthrough("sbi")+sbi+sbi_nav+'</article></div>',["evolution", "sbi"]))
+    (SITE/"sbi.html").write_text(page_shell("Simulation-based inference","Chapter 02","sbi",'<div class="lesson-layout"><aside class="toc" aria-label="On this page"><button class="toc-toggle" type="button">On this page</button><div class="toc-links"></div></aside><article class="notebook-lesson">'+sbi_opening+chapter_outline_heading()+chapter_walkthrough("sbi")+sbi+post_assessment_card()+sbi_nav+'</article></div>',["evolution", "sbi"]))
+
+
+def build_assessment_assets() -> None:
+    """Write deployment metadata and stable QR assets used by the assessment."""
+    from qrcode import QRCode
+    from qrcode.constants import ERROR_CORRECT_M
+    from qrcode.image.svg import SvgPathImage
+
+    assessment = SITE / "assessment"
+    question_bank = assessment / "questions" / "v1.0.0.json"
+    assessment_version = json.loads(question_bank.read_text())["assessment_version"]
+    candidate_sha = os.environ.get("WORKSHOP_GIT_SHA") or os.environ.get("GITHUB_SHA")
+    if not candidate_sha:
+        try:
+            candidate_sha = subprocess.run(
+                ["git", "rev-parse", "HEAD"], cwd=ROOT, check=True,
+                capture_output=True, text=True,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            candidate_sha = "development"
+    if candidate_sha != "development" and not re.fullmatch(r"[0-9a-fA-F]{40}", candidate_sha):
+        raise RuntimeError("WORKSHOP_GIT_SHA/GITHUB_SHA must be a complete 40-character Git SHA")
+    write_json(assessment / "build-meta.json", {
+        "schema_version": 1,
+        "workshop_git_sha": candidate_sha.lower(),
+        "build_timestamp_utc": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "assessment_version": assessment_version,
+        "question_bank": "questions/v1.0.0.json",
+        "question_bank_sha256": sha256(question_bank),
+    })
+
+    qr_targets = {
+        ASSETS / "assessment-pre-qr.svg": PUBLIC_URL + "assessment/?phase=pre",
+        ASSETS / "assessment-post-qr.svg": PUBLIC_URL + "assessment/?phase=post",
+        ASSETS / "workshop-qr.svg": PUBLIC_URL,
+    }
+    for path, target in qr_targets.items():
+        code = QRCode(version=None, error_correction=ERROR_CORRECT_M, box_size=10, border=3)
+        code.add_data(target)
+        code.make(fit=True)
+        code.make_image(image_factory=SvgPathImage).save(path)
 
 
 def provenance() -> None:
@@ -1399,7 +1446,7 @@ def main() -> None:
     if args.scientific_assets:
         generate_zhou_assets(); generate_teaching_training(); generate_collective_and_exercises(); generate_fallbacks()
     else: verify_existing_assets()
-    if not args.verify_only: build_content(); provenance()
+    if not args.verify_only: build_assessment_assets(); build_content(); provenance()
     print("Workshop build complete")
 
 

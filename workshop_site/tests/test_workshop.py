@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import re
 import subprocess
@@ -177,6 +178,74 @@ def test_static_pages_are_subpath_safe_and_assets_exist():
                 assert (SITE / asset_path).exists(), f"broken link {ref} in {page.name}"
     assert not list(SITE.rglob("*.pkl"))
     assert not list(SITE.rglob("*.pickle"))
+
+
+def test_assessment_is_versioned_private_by_design_and_recomputable():
+    assessment = SITE / "assessment"
+    bank_path = assessment / "questions" / "v1.0.0.json"
+    bank = _json(bank_path)
+    meta = _json(assessment / "build-meta.json")
+    assert bank["schema_version"] == "1.0" and bank["assessment_version"] == "1.0.0"
+    assert len(bank["knowledge_questions"]) == 6
+    assert len(bank["confidence_questions"]) == 2
+    assert len(bank["post_evaluation_questions"]) == 2
+    assert len({question["question_id"] for question in bank["knowledge_questions"]}) == 6
+    assert meta["assessment_version"] == bank["assessment_version"]
+    assert meta["question_bank_sha256"] == hashlib.sha256(bank_path.read_bytes()).hexdigest()
+    assert meta["workshop_git_sha"] == "development" or re.fullmatch(r"[0-9a-f]{40}", meta["workshop_git_sha"])
+
+    index = (SITE / "index.html").read_text()
+    sbi = (SITE / "sbi.html").read_text()
+    page = (assessment / "index.html").read_text()
+    script = (assessment / "app.js").read_text()
+    config = (assessment / "config.js").read_text()
+    backend = (assessment / "backend.js").read_text()
+    migration = (assessment / "supabase" / "001_assessment_events.sql").read_text().lower()
+    assert 'href="assessment/?phase=pre"' in index
+    assert "assessment-pre-qr.svg" in index and "workshop-qr.svg" in index
+    assert 'href="assessment/?phase=post"' in sbi and "assessment-post-qr.svg" in sbi
+    assert "One last experiment" in sbi and "Let’s see what changed." in sbi
+    assert 'href="../evolution.html"' in page and "<noscript>" in page
+    assert all((assessment / "assets" / name).exists() for name in (
+        "nyu-official-seal.svg", "umn-official-logo.svg", "tau-official-logo.png", "lone-wolf.svg"
+    ))
+    assert all(token in script for token in (
+        "question_id", "question_revision", "variant_id", "displayed_order", "response", "duration_ms",
+        "assessment_schema_version", "question_bank_hash", "workshop_git_sha", "consent_version",
+        "crypto.randomUUID"
+    ))
+    assert "evoSbiWorkshopParticipantId" in config
+    assert all(forbidden not in script for forbidden in (
+        "navigator.userAgent", "screen.width", "document.referrer", "Intl.DateTimeFormat", "geolocation.getCurrentPosition"
+    ))
+    assert "localstorage" in backend.lower() and "return=minimal" in backend.lower()
+    assert "grant insert" in migration and "to anon" in migration
+    assert "grant select" not in migration and "grant update" not in migration and "grant delete" not in migration
+    assert "enable row level security" in migration and "force row level security" in migration
+    subprocess.run(["node", "--check", str(assessment / "app.js")], check=True)
+    subprocess.run(["node", "--check", str(assessment / "backend.js")], check=True)
+
+    module_path = assessment / "analysis" / "score_assessment.py"
+    spec = importlib.util.spec_from_file_location("score_assessment", module_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    correct = [{
+        "question_id": question["question_id"], "response": question["correct_response"]
+    } for question in bank["knowledge_questions"]]
+    confidence = [{"question_id": question["question_id"], "response": 3} for question in bank["confidence_questions"]]
+    records = []
+    for phase, suffix in (("pre", "1"), ("post", "2")):
+        records.append({
+            "id": "event-" + suffix, "participant_id": "anonymous", "received_at": f"2026-09-10T08:00:0{suffix}Z",
+            "phase": phase, "event_type": "completed", "venue": "NYU", "assessment_version": "1.0.0",
+            "payload": {"pairing_code": "WOLF-TEST-CODE", "answers": {"knowledge": correct, "confidence": confidence}}
+        })
+    summary = module.summarize(records, bank, True)
+    assert summary["matched_n"] == 1
+    assert summary["knowledge_score_0_to_6"]["pre_mean"] == 6
+    assert summary["knowledge_score_0_to_6"]["post_mean"] == 6
+    assert summary["by_venue"]["NYU"]["post"]["n"] == 1
 
 
 def test_dedicated_interactive_poster_route_and_components():
