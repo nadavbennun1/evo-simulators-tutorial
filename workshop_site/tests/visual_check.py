@@ -150,6 +150,12 @@ def main() -> None:
             element.screenshot(f"/tmp/workshop-{station}.png")
         driver.find_element("css selector", '[data-model-force="selection"]').click()
         assert driver.find_element("css selector", '[data-force-panel="selection"]').is_displayed()
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel=\"selection\"] [data-force-stage]:not([hidden])').length") == 0
+        driver.find_element("css selector", "[data-force-reveal]").click()
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel=\"selection\"] [data-force-stage]:not([hidden])').length") == 1
+        driver.find_element("css selector", "[data-force-reveal]").click()
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel=\"selection\"] [data-force-stage]:not([hidden])').length") == 2
+        assert driver.find_element("css selector", "[data-force-reveal]").get_attribute("disabled")
         driver.find_element("id", "avecilla-model-builder").screenshot("/tmp/workshop-model-builder.png")
         driver.find_element("css selector", 'section[data-cell-id="efcdf8fa"]').screenshot("/tmp/workshop-avecilla-code.png")
         for step in (1, 2, 3): driver.find_element("css selector", f'[data-chuong-step="{step}"]').click()

@@ -592,51 +592,98 @@ def chapter_outline_heading() -> str:
 
 
 def avecilla_model_builder_section() -> str:
-    mutation = math_to_html(r'''<h3>Mutation moves probability between states</h3>
-<p>In a general discrete-state model, column $j$ of $M$ describes where offspring of genotype
-$j$ go. Thus $M_{ij}=\Pr(i\leftarrow j)$ and mutation alone gives</p>
-$$x^{(m)}=Mx_t.$$
-<p>For the Avecilla states $A,C,B$, only the ancestor creates the two derived genotypes:</p>
+    mutation = math_to_html(r'''<div class="force-story-copy">
+<p class="force-stage-label">First: the biological event</p>
+<h3>Mutation moves probability between states</h3>
+<p>During reproduction, an ancestral cell can produce a descendant with a new, heritable state.
+Mutation therefore <strong>supplies variation</strong>; it does not know whether that variation will
+be useful.</p></div>
+<section class="equation-rung" data-force-stage="2" hidden>
+<p class="force-stage-label">Then: the general rule</p>
+<p>Let $M_{ij}$ be the probability that a parent in state $j$ produces an offspring in state $i$.
+Adding the contributions from every parental state gives</p>
+$$x_i^{(m)}=\sum_j M_{ij}x_{j,t},\qquad\text{or simply}\qquad x^{(m)}=Mx_t.$$
+<p>Each column of $M$ sums to one: it distributes the descendants of one parental genotype among
+their possible states.</p></section>
+<section class="equation-rung paper-rung" data-force-stage="3" hidden>
+<p class="force-stage-label">Finally: the Avecilla model</p>
+<p>The ancestor $A$ can form a <em>GAP1</em> CNV ($C$) with probability $\delta_C$, or another
+beneficial genotype ($B$) with probability $\delta_B$:</p>
 $$M_A=\begin{pmatrix}1-\delta_C-\delta_B&0&0\\
-\delta_C&1&0\\\delta_B&0&1\end{pmatrix},\qquad
-x^{(m)}=M_Ax_t.$$
-<p>$\delta_C$ is the per-generation *GAP1* CNV formation probability and $\delta_B$ is the
-formation probability of another beneficial genotype.</p>''')
-    selection = math_to_html(r'''<h3>Selection reweights reproductive contribution</h3>
-<p>Give each genotype a non-negative relative fitness $w_i$. Selection multiplies its post-mutation
-frequency and then renormalizes:</p>
-$$x_i^{(s)}=\frac{w_i x_i^{(m)}}{\sum_jw_jx_j^{(m)}}.$$
-<p>Avecilla uses the ancestor as reference, so</p>
+\delta_C&1&0\\\delta_B&0&1\end{pmatrix},\qquad x^{(m)}=M_Ax_t.$$
+<div class="symbol-chips"><span>$\delta_C$ · CNV formation</span><span>$\delta_B$ · other-beneficial formation</span></div>
+</section>''')
+    selection = math_to_html(r'''<div class="force-story-copy">
+<p class="force-stage-label">First: the biological event</p>
+<h3>Selection reweights reproductive contribution</h3>
+<p>Genotypes differ in how many descendants they are expected to contribute. A fitter state becomes
+more common <strong>on average</strong>, but selection does not create it and does not remove chance.</p></div>
+<section class="equation-rung" data-force-stage="2" hidden>
+<p class="force-stage-label">Then: the general rule</p>
+<p>Give genotype $i$ relative fitness $w_i$. Multiply its post-mutation frequency by fitness, then
+divide by the total so that the new frequencies still sum to one:</p>
+$$x_i^{(s)}=\frac{w_i x_i^{(m)}}{\sum_j w_jx_j^{(m)}}.$$
+</section>
+<section class="equation-rung paper-rung" data-force-stage="3" hidden>
+<p class="force-stage-label">Finally: the Avecilla model</p>
+<p>The ancestor is the reference. The two derived states have selection coefficients $s_C$ and
+$s_B$:</p>
 $$w_A=1,\qquad w_C=1+s_C,\qquad w_B=1+s_B.$$
-<p>A positive $s_C$ does not guarantee a CNV sweep: the lineage must first be supplied by mutation,
-and it competes with the other beneficial state.</p>''')
-    drift = math_to_html(r'''<h3>Drift turns an expectation into one realized population</h3>
-<p>After mutation and selection define expected frequencies, a Wright–Fisher generation samples
-$N_e$ cells:</p>
+<p>A positive $s_C$ does not guarantee a CNV sweep. The lineage must first appear, and it competes
+with the other beneficial state.</p>
+</section>''')
+    drift = math_to_html(r'''<div class="force-story-copy">
+<p class="force-stage-label">First: the biological event</p>
+<h3>Drift turns an expectation into one realized population</h3>
+<p>Only a finite number of descendants establish the next modeled generation. Which descendants
+do so contains chance, so identical starting populations can follow different trajectories.</p></div>
+<section class="equation-rung" data-force-stage="2" hidden>
+<p class="force-stage-label">Then: the general rule</p>
+<p>Mutation and selection give the expected composition $x^{(s)}$. A Wright–Fisher update draws
+the counts in the next generation jointly:</p>
 $$n_{t+1}\sim\operatorname{Multinomial}(N_e,x^{(s)}),\qquad
 x_{t+1}=\frac{n_{t+1}}{N_e}.$$
-<p>The expectation remains $x^{(s)}$, but replicate trajectories differ. Smaller $N_e$ produces
-larger sampling variance; $N_e$ is an effective drift scale, not automatically a cell count.</p>''')
+</section>
+<section class="equation-rung paper-rung" data-force-stage="3" hidden>
+<p class="force-stage-label">Finally: the Avecilla model</p>
+<p>The same draw contains counts for $A$, $C$, and $B$. Smaller $N_e$ creates more replicate-to-replicate
+variation; larger $N_e$ keeps realized frequencies closer to their expectation.</p>
+$$\bigl(n_A,n_C,n_B\bigr)_{t+1}\sim
+\operatorname{Multinomial}\!\left(N_e,\bigl(x_A^{(s)},x_C^{(s)},x_B^{(s)}\bigr)\right).$$
+<p>$N_e$ is the population size that reproduces the strength of drift. It need not equal the number
+of cells physically present in the vessel.</p>
+</section>''')
+    mutation_img = versioned_asset('assets/chapter/mutation-cartoon.jpg')
+    selection_img = versioned_asset('assets/chapter/selection-cartoon.jpg')
+    drift_img = versioned_asset('assets/chapter/drift-cartoon.jpg')
     return f'''<section class="lesson-cell model-builder" id="avecilla-model-builder">
       <p class="section-kicker">Build one generation</p><h2>From a biological picture to three operators</h2>
-      <p class="model-builder-intro">Select an evolutionary force. The highlighted part of the population model becomes a general equation and then the corresponding Avecilla equation.</p>
-      <div class="model-force-tabs" role="tablist" aria-label="Evolutionary force">
-        <button type="button" role="tab" aria-selected="false" data-model-force="mutation">1 · Mutation</button>
-        <button type="button" role="tab" aria-selected="false" data-model-force="selection">2 · Selection</button>
-        <button type="button" role="tab" aria-selected="false" data-model-force="drift">3 · Drift</button>
+      <p class="model-builder-intro">One generation is a short biological story. Choose a force, then build its equation in two small steps—from the general population-genetic rule to the paper's model.</p>
+      <div class="model-force-tabs force-cartoon-tabs" role="tablist" aria-label="Choose an evolutionary force">
+        <button type="button" role="tab" aria-selected="false" data-model-force="mutation"><img src="{mutation_img}" alt="A cell changes from the ancestral state to a new heritable state"><span><b>1 · Mutation</b><small>Where does variation come from?</small></span></button>
+        <button type="button" role="tab" aria-selected="false" data-model-force="selection"><img src="{selection_img}" alt="A fitter green cell leaves more descendants than an orange cell"><span><b>2 · Selection</b><small>Who contributes more descendants?</small></span></button>
+        <button type="button" role="tab" aria-selected="false" data-model-force="drift"><img src="{drift_img}" alt="A chance bottleneck changes the colors represented in a finite population"><span><b>3 · Drift</b><small>How does chance enter?</small></span></button>
       </div>
-      <div class="model-builder-grid">
-        <div class="model-illustration" aria-label="Ancestral cells produce CNV and other-beneficial cells, which reproduce unequally before finite sampling">
-          <div class="genotype-stage"><span class="state-a">A<small>ancestral</small></span><i>→</i><span class="state-c">C<small>GAP1 CNV</small></span><span class="state-b">B<small>other beneficial</small></span></div>
-          <div class="operator-stage"><b data-force-node="mutation">mutation<small>new states</small></b><i>→</i><b data-force-node="selection">selection<small>unequal growth</small></b><i>→</i><b data-force-node="drift">drift<small>finite sample</small></b></div>
-          <div class="state-vector">x = (x<sub>A</sub>, x<sub>C</sub>, x<sub>B</sub>)<sup>T</sup></div>
-        </div>
-        <div class="force-equations" aria-live="polite">
+      <div class="generation-recipe" aria-label="Workshop convention: mutation, then selection, then drift"><div><span>new states</span><b>mutation</b></div><i>→</i><div><span>expected contributions</span><b>selection</b></div><i>→</i><div><span>one finite realization</span><b>drift</b></div></div>
+      <div class="force-equations" aria-live="polite">
+          <div class="force-empty-state"><strong>Choose one of the cartoons.</strong><span>Its biology appears first; the equations stay hidden until you ask for them.</span></div>
           <article data-force-panel="mutation" hidden>{mutation}</article>
           <article data-force-panel="selection" hidden>{selection}</article>
           <article data-force-panel="drift" hidden>{drift}</article>
-        </div>
+          <div class="force-build-controls" hidden><button type="button" data-force-reveal>Show the general rule →</button><button type="button" class="quiet-button" data-force-reset>Start this force again</button><span class="force-progress" aria-live="polite">Biology · 1 of 3</span></div>
       </div>
+      <aside class="broader-forces">
+        <div class="broader-forces-heading"><p class="section-kicker">The theory is broader</p><h3>Two important forces are deliberately absent here</h3><p>Population-genetic models can also include movement among populations and non-random mating. They are omitted from these workshop simulators because the experiments modeled here use isolated replicate cultures propagated predominantly by clonal division.</p></div>
+        <article>
+          <svg viewBox="0 0 240 130" role="img" aria-label="Cells moving between two populations illustrates migration"><defs><marker id="migration-arrow" markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 Z"/></marker></defs><ellipse cx="55" cy="72" rx="43" ry="42"/><ellipse cx="185" cy="72" rx="43" ry="42"/><g><circle cx="39" cy="60" r="9"/><circle cx="66" cy="54" r="9"/><circle cx="56" cy="83" r="9"/><circle cx="174" cy="57" r="9"/><circle cx="197" cy="72" r="9"/><circle cx="175" cy="87" r="9"/></g><path class="migration-flow" d="M96 60 C119 43 132 43 150 58"/><path class="migration-flow" d="M148 85 C128 99 113 99 95 84"/></svg>
+          <div><h4>Migration</h4><p>Individuals moving between populations carry alleles with them. This gene flow is fundamental in spatial and natural populations. Here, replicate vessels are modeled as isolated—there is no designed transfer of cells between them.</p></div>
+        </article>
+        <article>
+          <svg viewBox="0 0 240 130" role="img" aria-label="Like-colored cells preferentially pairing illustrates assortative mating"><g class="mating-cells"><circle cx="43" cy="43" r="17"/><circle cx="91" cy="43" r="17"/><circle cx="149" cy="87" r="17"/><circle cx="197" cy="87" r="17"/></g><path class="mating-link" d="M61 43 C69 34 76 34 83 43"/><path class="mating-link" d="M167 87 C175 78 182 78 189 87"/><path class="mating-cross" d="M113 51 L130 77 M130 51 L113 77"/></svg>
+          <div><h4>Assortative mating</h4><p>When mating probability depends on genotype or phenotype, genotype frequencies can change even without fitness differences. The yeast and bacterial experiments considered here are modeled through clonal propagation, so there is no mating-choice operator in one generation.</p></div>
+        </article>
+        <p class="model-boundary"><strong>A modeling choice, not a universal claim.</strong> Migration or sexual cycles should be added whenever they are part of the experimental protocol or biological question.</p>
+      </aside>
     </section>'''
 
 

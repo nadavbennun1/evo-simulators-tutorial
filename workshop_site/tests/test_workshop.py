@@ -325,6 +325,12 @@ def test_chapter_one_revision_contract():
     assert 'class="active" type="button" role="tab"' not in text
     assert 'data-force-panel="mutation" hidden' in text and 'show("mutation")' not in script
     assert "Mutation moves probability between states" in text and "Selection reweights reproductive contribution" in text
+    assert all((SITE / "assets" / "chapter" / f"{force}-cartoon.jpg").exists() for force in ("mutation", "selection", "drift"))
+    assert all(f"{force}-cartoon.jpg" in text for force in ("mutation", "selection", "drift"))
+    assert text.count('data-force-stage="2" hidden') == 3 and text.count('data-force-stage="3" hidden') == 3
+    assert "Show the general rule" in text and "Connect it to Avecilla" in script
+    assert "Migration" in text and "Assortative mating" in text and "A modeling choice, not a universal claim" in text
+    assert "there is no designed transfer of cells between them" in text and "there is no mating-choice operator" in text
     assert 'id="chuong-standing-variation"' in text and "φ = 10⁻¹²" in text and "φ = 10⁻⁴" in text
     assert 'id="chuong-phi-play"' in text and 'id="chuong-phi" type="range"' in text
     assert "baseline = simulate(-12)" in script and '"φ=0 baseline"' in script and "observed (dashed)" in script

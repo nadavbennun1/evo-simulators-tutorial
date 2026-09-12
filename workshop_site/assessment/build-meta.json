@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
-  "workshop_git_sha": "d8425cee767ecf8a286d21085c5ddfd845936dcf",
-  "build_timestamp_utc": "2026-09-10T10:49:11.411674Z",
+  "workshop_git_sha": "0c9981b6828ef9edbe08a6ba6c28696807298c57",
+  "build_timestamp_utc": "2026-09-12T13:02:51.967326Z",
   "assessment_version": "1.1.0",
   "question_bank": "questions/v1.1.0.json",
   "question_bank_sha256": "7714ab347f9635da70a22b136eb50152eee72af7bd43d30c4fb05d20df823991"
