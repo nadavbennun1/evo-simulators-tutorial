@@ -135,47 +135,6 @@
     labels();
   }
 
-  function modelBuilder() {
-    const root = $("#avecilla-model-builder");
-    if (!root) return;
-    const buttons = $$('[data-model-force]', root), panels = $$('[data-force-panel]', root);
-    const empty = $(".force-empty-state", root), controls = $(".force-build-controls", root);
-    const reveal = $('[data-force-reveal]', root), reset = $('[data-force-reset]', root), progress = $(".force-progress", root);
-    let activeForce = null, stage = 1;
-    function setStage(nextStage) {
-      stage = Math.max(1, Math.min(3, nextStage));
-      const panel = panels.find(item => item.dataset.forcePanel === activeForce);
-      if (!panel) return;
-      $$('[data-force-stage]', panel).forEach(rung => { rung.hidden = Number(rung.dataset.forceStage) > stage; });
-      const labels = ["", "Biology · 1 of 3", "General rule · 2 of 3", "Avecilla model · 3 of 3"];
-      progress.textContent = labels[stage];
-      reveal.disabled = stage === 3;
-      reveal.textContent = stage === 1 ? "Show the general rule →" : stage === 2 ? "Connect it to Avecilla →" : "Equation complete ✓";
-    }
-    function show(force) {
-      activeForce = force;
-      buttons.forEach(button => { const active = button.dataset.modelForce === force; button.classList.toggle("active", active); button.setAttribute("aria-selected", String(active)); });
-      panels.forEach(panel => { panel.hidden = panel.dataset.forcePanel !== force; });
-      empty.hidden = true;
-      controls.hidden = false;
-      setStage(1);
-    }
-    buttons.forEach(button => button.addEventListener("click", () => show(button.dataset.modelForce)));
-    buttons.forEach((button, index) => button.addEventListener("keydown", event => {
-      if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
-      event.preventDefault();
-      const next = event.key === "Home" ? 0 : event.key === "End" ? buttons.length - 1 : (index + (event.key === "ArrowRight" ? 1 : -1) + buttons.length) % buttons.length;
-      buttons[next].focus();
-      show(buttons[next].dataset.modelForce);
-    }));
-    reveal.addEventListener("click", () => setStage(stage + 1));
-    reset.addEventListener("click", () => setStage(1));
-    buttons.forEach(button => { button.classList.remove("active"); button.setAttribute("aria-selected", "false"); });
-    panels.forEach(panel => { panel.hidden = true; });
-    empty.hidden = false;
-    controls.hidden = true;
-  }
-
   function chuongStandingVariation() {
     const canvas = $("#chuong-phi-canvas");
     if (!canvas) return;
@@ -560,7 +519,6 @@
   }
 
   avecillaPlayground();
-  modelBuilder();
   chuongStandingVariation();
   chuongEquationExercise();
   chuongCodeExercise();

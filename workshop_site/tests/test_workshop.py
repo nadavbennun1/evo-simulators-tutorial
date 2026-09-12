@@ -224,7 +224,10 @@ def test_assessment_is_versioned_private_by_design_and_recomputable():
         "navigator.userAgent", "screen.width", "document.referrer", "Intl.DateTimeFormat", "geolocation.getCurrentPosition"
     ))
     assert "localstorage" in backend.lower() and "googleSheetsEndpoint" in config
+    assert "https://script.google.com/macros/s/" in config and "/exec" in config
+    assert "config.js?v=1.1.0-sheets-1" in page
     assert "mode: \"no-cors\"" in backend and "AssessmentAck_" in backend
+    assert '"localhost", "127.0.0.1", "::1"' in backend
     assert "function doPost" in receiver and "function doGet" in receiver
     assert "new Date().toISOString()" in receiver and "JSON.stringify(record.payload)" in receiver
     assert "duplicate" in receiver and "data: 'not-readable'" in receiver
@@ -321,16 +324,15 @@ def test_chapter_one_revision_contract():
     assert text.index('id="model-equivalence"') < text.index('data-cell-id="629428f4"')
     assert text.index('data-cell-id="104a1da1"') < text.index('data-cell-id="f9cb77d4"') < text.index('data-cell-id="97c3a42c"')
     assert text.index('id="chuong-equation-exercise"') < text.index('code-fill-exercise') < text.index('id="chuong-standing-variation"')
-    assert 'data-model-force="mutation"' in text and 'data-model-force="selection"' in text and 'data-model-force="drift"' in text
-    assert 'class="active" type="button" role="tab"' not in text
-    assert 'data-force-panel="mutation" hidden' in text and 'show("mutation")' not in script
     assert "Mutation moves probability between states" in text and "Selection reweights reproductive contribution" in text
     assert all((SITE / "assets" / "chapter" / f"{force}-cartoon.jpg").exists() for force in ("mutation", "selection", "drift"))
     assert all(f"{force}-cartoon.jpg" in text for force in ("mutation", "selection", "drift"))
-    assert text.count('data-force-stage="2" hidden') == 3 and text.count('data-force-stage="3" hidden') == 3
-    assert "Show the general rule" in text and "Connect it to Avecilla" in script
+    assert text.count('class="force-lesson"') == 3 and text.count("Two genotypes") == 3
+    assert "The same bookkeeping in matrix form" in text and "The same reweighting in matrix form" in text
+    assert "Show the general rule" not in text and "data-model-force" not in text and "modelBuilder" not in script
     assert "Migration" in text and "Assortative mating" in text and "A modeling choice, not a universal claim" in text
     assert "there is no designed transfer of cells between them" in text and "there is no mating-choice operator" in text
+    assert "migration-cartoon.jpg" in text and "assortative-mating-cartoon.jpg" in text
     assert 'id="chuong-standing-variation"' in text and "φ = 10⁻¹²" in text and "φ = 10⁻⁴" in text
     assert 'id="chuong-phi-play"' in text and 'id="chuong-phi" type="range"' in text
     assert "baseline = simulate(-12)" in script and '"φ=0 baseline"' in script and "observed (dashed)" in script

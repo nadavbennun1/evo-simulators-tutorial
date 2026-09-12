@@ -8,7 +8,7 @@
     consentVersion: CONSENT_VERSION,
     questionBankPath: "questions/v1.1.0.json",
     buildMetaPath: "build-meta.json",
-    googleSheetsEndpoint: "",
+    googleSheetsEndpoint: "https://script.google.com/macros/s/AKfycbzqwmdguqgxzB9FwHIiIB5wLYLsKgNXDB4UPGportpepzMNmKcOt9EHd5CklNaDjfWqlg/exec",
     participantIdKey: "evoSbiWorkshopParticipantId",
     pairingCodeKey: "evoSbiWorkshopPairingCode",
     queueKey: "evoSbiWorkshopAssessmentQueueV1",

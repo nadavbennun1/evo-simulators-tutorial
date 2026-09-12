@@ -18,7 +18,8 @@
   }
 
   function configured() {
-    return /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(config.googleSheetsEndpoint || "");
+    const localPreview = ["localhost", "127.0.0.1", "::1"].includes(window.location.hostname);
+    return !localPreview && /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec$/.test(config.googleSheetsEndpoint || "");
   }
 
   async function transmit(event) {

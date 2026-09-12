@@ -108,8 +108,8 @@ def main() -> None:
         WebDriverWait(driver, 10).until(lambda d: lauer_image.get_property("naturalWidth") == 1280)
         assert lauer_image.size["width"] <= lauer_primer.size["width"]
         lauer_primer.screenshot("/tmp/workshop-lauer-experimental-primer.png")
-        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel]:not([hidden])').length") == 0
-        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-model-force].active').length") == 0
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder .force-lesson').length") == 3
+        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder button').length") == 0
         driver.find_element("id", "cell-6ec896e6").screenshot("/tmp/workshop-continuous-chemostat-equations.png")
         effective_size = driver.find_element("id", "effective-population-size")
         driver.execute_script("arguments[0].scrollIntoView({block:'start'})", effective_size)
@@ -148,14 +148,9 @@ def main() -> None:
                 driver.find_element("id", "zhou-model-play").click()
                 assert "Passage" in driver.find_element("id", "zhou-model-summary").text
             element.screenshot(f"/tmp/workshop-{station}.png")
-        driver.find_element("css selector", '[data-model-force="selection"]').click()
-        assert driver.find_element("css selector", '[data-force-panel="selection"]').is_displayed()
-        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel=\"selection\"] [data-force-stage]:not([hidden])').length") == 0
-        driver.find_element("css selector", "[data-force-reveal]").click()
-        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel=\"selection\"] [data-force-stage]:not([hidden])').length") == 1
-        driver.find_element("css selector", "[data-force-reveal]").click()
-        assert driver.execute_script("return document.querySelectorAll('#avecilla-model-builder [data-force-panel=\"selection\"] [data-force-stage]:not([hidden])').length") == 2
-        assert driver.find_element("css selector", "[data-force-reveal]").get_attribute("disabled")
+        assert all(item.is_displayed() for item in driver.find_elements("css selector", "#avecilla-model-builder .force-lesson"))
+        driver.find_element("css selector", "#avecilla-model-builder .force-lesson").screenshot("/tmp/workshop-model-builder-mutation.png")
+        driver.find_element("css selector", "#avecilla-model-builder .broader-forces").screenshot("/tmp/workshop-model-builder-broader-forces.png")
         driver.find_element("id", "avecilla-model-builder").screenshot("/tmp/workshop-model-builder.png")
         driver.find_element("css selector", 'section[data-cell-id="efcdf8fa"]').screenshot("/tmp/workshop-avecilla-code.png")
         for step in (1, 2, 3): driver.find_element("css selector", f'[data-chuong-step="{step}"]').click()

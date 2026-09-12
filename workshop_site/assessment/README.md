@@ -53,11 +53,13 @@ No SQL or database console is required.
 2. In that Sheet, open **Extensions → Apps Script**.
 3. Replace the editor contents with `google-sheets/Code.gs`, save, then choose **Deploy → New deployment → Web app**.
 4. Set **Execute as: Me** and **Who has access: Anyone**. Authorize the script and copy the deployed URL ending in `/exec`.
-5. Paste that URL into `googleSheetsEndpoint` in `config.js`, rebuild, commit, and push.
+5. Paste that URL into `googleSheetsEndpoint` in `config.js`, rebuild, commit, and push. The current deployment is configured this way.
 
 The script automatically creates an `assessment_events` tab with readable columns. It executes with the Sheet owner’s permissions, so participants can append validated events without receiving permission to open the private spreadsheet. Visiting the endpoint returns only a health message—never response data. Event UUIDs are checked before append, so retries do not duplicate rows.
 
 If the Sheet endpoint is not configured or is temporarily unavailable, completed events remain in the browser’s local retry queue. The participant sees the exact state of the submission. The queue is retried when the browser next loads the assessment or returns online. Clearing site storage before a retry will remove that local copy.
+
+Local previews served from `localhost`, `127.0.0.1`, or `::1` never transmit to the production Sheet. This keeps automated tests and presenter rehearsals out of the research dataset; persistence is enabled only on the deployed site.
 
 ## Export and score an event
 

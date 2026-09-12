@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-12T13:02:52.412822+00:00",
+  "generated_at_utc": "2026-09-12T13:36:01.229251+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -21,12 +21,14 @@
   "asset_generation_command": "PYTHONPATH=../evodesign/src python workshop_site/build_site.py --scientific-assets",
   "artifacts": {
     "assets/chapter/abc-framework.png": "7c345221e10d1ed698f83610d6fcc74a774218395c4cb262cb8e5be7a9c34edb",
+    "assets/chapter/assortative-mating-cartoon.jpg": "50874daf49c51e4067d7bb5d024cf064169529cbb199c3c7af6e47e4aa5363cd",
     "assets/chapter/chuong-diversity-figure-3b.jpg": "bf33f6c25e8856b2491ade647ad46de99fe8c5624264aae6fd7ac321398f4482",
     "assets/chapter/chuong-fit-orange.png": "6595401580517f68f2b0e5bc02887fba1d4f2344bf567e41daadf5a8d5bf7fab",
     "assets/chapter/collective-figure-1.png": "62b1488b550c83b4edffebfaf6edf52a35ef84d181e582f218982fb4c1a6650c",
     "assets/chapter/collective-figure-4.png": "558b988f620ebefe623f01c79c514d6422843ac1a9671e66429b18a9bf3019e5",
     "assets/chapter/drift-cartoon.jpg": "866d49620a32a3a3f1be010d833f09645301f98d90e6fbd67e09cefd2220852c",
     "assets/chapter/lauer-experimental-primer.jpg": "725db59f120688fa184dbb8843a38c64dde69c9562d7c22c63946ca64efb96cf",
+    "assets/chapter/migration-cartoon.jpg": "7c8239d99fce525d7207ae3ada728918af500c0a5b03eded36c1f7c1eec5651d",
     "assets/chapter/mutation-cartoon.jpg": "e1b9782d070522a671934b1c6f8706977604781afeafcaba2cee5de16536b618",
     "assets/chapter/selection-cartoon.jpg": "810c4ecb303e34429ca91841e73cffccc7cb7f3403e10e005cee671a55281895",
     "assets/fallback/chuong-parameter-challenge.png": "7b0531c28d1de5de1cd8f8b378363cac049b7e5a30f81ba25fea3e08900d7da2",
@@ -46,9 +48,9 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "e2f394baf904401b5ee6c6f8108d776be81c3222b724f4ba7f298781254ac1d6",
-    "index.html": "cc5ddfeba70679d0d549a009726ff543dbc6024c5d1df8f0adaf035cda3f0e25",
-    "sbi.html": "ad3c5662ff58160365e892a4264c11baa43b0dfe3daee72e5e9049f0ec2c844d"
+    "evolution.html": "37c55cdcbb7b33c9da1ea87ca38ce57406fd5c59651cc38ef2ff1a1b730f2c50",
+    "index.html": "47f81354497ad1cf28593213f69ba2540f8ea1585591dc07f5593d8145d9caa2",
+    "sbi.html": "0c2296f947fbf674e6d456eda181590fa26c06051205de123a893ff6fe1965b3"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",
