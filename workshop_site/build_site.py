@@ -91,7 +91,7 @@ OUTPUT_CAPTIONS = {
     "cdda66b7": ("The same parameters produce a family of stochastic observations", "Repeated Wright-Fisher simulations"),
     "0ba5658f": ("A synthetic observation gives us a known answer for checking ABC", "Synthetic trajectory for ABC"),
     "da54003d": ("Rejection ABC posterior for the synthetic trajectory", "ABC posterior result"),
-    "098a16bd": ("Neural posterior estimate for the synthetic trajectory", "Neural posterior estimate"),
+    "098a16bd": ("", "Posterior density returned by neural posterior estimation"),
 }
 
 OUTPUT_STORIES = {
@@ -182,7 +182,8 @@ def output_html(output: dict, stem: str, output_index: int, figures_only: bool =
             (NOTEBOOK_ASSETS / name).write_bytes(base64.b64decode(raw))
             source = versioned_asset(f"assets/notebook/{name}")
             caption, alt = OUTPUT_CAPTIONS.get(stem, ("Scientific notebook result", f"Scientific result from notebook cell {stem}"))
-            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="{html.escape(alt)}"><figcaption>{html.escape(caption)}</figcaption></figure>')
+            caption_html = f"<figcaption>{html.escape(caption)}</figcaption>" if caption else ""
+            pieces.append(f'<figure class="notebook-figure"><img loading="lazy" src="{source}" alt="{html.escape(alt)}">{caption_html}</figure>')
     if figures_only:
         return "".join(pieces)
     text = output.get("text")
@@ -519,6 +520,8 @@ for sensitivity analysis.
 </figure>''',
         "d74c479a": None,
         "3fce18ac": fr'''## Summary
+
+''' + take_home_visual() + fr'''
 
 | Method | Core move | Best role |
 |---|---|---|
@@ -982,51 +985,72 @@ yet justified.</aside>
 
 
 def posterior_prediction_section() -> str:
-    """Connect parameter inference to the lineage-diversity prediction in Chuong et al."""
+    """Connect parameter inference to the cohort-based diversity estimate in Chuong et al."""
     diversity = versioned_asset("assets/chapter/chuong-diversity-figure-3b.jpg")
     molecular = versioned_asset("assets/chapter/chuong-figure-4e-v2.jpg")
     source = fr'''## Posterior prediction: from one CNV curve to many lineages
 
-The fluorescence measurement reports the **total fraction of CNV cells**. It cannot tell whether
-that fraction contains one successful CNV lineage or thousands of independently formed lineages.
-In {paper("chuong")}, parameters inferred from the total-frequency trajectories were passed back
-through a lineage-resolved simulator to predict that hidden diversity.
+Fluorescence reports the **fraction of cells with a reporter-marked CNV**. It does not reveal which
+CNV allele each cell carries or reconstruct a genealogy. {paper("chuong")} therefore estimated
+diversity by adding biological bookkeeping to the same four-genotype Wright–Fisher simulator used
+for inference.
 
-### First, what counts as a lineage?
+### What the simulator remembers
 
-Every independent CNV formation event starts a new lineage. Its descendants keep the same lineage
-identity. At a chosen generation, divide each lineage's cell count by the total number of CNV cells:
-$f_i=n_i/\sum_j n_j$. These shares—not the fraction of the whole culture—are the input to diversity.
+For one draw of $(s_C,\delta_C,\varphi)$ from the collective posterior, the simulator supplies the
+ancestral count $n_A(t)$ and population mean fitness $\bar w(t)$ at every generation. The diversity
+calculation then records two quantities for each generation in which CNVs form:
 
-<div class="diversity-algorithm" aria-label="Lineage diversity algorithm">
-  <ol><li><b>1</b><span><strong>Form</strong>Each new CNV event receives a new color.</span></li><li><b>2</b><span><strong>Grow</strong>Selection changes the number of descendants in every color.</span></li><li><b>3</b><span><strong>Sample</strong>Finite-population drift changes which colors persist.</span></li><li><b>4</b><span><strong>Summarize</strong>Convert the surviving color shares into an effective count.</span></li></ol>
-  <pre aria-label="Pseudocode for posterior prediction of CNV lineage diversity"><code>for each posterior parameter draw:
-    simulate independently formed CNV lineages
-    for each generation:
-        form new lineages
-        grow lineages under selection
-        sample the finite next population
-        f = lineage_counts / all_CNV_cells
-        diversity = exp(-sum(f * log(f)))</code></pre>
+$$Q_t=\delta_C n_A(t),\qquad P_t(t)=Q_t.$$
+
+$Q_t$ is the estimated number of **new, unique CNV lineages** born at generation $t$. $P_t(T)$ is
+the total number of cells at a later generation $T$ descended from that whole birth cohort. Its
+expected selection update is
+
+$$P_t(g+1)=P_t(g)\frac{{1+s_C}}{{\bar w(g)}},$$
+
+followed by the simulator's finite-population sampling. Crucially, the model assigns the same
+selection coefficient $s_C$ to every CNV. The $Q_t$ lineages born together are therefore treated as
+equally abundant, each with estimated size $P_t(T)/Q_t$. Older cohorts can be larger because they
+have had more generations to expand; lineages of the same age do not receive different fitnesses.
+
+<div class="diversity-algorithm" aria-label="How the paper estimates CNV lineage diversity">
+  <ol><li><b>1</b><span><strong>Learn from fluorescence</strong>Infer a posterior over $s_C$, $\delta_C$, and $\varphi$ from the observed total-frequency trajectories.</span></li><li><b>2</b><span><strong>Run the model again</strong>For each posterior draw, simulate ancestral and CNV population sizes through time.</span></li><li><b>3</b><span><strong>Remember birth times</strong>At each generation save how many unique CNVs formed, $Q_t$, and how many descendants their cohort later contains, $P_t(T)$.</span></li><li><b>4</b><span><strong>Convert cohorts to diversity</strong>Treat the $Q_t$ same-age lineages as equal shares, then combine every birth cohort.</span></li></ol>
 </div>
 
+<aside class="diversity-assumption"><strong>This is an estimate built from the model.</strong> The
+code does not store millions of lineage identifiers. It assumes every formation event creates a
+different allele, all CNV alleles share one $s_C$, and lineages born in the same generation have the
+same abundance. Repeated formation of the same allele, fitness variation among CNVs, competition,
+and clonal interference are not represented.</aside>
+
 <section class="diversity-lab" id="diversity-lab" aria-labelledby="diversity-lab-title">
-  <header><p class="section-kicker">Trace the algorithm</p><h3 id="diversity-lab-title">Follow CNV lineages through one simulated generation</h3><p>Every color is one independently formed CNV and stays attached to its descendants.</p></header>
-  <div class="diversity-step-tabs" role="group" aria-label="Choose a lineage simulation step"><button type="button" class="active" data-diversity-process-step="0" aria-pressed="true">Start</button><button type="button" data-diversity-process-step="1" aria-pressed="false">1 · Form</button><button type="button" data-diversity-process-step="2" aria-pressed="false">2 · Grow</button><button type="button" data-diversity-process-step="3" aria-pressed="false">3 · Sample</button><button type="button" data-diversity-process-step="4" aria-pressed="false">4 · Summarize</button></div>
-  <canvas id="diversity-process-canvas" width="940" height="470" aria-label="Step-by-step lineage simulation showing CNV formation, selection, finite-population sampling, and the diversity calculation"></canvas>
-  <div class="diversity-process-controls"><div class="button-row"><button id="diversity-next-step" type="button">Next step</button><button id="diversity-play-process" type="button">Play one generation</button><button id="diversity-reset-process" type="button">Reset</button></div><p id="diversity-process-note" aria-live="polite">Begin with ancestral cells and three existing CNV lineages. A lineage color is inherited by every descendant.</p></div>
-  <div class="diversity-history-heading"><p class="section-kicker">Repeat the cycle</p><h4>What many generations produce</h4><p>The same four operations, repeated through time, generate the reporter trajectory and its hidden lineage composition.</p></div>
-  <div class="diversity-strains" role="group" aria-label="Choose strain architecture"><button type="button" class="active" data-diversity-strain="WT" aria-pressed="true">WT</button><button type="button" data-diversity-strain="LTRΔ" aria-pressed="false">LTRΔ</button><button type="button" data-diversity-strain="ALLΔ" aria-pressed="false">ALLΔ</button><button type="button" data-diversity-strain="ARSΔ" aria-pressed="false">ARSΔ</button></div>
-  <div class="diversity-lab-grid"><div class="viz"><canvas id="diversity-lineage-canvas" width="820" height="430" aria-label="Colored CNV lineage shares changing through generations"></canvas><label class="diversity-time"><span>Generation</span><output id="diversity-generation-label">0</output><input id="diversity-generation" type="range" min="0" max="116" step="1" value="0"></label><div class="button-row"><button id="diversity-play" type="button">Play lineage history</button><button id="diversity-reset" type="button">Reset</button></div></div><div class="diversity-live-calculation" aria-live="polite"><article><small>Total reporter signal</small><strong id="diversity-total">0% CNV</strong><p>The frequency curve combines every colored lineage.</p></article><article><small>Lineage shares</small><strong id="diversity-lineages">0 present</strong><div id="diversity-share-bar" class="diversity-share-bar" aria-label="Relative shares among CNV lineages"></div></article><article><small>Effective number</small><strong id="diversity-effective">D = 0</strong><p id="diversity-explanation">Advance time to form CNV lineages.</p></article></div></div>
+  <header><p class="section-kicker">Trace the calculation</p><h3 id="diversity-lab-title">How frequency data become an estimated lineage diversity</h3><p>Choose a strain and generation. The interaction uses that strain's collective MAP to expose one calculation; the published bands repeat it across collective-posterior draws.</p></header>
+  <div class="diversity-scenario-controls"><div class="diversity-strains" role="group" aria-label="Choose strain architecture"><button type="button" class="active" data-diversity-strain="WT" aria-pressed="true">WT</button><button type="button" data-diversity-strain="LTRΔ" aria-pressed="false">LTRΔ</button><button type="button" data-diversity-strain="ALLΔ" aria-pressed="false">ALLΔ</button><button type="button" data-diversity-strain="ARSΔ" aria-pressed="false">ARSΔ</button></div><label class="diversity-time"><span>Generation $T$</span><output id="diversity-generation-label">25</output><input id="diversity-generation" type="range" min="0" max="116" step="1" value="25"></label></div>
+  <div class="diversity-step-tabs" role="group" aria-label="Choose a diversity calculation step"><button type="button" class="active" data-diversity-process-step="0" aria-pressed="true">Posterior draw</button><button type="button" data-diversity-process-step="1" aria-pressed="false">1 · Run model</button><button type="button" data-diversity-process-step="2" aria-pressed="false">2 · Count births</button><button type="button" data-diversity-process-step="3" aria-pressed="false">3 · Follow descendants</button><button type="button" data-diversity-process-step="4" aria-pressed="false">4 · Calculate</button></div>
+  <canvas id="diversity-process-canvas" width="940" height="470" aria-label="Step-by-step calculation from an inferred parameter draw through simulated CNV birth cohorts to effective diversity"></canvas>
+  <div class="diversity-process-controls"><div class="button-row"><button id="diversity-next-step" type="button">Next step</button><button id="diversity-play-process" type="button">Play calculation</button><button id="diversity-reset-process" type="button">Reset</button></div><p id="diversity-process-note" aria-live="polite">Begin with one parameter draw learned from the fluorescence trajectories.</p></div>
+  <div class="diversity-history-heading"><p class="section-kicker">Across generations</p><h4>Birth cohorts accumulate inside the simulated CNV population</h4><p>Each color is a generation of origin—not a different fitness class and not an experimentally observed lineage label.</p></div>
+  <div class="diversity-lab-grid"><div class="viz"><canvas id="diversity-lineage-canvas" width="820" height="430" aria-label="Contributions of simulated CNV birth cohorts to total CNV frequency through time"></canvas><div class="button-row"><button id="diversity-play" type="button">Play generations</button><button id="diversity-reset" type="button">Reset</button></div></div><div class="diversity-live-calculation" aria-live="polite"><article><small>What fluorescence shows</small><strong id="diversity-total">— reported CNV</strong><p>The trajectory constrains the parameters but contains no lineage labels.</p></article><article><small>What the simulator adds</small><strong id="diversity-lineages">Q(T) = —</strong><div id="diversity-share-bar" class="diversity-share-bar" aria-label="Relative contributions of CNV birth cohorts"></div><p id="diversity-cohort-explanation">Colors summarize the saved birth cohorts.</p></article><article><small>Estimated effective diversity</small><strong id="diversity-effective">D(T) = —</strong><p id="diversity-explanation">Choose a generation to evaluate the saved cohorts.</p></article></div></div>
 </section>
 
-For a population split evenly among ten lineages, the effective number is ten. If one lineage takes
-most of the CNV cells, the effective number falls even if ten colors remain detectable:
+At generation $T$, one lineage from cohort $t$ has frequency
 
-Shannon entropy $H$ summarizes the evenness of the lineage shares. **Effective diversity** $D$
-exponentiates that entropy and returns it to intuitive lineage-count units.
+$$f_t(T)=\frac{{P_t(T)/Q_t}}{{\sum_k P_k(T)}}.$$
 
-$$H(t)=-\sum_i f_i(t)\log f_i(t),\qquad D(t)=\exp[H(t)].$$
+There are $Q_t$ lineages with that same frequency, so the Shannon sum weights the cohort by $Q_t$:
+
+$$H(T)=-\sum_t Q_t f_t(T)\log f_t(T),\qquad D(T)=\exp[H(T)].$$
+
+For a population split evenly among ten lineages, $D=10$. A birth cohort can contain many unique
+lineages yet contribute little to $D$ when each lineage remains rare.
+
+### Where uncertainty enters
+
+The interactive view uses one collective MAP. The published result repeats the complete simulator
+and cohort calculation for samples from the collective posterior, producing a posterior mean and
+50% interval for $D(T)$. The uncertainty therefore propagates from the frequency data, through the
+inferred formation rate, selection coefficient, and initial hidden fraction, into diversity.
 
 ### The molecular evidence behind the colors
 
@@ -1034,9 +1058,9 @@ $$H(t)=-\sum_i f_i(t)\log f_i(t),\qquad D(t)=\exp[H(t)].$$
 
 The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
 CNVs. Figure 4E shows that CNV length varies within and among strain backgrounds. It validates the
-biological premise that the fluorescent trajectory pools many different alleles, but it does not
-directly count every lineage in the evolving population. That larger number remains a posterior
-prediction from the lineage-resolved simulator.
+biological premise that the fluorescence trajectory pools many different alleles, but it does not
+measure their population-wide richness or abundance. Those quantities remain model-based posterior
+predictions.
 
 ### Published prediction
 
@@ -1046,9 +1070,10 @@ prediction from the lineage-resolved simulator.
 
 At the final sampled generation, predicted effective diversity ranged from approximately
 $1.6\times10^4$ lineages for ARSΔ to $3.2\times10^5$ for wild type. The ordering follows the
-inferred formation rates: more formation events seed more independent lineages. The model omits
-competition among CNVs, clonal interference, and recurrent formation, so the authors emphasize the
-between-strain ranking more strongly than the absolute counts.
+inferred formation rates: more formation events create more assumed-unique lineages. Because the
+calculation treats every new event as a new allele and does not model competition or clonal
+interference among different CNVs, the absolute values are likely overestimates; the between-strain
+ranking is the stronger conclusion.
 '''
     return f'<section class="lesson-cell prose-cell prediction-box" id="posterior-predictions">{math_to_html(source)}</section>'
 
@@ -1091,7 +1116,7 @@ def npe_loss_explorer() -> str:
 
 
 def take_home_visual() -> str:
-    return f'''<figure class="take-home-visual"><img loading="eager" src="{versioned_asset('assets/chapter/workshop-take-home-exact.png')}" alt="Three-panel workshop summary: observations motivate an evolutionary model, predictive checks test whether the mechanism reproduces the data, and posterior predictions guide a new experiment"><figcaption>Mechanism → predictive checks → a new biological question.</figcaption></figure>'''
+    return f'''<figure class="take-home-visual"><img loading="eager" src="{versioned_asset('assets/chapter/workshop-take-home-exact.png')}" alt="Three-panel workshop summary: observations motivate an evolutionary model, predictive checks test whether the mechanism reproduces the data, and posterior predictions guide a new experiment"></figure>'''
 
 
 def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, list[dict]]:
@@ -1114,8 +1139,6 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(chapter_illustration("modeler-posterior-rescue.png", "A posterior distribution resolves uncertainty left by several plausible evolutionary trajectories", "The inverse problem needs a distribution over plausible explanations, not one curve chosen by eye."))
         if key == "sbi" and cid == "928bf2bf":
             blocks.append(chapter_illustration("modeler-replicates.png", "Researchers compare evolutionary trajectories from several replicate populations", "Replicates contain shared biological information, but they need not agree perfectly."))
-        if key == "sbi" and cid == "3fce18ac":
-            blocks.append(take_home_visual())
         anchor = f'cell-{cid}'
         if cell.cell_type == "markdown":
             curated = curated_markdown(key, cid, source)
@@ -1173,10 +1196,10 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(prior_design_section())
         if key == "sbi" and cid == "098a16bd":
             blocks.append(posterior_prediction_section())
-        if key == "evolution" and cid in {"efcdf8fa", "2539f7c5"}:
-            names = {"efcdf8fa": "Avecilla", "2539f7c5": "De"}
-            caption = "Avecilla model: biological states, transitions, fitness, and drift are now explicit." if cid == "efcdf8fa" else ""
-            blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the completed {names[cid]} evolutionary model", caption, "model-complete-illustration"))
+        if key == "evolution" and cid == "54e9f8de":
+            blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate the Avecilla Wright–Fisher model fit", "", "model-complete-illustration"))
+        if key == "evolution" and cid == "65a843c6":
+            blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate the De model fit", "", "model-complete-illustration"))
         if key == "evolution" and cid in {"66cce2fa", "2e99f96f"}:
             name = "Chuong" if cid == "66cce2fa" else "Zhou"
             blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the {name} model fit", "", "model-complete-illustration"))

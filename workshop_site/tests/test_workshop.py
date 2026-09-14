@@ -486,7 +486,7 @@ def test_presentation_revision_contract():
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
     assert "Posterior prediction: from one CNV curve to many lineages" in sbi
-    assert "Effective diversity" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
+    assert "effective diversity" in sbi and "Shannon" in sbi and "3.2" in sbi and "ARSΔ" in sbi
     assert "<h3>References</h3>" in sbi and "Short references" not in sbi
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
     assert 'loading="eager"' in sbi and 'class="diversity-rank"' in sbi
@@ -498,6 +498,10 @@ def test_presentation_revision_contract():
     assert "chuong-figure-4e-v2.jpg" in sbi and "molecularly resolved 177" in sbi
     assert 'id="diversity-process-canvas"' in sbi and 'id="diversity-next-step"' in sbi
     assert "function diversityPredictionLab()" in script and "Math.exp(entropy)" in script
+    assert "selection coefficient" in sbi and "equally abundant" in sbi
+    assert "Count births" in sbi and "birth cohorts" in sbi
+    assert "different family sizes" not in script[script.index("function diversityPredictionLab()") :]
+    assert "Neural posterior estimate for the synthetic trajectory" not in sbi
     assert "modeler-posterior-rescue.png" in sbi and "modeler-replicates.png" in sbi
     assert "modeler-posterior-success.png" in sbi and "workshop-take-home-exact.png" in sbi
     assert "flexible-npe-time-embedding.svg" in sbi
@@ -507,11 +511,16 @@ def test_presentation_revision_contract():
     assert "q<sub>ϕ</sub>" in sbi and "qφ(θ | S)" not in (SITE / "assets/chapter/flexible-npe-time-embedding.svg").read_text()
     assert "Half-order steps" not in evolution
     assert "Chuong model: biological states, transitions, fitness, and drift are now explicit." not in evolution
+    assert "Avecilla model: biological states, transitions, fitness, and drift are now explicit." not in evolution
     assert "De model: biological states, transitions, fitness, and drift are now explicit." not in evolution
     assert "Zhou model: biological states, transitions, fitness, and drift are now explicit." not in evolution
     assert "Three measured states constrain two loss routes and their fitnesses" not in evolution
+    assert evolution.index('data-cell-id="54e9f8de"') < evolution.index('alt="Researchers celebrate the Avecilla Wright–Fisher model fit"')
     assert evolution.index('data-cell-id="66cce2fa"') < evolution.index('alt="Researchers celebrate the Chuong model fit"')
+    assert evolution.index('data-cell-id="65a843c6"') < evolution.index('alt="Researchers celebrate the De model fit"')
     assert evolution.index('data-cell-id="2e99f96f"') < evolution.index('alt="Researchers celebrate the Zhou model fit"')
+    assert re.search(r'<h2>Summary</h2>\s*<figure class="take-home-visual">', sbi)
+    assert "Mechanism → predictive checks → a new biological question." not in sbi
     assert "<strong>Important:</strong> inference is not finished" in sbi
     assert "∝" not in evolution + sbi
     assert "MathJax" in sbi and "mml-chtml.js" in sbi

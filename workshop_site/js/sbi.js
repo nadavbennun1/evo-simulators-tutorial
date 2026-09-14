@@ -354,163 +354,135 @@
   }
 
   function diversityPredictionLab() {
-    const canvas = $("#diversity-lineage-canvas"), processCanvas = $("#diversity-process-canvas");
-    if (!canvas || !processCanvas) return;
-    const slider = $("#diversity-generation"), palette = ["#577d91", "#b56a50", "#c59b4f", "#315f52", "#8e6bbf", "#54a58a", "#df835e", "#79a9c5", "#b9a35d", "#765d8f", "#8aba6f", "#d06077"];
-    const settings = {
-      "WT": {lineages: 36, midpoint: 58, slope: .071, births: 84},
-      "LTRΔ": {lineages: 28, midpoint: 63, slope: .074, births: 88},
-      "ALLΔ": {lineages: 20, midpoint: 69, slope: .078, births: 92},
-      "ARSΔ": {lineages: 13, midpoint: 75, slope: .083, births: 96}
+    const canvas = $("#diversity-lineage-canvas"), processCanvas = $("#diversity-process-canvas"), slider = $("#diversity-generation");
+    if (!canvas || !processCanvas || !slider) return;
+    const colors = ["#577d91", "#b56a50", "#c59b4f", "#315f52", "#8e6bbf", "#54a58a", "#df835e", "#79a9c5", "#b9a35d", "#765d8f"];
+    const maps = {
+      "WT": {logS: -.7381561, logDelta: -4.344892, logPhi: -3.7729044},
+      "LTRΔ": {logS: -.73768467, logDelta: -4.835881, logPhi: -4.3162537},
+      "ARSΔ": {logS: -.8402579, logDelta: -5.6174593, logPhi: -5.388713},
+      "ALLΔ": {logS: -.89968836, logDelta: -5.049737, logPhi: -5.218887}
     };
-    let strain = "WT", timer = null, processStep = 0, processTimer = null;
+    const N = 3.3e8, lastGeneration = 116;
+    let strain = "WT", simulation = simulate(maps.WT), step = 0, historyTimer = null, stepTimer = null;
 
-    const processNotes = [
-      "Begin with ancestral cells and three existing CNV lineages. A lineage color is inherited by every descendant.",
-      "Formation: a new CNV event appears in one ancestral cell. It receives a new purple identity that its descendants retain.",
-      "Growth: fitness changes descendant number. The orange lineage has the largest advantage here, so its family becomes the largest.",
-      "Sampling: only a finite set enters the next generation. Some colors gain or lose share by chance; a rare lineage can disappear.",
-      "Summarize: first pool all colors for the reporter frequency, then normalize within CNV cells. Here the surviving shares give an effective diversity of 3.5 lineages."
-    ];
-
-    function drawProcess() {
-      const width = Math.max(700, Math.round(processCanvas.getBoundingClientRect().width || 940));
-      const height = Math.round(width * 0.5), ratio = Math.min(devicePixelRatio || 1, 2);
-      processCanvas.width = Math.round(width * ratio); processCanvas.height = Math.round(height * ratio);
-      const ctx = processCanvas.getContext("2d"); ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.clearRect(0, 0, width, height);
-      const ink = "#25332f", muted = "#66736d", border = "#d8d2c5", cream = "#fffdf8", ancestor = "#ead7a8";
-      const colors = ["#577d91", "#54a58a", "#df835e", "#8e6bbf"], centers = [width*.09, width*.29, width*.49, width*.69, width*.89], top = height*.23;
-      const titles = ["START", "FORM", "GROW", "SAMPLE", "SUMMARIZE"];
-      ctx.fillStyle = cream; ctx.fillRect(0, 0, width, height);
-      const rounded = (x,y,w,h,r,fill,stroke=border) => { ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fillStyle=fill; ctx.fill(); ctx.strokeStyle=stroke; ctx.lineWidth=1; ctx.stroke(); };
-      const arrow = (x1,x2,y,active) => { ctx.save(); ctx.globalAlpha=active?1:.16; ctx.strokeStyle="#b56a50"; ctx.fillStyle="#b56a50"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x2,y); ctx.lineTo(x2-8,y-5); ctx.lineTo(x2-8,y+5); ctx.closePath(); ctx.fill(); ctx.restore(); };
-      const cell = (x,y,color,r=10,alpha=1) => { ctx.save(); ctx.globalAlpha=alpha; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=color; ctx.fill(); ctx.strokeStyle="#31423c"; ctx.lineWidth=1; ctx.stroke(); ctx.beginPath(); ctx.arc(x-r*.3,y-r*.25,r*.18,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.72)"; ctx.fill(); ctx.restore(); };
-      const label = (text,x,y,size=12,color=muted,weight=600,align="center") => { ctx.fillStyle=color; ctx.font=`${weight} ${size}px system-ui`; ctx.textAlign=align; ctx.fillText(text,x,y); };
-
-      centers.forEach((x,i) => {
-        const active = i <= processStep;
-        rounded(x-width*.08, height*.12, width*.16, height*.72, 14, active?"#ffffff":"#f5f4ef");
-        label(titles[i],x,top-17,Math.max(11,width*.014),active?ink:"#a8aea9",800);
-        if (i < 4) arrow(x+width*.082,centers[i+1]-width*.082,height*.48,i<processStep);
-      });
-
-      // Starting cells: beige ancestors plus three already formed CNV lineages.
-      const startCells = [[-25,-42,ancestor], [5,-45,ancestor], [28,-20,ancestor], [-31,-6,ancestor], [0,-10,colors[0]], [27,13,colors[1]], [-18,26,colors[2]], [9,42,ancestor]];
-      startCells.forEach(([dx,dy,c]) => cell(centers[0]+dx, height*.48+dy,c,9,processStep>=0?1:.15));
-      label("3 CNV colors",centers[0],height*.75,11,muted,600);
-
-      if (processStep >= 1) {
-        startCells.forEach(([dx,dy,c]) => cell(centers[1]+dx*.82,height*.48+dy*.82,c,8));
-        cell(centers[1]+34,height*.48-34,colors[3],9);
-        label("✦ new lineage",centers[1]+2,height*.72,11,colors[3],800);
-      }
-
-      if (processStep >= 2) {
-        const clusters = [
-          {color:colors[0], y:height*.33, n:3}, {color:colors[1], y:height*.45, n:5},
-          {color:colors[2], y:height*.59, n:8}, {color:colors[3], y:height*.72, n:2}
-        ];
-        clusters.forEach((group,g) => {
-          ctx.save(); ctx.globalAlpha=.28; ctx.strokeStyle=group.color; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(centers[1]+(g===3?34:(g-1)*12),height*.48+(g-1)*8); ctx.quadraticCurveTo((centers[1]+centers[2])/2,group.y,centers[2]-25,group.y); ctx.stroke(); ctx.restore();
-          for(let i=0;i<group.n;i++) cell(centers[2]-24+(i%4)*16,group.y+(Math.floor(i/4)-.35)*15,group.color,6.5);
-        });
-        label("different family sizes",centers[2],height*.79,11,muted,600);
-      }
-
-      if (processStep >= 3) {
-        ctx.save(); ctx.strokeStyle="#7f9189"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(centers[3]-43,height*.31); ctx.lineTo(centers[3]-19,height*.51); ctx.lineTo(centers[3]-43,height*.70); ctx.stroke(); ctx.restore();
-        label("finite draw",centers[3]-31,height*.26,9,muted,700);
-        const sampled = [colors[0],colors[1],colors[2],colors[2],colors[2],colors[3]];
-        sampled.forEach((color,i) => cell(centers[3]+2+(i%2)*20,height*.37+Math.floor(i/2)*28,color,8));
-        label("6 sampled cells",centers[3]+7,height*.76,11,muted,600);
-      }
-
-      if (processStep >= 4) {
-        const shares = [.167,.167,.5,.166]; let cursor = centers[4]-width*.06;
-        shares.forEach((share,i) => { const w=width*.12*share; ctx.fillStyle=colors[i]; ctx.fillRect(cursor,height*.39,w,height*.075); cursor+=w; });
-        ctx.strokeStyle=ink; ctx.strokeRect(centers[4]-width*.06,height*.39,width*.12,height*.075);
-        label("lineage shares",centers[4],height*.35,11,ink,700);
-        label("D = 3.5",centers[4],height*.59,Math.max(14,width*.019),"#315f52",800);
-        label("effective lineages",centers[4],height*.66,10,muted,600);
-      }
-      $("#diversity-process-note").textContent = processNotes[processStep];
-      $$('[data-diversity-process-step]').forEach(button => { const on=+button.dataset.diversityProcessStep===processStep; button.classList.toggle("active",on); button.setAttribute("aria-pressed",String(on)); });
-      $("#diversity-next-step").textContent = processStep >= 4 ? "Start again" : "Next step";
-    }
-
-    function stopProcess(label="Play one generation") { if(processTimer) clearInterval(processTimer); processTimer=null; $("#diversity-play-process").textContent=label; }
-    $$('[data-diversity-process-step]').forEach(button => button.addEventListener("click", () => { stopProcess(); processStep=+button.dataset.diversityProcessStep; drawProcess(); }));
-    $("#diversity-next-step").addEventListener("click", () => { stopProcess(); processStep=processStep>=4?0:processStep+1; drawProcess(); });
-    $("#diversity-play-process").addEventListener("click", () => {
-      if(processTimer){ stopProcess("Resume generation"); return; }
-      if(processStep>=4) processStep=0;
-      $("#diversity-play-process").textContent="Pause"; drawProcess();
-      const delay = matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 850;
-      processTimer=setInterval(()=>{ processStep++; drawProcess(); if(processStep>=4) stopProcess("Play again"); },delay);
-    });
-    $("#diversity-reset-process").addEventListener("click", () => { stopProcess(); processStep=0; drawProcess(); });
-    const lineagesFor = name => Array.from({length: settings[name].lineages}, (_, i) => {
-      const birth = 7 + Math.round(settings[name].births * ((i + .35) / settings[name].lineages) ** 1.18);
-      return {birth, death: i % 5 === 2 ? Math.min(116, birth + 13 + (i * 7) % 24) : 117,
-        rate: .024 + .007 * (.5 + .5 * Math.sin(i * 2.17 + name.length)),
-        weight: .72 + .5 * (.5 + .5 * Math.cos(i * 1.73)), color: palette[i % palette.length]};
-    });
-
-    function stateAt(generation, members) {
-      const total = generation < 7 ? 0 : .965 / (1 + Math.exp(-settings[strain].slope * (generation - settings[strain].midpoint)));
-      const active = members.filter(item => item.birth <= generation && generation < item.death);
-      const raw = active.map(item => item.weight * Math.exp(item.rate * (generation - item.birth)));
-      const sum = raw.reduce((a, b) => a + b, 0) || 1;
-      return {total, active, shares: raw.map(value => value / sum)};
-    }
-
-    function draw() {
-      const generation = +slider.value, members = lineagesFor(strain), xs = Array.from({length: 117}, (_, i) => i);
-      const f = P.frame(canvas, 0, 1, 0, 116), histories = xs.map(g => stateAt(g, members));
-      const {ctx, X, Y} = f;
-      members.forEach((member, i) => {
-        const top = [], bottom = [];
-        for (let g = 0; g <= generation; g++) {
-          const state = histories[g], position = state.active.indexOf(member);
-          const before = position < 0 ? 0 : state.shares.slice(0, position).reduce((a, b) => a + b, 0);
-          const own = position < 0 ? 0 : state.shares[position];
-          bottom.push(state.total * before); top.push(state.total * (before + own));
+    function simulate(parameters) {
+      const s = 10 ** parameters.logS, delta = 10 ** parameters.logDelta, phi = 10 ** parameters.logPhi;
+      const snvSelection = 1e-3, snvFormation = 1e-5;
+      const formed = Array(lastGeneration + 2).fill(0), descendants = Array(lastGeneration + 2).fill(0);
+      formed[0] = phi * N; descendants[0] = formed[0];
+      let frequencies = [1 - phi, 0, phi, 0];
+      const history = [];
+      for (let generation = 0; generation <= lastGeneration; generation++) {
+        const newLineages = frequencies[0] * N * delta;
+        formed[generation + 1] = newLineages;
+        descendants[generation + 1] = newLineages;
+        const selected = [frequencies[0], frequencies[1] * (1 + s), frequencies[2] * (1 + s), frequencies[3] * (1 + snvSelection)];
+        const next = [selected[0] * (1 - delta - snvFormation), selected[1] + selected[0] * delta, selected[2], selected[3] + selected[0] * snvFormation];
+        const meanFitness = next.reduce((total, value) => total + value, 0);
+        for (let cohort = 0; cohort <= generation + 1; cohort++) descendants[cohort] *= (1 + s) / meanFitness;
+        frequencies = next.map(value => value / meanFitness);
+        const cohorts = []; let totalDescendants = 0, richness = 0;
+        for (let cohort = 0; cohort <= generation + 1; cohort++) {
+          if (formed[cohort] <= 1 || descendants[cohort] <= 0) continue;
+          cohorts.push({birth: cohort === 0 ? -1 : cohort - 1, lineages: formed[cohort], descendants: descendants[cohort]});
+          totalDescendants += descendants[cohort]; richness += formed[cohort];
         }
-        ctx.save(); ctx.globalAlpha = .82; ctx.fillStyle = member.color; ctx.beginPath();
-        top.forEach((value, g) => g ? ctx.lineTo(X(g), Y(value)) : ctx.moveTo(X(g), Y(value)));
-        for (let g = generation; g >= 0; g--) ctx.lineTo(X(g), Y(bottom[g]));
+        let entropy = 0;
+        if (totalDescendants) cohorts.forEach(cohort => {
+          const oneLineageShare = (cohort.descendants / cohort.lineages) / totalDescendants;
+          entropy -= cohort.lineages * oneLineageShare * Math.log(oneLineageShare);
+        });
+        history.push({generation, cohorts, newLineages, richness, totalDescendants, diversity: totalDescendants ? Math.exp(entropy) : 0, reported: frequencies[1], totalCNV: frequencies[1] + frequencies[2]});
+      }
+      return {history, s, delta, phi};
+    }
+
+    const concise = value => value >= 1e6 ? `${(value / 1e6).toFixed(1)}M` : value >= 1e3 ? `${(value / 1e3).toFixed(1)}k` : value.toFixed(value < 10 ? 1 : 0);
+    const words = value => value >= 1e6 ? `${(value / 1e6).toFixed(2)} million` : value >= 1e3 ? `${(value / 1e3).toFixed(1)} thousand` : value.toFixed(value < 10 ? 1 : 0);
+    const cohortGroup = birth => birth < 0 ? 0 : Math.min(colors.length - 1, 1 + Math.floor(birth / (lastGeneration / (colors.length - 1))));
+
+    function drawHistory() {
+      const generation = +slider.value, states = simulation.history, current = states[generation];
+      const f = P.frame(canvas, 0, 1, 0, lastGeneration), {ctx, X, Y} = f;
+      for (let group = 0; group < colors.length; group++) {
+        const lower = [], upper = [];
+        for (let g = 0; g <= generation; g++) {
+          const shares = Array(colors.length).fill(0);
+          states[g].cohorts.forEach(cohort => shares[cohortGroup(cohort.birth)] += cohort.descendants / N);
+          lower.push(shares.slice(0, group).reduce((a, b) => a + b, 0));
+          upper.push(shares.slice(0, group + 1).reduce((a, b) => a + b, 0));
+        }
+        ctx.save(); ctx.globalAlpha = .78; ctx.fillStyle = colors[group]; ctx.beginPath();
+        upper.forEach((value, g) => g ? ctx.lineTo(X(g), Y(value)) : ctx.moveTo(X(g), Y(value)));
+        for (let g = generation; g >= 0; g--) ctx.lineTo(X(g), Y(lower[g]));
         ctx.closePath(); ctx.fill(); ctx.restore();
-      });
-      const totals = histories.map(state => state.total);
-      P.line(f, xs, totals, P.C.ink, 2.4, .28, [5, 4]);
-      P.line(f, [generation, generation], [0, 1], P.C.ink, 1.2, .7, [4, 4]);
+      }
+      P.line(f, states.map(state => state.generation), states.map(state => state.totalCNV), P.C.tri, 2.5);
+      P.line(f, states.map(state => state.generation), states.map(state => state.reported), P.C.ink, 2.2, 1, [5, 4]);
+      P.line(f, [generation, generation], [0, 1], P.C.ink, 1.2, .65, [4, 4]);
       P.text(f, "CNV frequency", 2, .96, {color:P.C.muted, font:"bold 11px system-ui"});
       P.text(f, "generation", 102, .05, {color:P.C.muted, font:"11px system-ui"});
-
-      const selected = stateAt(generation, members), entropy = -selected.shares.reduce((sum, share) => sum + (share > 0 ? share * Math.log(share) : 0), 0), effective = selected.shares.length ? Math.exp(entropy) : 0;
+      P.legend(f, [{label:"total CNV in model",color:P.C.tri},{label:"reported CNV",color:P.C.ink}]);
       $("#diversity-generation-label").textContent = String(generation);
-      $("#diversity-total").textContent = `${(100 * selected.total).toFixed(selected.total < .1 ? 1 : 0)}% CNV`;
-      $("#diversity-lineages").textContent = `${selected.active.length} colored ${selected.active.length === 1 ? "lineage" : "lineages"} present`;
-      $("#diversity-effective").textContent = `D = ${effective.toFixed(effective < 10 ? 1 : 0)}`;
-      $("#diversity-explanation").textContent = selected.active.length ? `${selected.active.length} lineages survive, but their unequal shares behave like ${effective.toFixed(1)} equally abundant lineages.` : "Advance time to form CNV lineages.";
-      const ranked = selected.shares.map((share, i) => ({share, color:selected.active[i].color})).sort((a,b) => b.share-a.share);
-      const shown = ranked.slice(0, 10), other = ranked.slice(10).reduce((sum, item) => sum + item.share, 0);
-      $("#diversity-share-bar").innerHTML = shown.map((item, i) => `<i style="width:${(100 * item.share).toFixed(2)}%;background:${item.color}" title="Lineage ${i + 1}: ${(100 * item.share).toFixed(1)}%"></i>`).join("") + (other ? `<i class="other-lineages" style="width:${(100 * other).toFixed(2)}%" title="Other lineages: ${(100 * other).toFixed(1)}%"></i>` : "");
+      $("#diversity-total").textContent = `${(100 * current.reported).toFixed(current.reported < .1 ? 1 : 0)}% reported CNV`;
+      $("#diversity-lineages").textContent = `Q(${generation}) ≈ ${concise(current.newLineages)} new lineages`;
+      $("#diversity-cohort-explanation").textContent = `${words(current.richness)} assumed-unique lineages have accumulated across the generations shown.`;
+      $("#diversity-effective").textContent = `D(${generation}) = ${concise(current.diversity)}`;
+      const latest = current.cohorts[current.cohorts.length - 1];
+      $("#diversity-explanation").textContent = latest ? `The ${words(latest.lineages)} lineages born together are each assigned ${words(latest.descendants / latest.lineages)} descendants at this generation.` : "No generation has yet contributed more than one lineage.";
+      const grouped = Array(colors.length).fill(0);
+      current.cohorts.forEach(cohort => grouped[cohortGroup(cohort.birth)] += cohort.descendants);
+      const total = grouped.reduce((a, b) => a + b, 0) || 1;
+      $("#diversity-share-bar").innerHTML = grouped.map((value, index) => value ? `<i style="width:${(100 * value / total).toFixed(2)}%;background:${colors[index]}" title="Birth-time group ${index + 1}: ${(100 * value / total).toFixed(1)}% of CNV cells"></i>` : "").join("");
     }
 
-    function stop(label = "Play lineage history") { if (timer) clearInterval(timer); timer = null; $("#diversity-play").textContent = label; }
-    slider.addEventListener("input", () => { stop(); draw(); });
-    $$("[data-diversity-strain]").forEach(button => button.addEventListener("click", () => {
-      strain = button.dataset.diversityStrain; $$("[data-diversity-strain]").forEach(node => { const on = node === button; node.classList.toggle("active", on); node.setAttribute("aria-pressed", String(on)); }); slider.value = 0; stop(); draw();
-    }));
-    $("#diversity-play").addEventListener("click", () => {
-      if (timer) { stop("Resume"); return; }
-      if (+slider.value >= 116) slider.value = 0;
-      $("#diversity-play").textContent = "Pause";
-      timer = setInterval(() => { slider.value = Math.min(116, +slider.value + 2); draw(); if (+slider.value >= 116) stop("Play again"); }, 85);
-    });
-    $("#diversity-reset").addEventListener("click", () => { slider.value = 0; stop(); draw(); });
-    addEventListener("resize", () => { drawProcess(); draw(); }); drawProcess(); draw();
+    function drawProcess() {
+      const width = Math.max(320, Math.round(processCanvas.getBoundingClientRect().width || 940)), height = Math.max(270, Math.round(width * .45)), ratio = Math.min(devicePixelRatio || 1, 2);
+      processCanvas.width = width * ratio; processCanvas.height = height * ratio;
+      const ctx = processCanvas.getContext("2d"); ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      const current = simulation.history[+slider.value], pad = Math.max(18, width * .045), ink = "#25332f", muted = "#66736d", forest = "#315f52", clay = "#b56a50";
+      ctx.fillStyle = "#fffdf8"; ctx.fillRect(0, 0, width, height);
+      const label = (text, x, y, size=13, color=ink, weight=650, align="left") => { ctx.fillStyle=color; ctx.font=`${weight} ${size}px system-ui`; ctx.textAlign=align; ctx.fillText(text,x,y); };
+      const cell = (x,y,color,r=8) => { ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=color; ctx.fill(); ctx.strokeStyle=ink; ctx.lineWidth=1; ctx.stroke(); ctx.beginPath(); ctx.arc(x-r*.3,y-r*.3,r*.18,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.75)"; ctx.fill(); };
+      const headings = ["ONE INFERRED EXPLANATION", "RUN THE EVOLUTIONARY MODEL", "COUNT NEW FORMATIONS", "FOLLOW EACH GENERATION", "CALCULATE DIVERSITY"];
+      label(`${step + 1} / 5`,pad,27,12,clay,850); label(headings[step],pad,54,Math.max(15,Math.min(22,width*.025)),ink,850);
+      for(let i=0;i<5;i++){ctx.fillStyle=i<=step?forest:"#dfe3dd";ctx.fillRect(pad+i*(width-2*pad)/5,67,(width-2*pad)/5-5,5);}
+      let note="";
+      if(step===0){
+        const items=[["sC",simulation.s,"selection"],["δC",simulation.delta,"formation"],["φ",simulation.phi,"initial hidden fraction"]], card=(width-2*pad-20)/3;
+        items.forEach(([symbol,value,name],i)=>{const x=pad+i*(card+10);ctx.fillStyle="#fff";ctx.strokeStyle="#d8d2c5";ctx.beginPath();ctx.roundRect(x,92,card,height-118,13);ctx.fill();ctx.stroke();label(symbol.replace("C","₍C₎"),x+card/2,137,21,colors[i+1],850,"center");label(value.toExponential(2),x+card/2,169,14,ink,750,"center");label(name,x+card/2,200,Math.max(9,Math.min(12,width*.014)),muted,650,"center");});
+        note=`${strain}: one joint draw of sC, δC and φ learned from the fluorescence trajectories.`;
+      }else if(step===1){
+        const x0=pad+35,x1=width-pad,y0=height-35,y1=93;ctx.strokeStyle=ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x0,y1);ctx.lineTo(x0,y0);ctx.lineTo(x1,y0);ctx.stroke();ctx.strokeStyle=forest;ctx.lineWidth=3;ctx.beginPath();simulation.history.slice(0,current.generation+1).forEach((state,i)=>{const x=x0+(x1-x0)*state.generation/lastGeneration,y=y0-(y0-y1)*state.reported;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();label("reported CNV frequency",x0+6,y1+15,12,forest,750);label(`${(100*current.reported).toFixed(1)}% at T = ${current.generation}`,x1-4,y1+15,14,ink,800,"right");
+        note=`The Wright–Fisher simulator produces ancestral, reported-CNV and hidden-CNV counts through generation ${current.generation}.`;
+      }else if(step===2){
+        const y=height*.58,left=width*.23,right=width*.75;for(let i=0;i<9;i++)cell(left+(i%3)*22-22,y+Math.floor(i/3)*22-22,"#ead7a8");ctx.strokeStyle=clay;ctx.fillStyle=clay;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(width*.38,y);ctx.lineTo(width*.57,y);ctx.stroke();ctx.beginPath();ctx.moveTo(width*.57,y);ctx.lineTo(width*.57-10,y-6);ctx.lineTo(width*.57-10,y+6);ctx.fill();for(let i=0;i<9;i++)cell(right+(i%3)*22-22,y+Math.floor(i/3)*22-22,colors[i%colors.length]);label(`Qₜ = δC × nA(t) ≈ ${concise(current.newLineages)}`,width/2,113,Math.max(15,Math.min(22,width*.026)),ink,850,"center");label("ancestral",left,y+59,11,muted,700,"center");label("unique formations",right,y+59,11,muted,700,"center");
+        note=`At generation ${current.generation}, the model estimates ${words(current.newLineages)} new formation events and treats each as a different lineage.`;
+      }else if(step===3){
+        const examples=current.cohorts.length?[current.cohorts[0],current.cohorts[Math.floor(current.cohorts.length/2)],current.cohorts.at(-1)].filter((v,i,a)=>a.indexOf(v)===i):[];examples.forEach((cohort,row)=>{const y=112+row*59,color=colors[cohortGroup(cohort.birth)],radius=Math.max(5,Math.min(10,5+Math.log10(Math.max(1,cohort.descendants/cohort.lineages))*.65));label(cohort.birth<0?"present at start":`born at t = ${cohort.birth}`,pad,y,11,ink,750);for(let i=0;i<5;i++)cell(width*.52+i*radius*2.35,y-5,color,radius);label(`each ≈ ${concise(cohort.descendants/cohort.lineages)} cells`,width-pad,y+20,10,muted,650,"right");});label("same birth time + same sC → same abundance",width/2,height-20,12,forest,850,"center");
+        note="The model retains the number born in each generation and their combined descendants. Same-age lineages share one sC and therefore have equal abundance.";
+      }else{
+        const grouped=Array(8).fill(0);current.cohorts.forEach(c=>grouped[Math.min(7,cohortGroup(c.birth))]+=c.descendants);const total=grouped.reduce((a,b)=>a+b,0)||1;let cursor=pad;grouped.forEach((value,i)=>{const w=(width-2*pad)*value/total;ctx.fillStyle=colors[i];ctx.fillRect(cursor,116,w,34);cursor+=w;});ctx.strokeStyle=ink;ctx.strokeRect(pad,116,width-2*pad,34);label("one lineage = (cohort descendants ÷ lineages born) ÷ all CNV cells",width/2,201,Math.max(10,Math.min(15,width*.017)),ink,700,"center");label(`D(${current.generation}) = ${concise(current.diversity)}`,width/2,249,Math.max(20,Math.min(29,width*.033)),forest,850,"center");
+        note=`At generation ${current.generation}, these model-based shares give an effective diversity of ${words(current.diversity)}.`;
+      }
+      $("#diversity-process-note").textContent=note;
+      $$('[data-diversity-process-step]').forEach(button=>{const active=+button.dataset.diversityProcessStep===step;button.classList.toggle("active",active);button.setAttribute("aria-pressed",String(active));});
+      $("#diversity-next-step").textContent=step===4?"Start again":"Next step";
+    }
+
+    const stopHistory=(label="Play generations")=>{if(historyTimer)clearInterval(historyTimer);historyTimer=null;$("#diversity-play").textContent=label;};
+    const stopSteps=(label="Play calculation")=>{if(stepTimer)clearInterval(stepTimer);stepTimer=null;$("#diversity-play-process").textContent=label;};
+    slider.addEventListener("input",()=>{stopHistory();drawHistory();drawProcess();});
+    $$('[data-diversity-strain]').forEach(button=>button.addEventListener("click",()=>{strain=button.dataset.diversityStrain;simulation=simulate(maps[strain]);$$('[data-diversity-strain]').forEach(node=>{const active=node===button;node.classList.toggle("active",active);node.setAttribute("aria-pressed",String(active));});stopHistory();drawHistory();drawProcess();}));
+    $$('[data-diversity-process-step]').forEach(button=>button.addEventListener("click",()=>{stopSteps();step=+button.dataset.diversityProcessStep;drawProcess();}));
+    $("#diversity-next-step").addEventListener("click",()=>{stopSteps();step=step===4?0:step+1;drawProcess();});
+    $("#diversity-play-process").addEventListener("click",()=>{if(stepTimer){stopSteps("Resume calculation");return;}if(step===4)step=0;$("#diversity-play-process").textContent="Pause";drawProcess();stepTimer=setInterval(()=>{step++;drawProcess();if(step===4)stopSteps("Play again");},matchMedia("(prefers-reduced-motion: reduce)").matches?80:850);});
+    $("#diversity-reset-process").addEventListener("click",()=>{stopSteps();step=0;drawProcess();});
+    $("#diversity-play").addEventListener("click",()=>{if(historyTimer){stopHistory("Resume");return;}if(+slider.value>=lastGeneration)slider.value=0;$("#diversity-play").textContent="Pause";historyTimer=setInterval(()=>{slider.value=Math.min(lastGeneration,+slider.value+2);drawHistory();drawProcess();if(+slider.value>=lastGeneration)stopHistory("Play again");},85);});
+    $("#diversity-reset").addEventListener("click",()=>{slider.value=25;stopHistory();drawHistory();drawProcess();});
+    addEventListener("resize",()=>{drawHistory();drawProcess();});
+    drawHistory(); drawProcess();
   }
 
   trainingViewer().catch(console.error);

@@ -75,13 +75,15 @@ def main() -> None:
         driver.execute_script("arguments[0].scrollIntoView({block:'start'})", diversity_lab)
         for _ in range(4):
             driver.find_element("id", "diversity-next-step").click()
-        assert "effective diversity of 3.5" in driver.find_element("id", "diversity-process-note").text
+        assert "effective diversity" in driver.find_element("id", "diversity-process-note").text
         assert driver.find_element("css selector", '[data-diversity-process-step="4"]').get_attribute("aria-pressed") == "true"
         driver.find_element("id", "diversity-process-canvas").screenshot("/tmp/workshop-diversity-process.png")
         driver.find_element("id", "diversity-play").click()
         WebDriverWait(driver, 8).until(lambda d: int(d.find_element("id", "diversity-generation-label").text) >= 20)
         driver.find_element("id", "diversity-play").click()
-        assert float(driver.find_element("id", "diversity-effective").text.split("=")[1]) > 1
+        diversity_label = driver.find_element("id", "diversity-effective").text.split("=")[1].strip()
+        diversity_value = float(diversity_label.rstrip("kM")) * (1_000_000 if diversity_label.endswith("M") else 1_000 if diversity_label.endswith("k") else 1)
+        assert diversity_value > 1
         assert driver.find_elements("css selector", "#diversity-share-bar i")
         diversity_lab.screenshot("/tmp/workshop-diversity-lab.png")
         flexible = driver.find_element("css selector", ".flexible-npe-illustration")
