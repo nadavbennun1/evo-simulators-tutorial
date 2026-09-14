@@ -486,7 +486,7 @@ def test_presentation_revision_contract():
     assert "paper-figure-wide" not in sbi
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
-    assert "Posterior prediction: from one CNV curve to many lineages" in sbi
+    assert "Posterior prediction: can trajectories predict CNV diversity?" in sbi
     assert "effective diversity" in sbi and "Shannon" in sbi and "3.2" in sbi and "ARSΔ" in sbi
     assert "<h3>References</h3>" in sbi and "Short references" not in sbi
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
@@ -503,6 +503,8 @@ def test_presentation_revision_contract():
     assert "Count births" in sbi and "birth cohorts" in sbi
     prediction = sbi[sbi.index('id="posterior-predictions"'):sbi.index('id="cell-zhou-flex-intro"')]
     assert "collective" not in prediction.lower()
+    assert prediction.index("chuong-figure-4e-v2.jpg") < prediction.index("Reconstructing what fluorescence cannot show")
+    assert "predict a different biological quantity" in prediction
     assert 'class="diversity-equation-steps"' in prediction and "cells per lineage" in prediction
     assert "1.6 × 10<sup>4</sup>" in prediction and "3.2 × 10<sup>5</sup>" in prediction
     assert "scientific(simulation.delta)" in script and "scientific(simulation.phi)" in script

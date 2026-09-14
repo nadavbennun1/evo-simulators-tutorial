@@ -242,11 +242,19 @@ for idx, pname in enumerate(PARAM_NAMES):
           f&quot;{abc_samples[:, idx].std():&gt;8.3f}  {npe_samples[:, idx].std():&gt;8.3f}&quot;)
 </code></pre></details></section>
 <section class="lesson-cell output-only-cell" id="cell-098a16bd" data-cell-id="098a16bd"><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/098a16bd-out-0.png?v=f151d41f6ea0" alt="Posterior density returned by neural posterior estimation"></figure></section>
-<section class="lesson-cell prose-cell prediction-box" id="posterior-predictions"><h2>Posterior prediction: from one CNV curve to many lineages</h2>
+<section class="lesson-cell prose-cell prediction-box" id="posterior-predictions"><h2>Posterior prediction: can trajectories predict CNV diversity?</h2>
 <p>Fluorescence reports the <strong>fraction of cells with a reporter-marked CNV</strong>. It does not reveal which
-CNV allele each cell carries or reconstruct a genealogy. <a href="https://doi.org/10.7554/eLife.98934">Chuong et al. (2025)</a> therefore estimated
-diversity by adding biological bookkeeping to the same four-genotype Wright–Fisher simulator used
-for inference.</p>
+CNV allele each cell carries or reconstruct a genealogy. Molecular measurements, however, show
+that reporter-positive cells can contain many structurally different CNVs.</p>
+<figure class="paper-figure diversity-molecular-figure"><img loading="eager" src="assets/chapter/chuong-figure-4e-v2.jpg?v=b5a9d1cbb1ec" alt="Chuong Figure 4E showing colored violin distributions of GAP1 CNV lengths in wild type, LTR deletion, ARS deletion, and double-deletion strains"><figcaption>CNV-length distributions from 177 sequenced clones differ within and among genomic backgrounds. <a href="https://doi.org/10.7554/eLife.98934">Chuong et al. (2025)</a> · Fig. 4E.</figcaption></figure>
+
+<p>The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
+CNVs. These measurements establish that a single fluorescence curve pools many alleles, but they do
+not measure the richness or abundance of those alleles across the whole evolving population. This
+creates a useful posterior-prediction question: <strong>can a model fitted to total-frequency trajectories
+predict a different biological quantity—effective CNV diversity?</strong></p>
+<p><a href="https://doi.org/10.7554/eLife.98934">Chuong et al. (2025)</a> addressed that question by adding lineage bookkeeping to the same four-genotype
+Wright–Fisher simulator used for inference.</p>
 <h3>Reconstructing what fluorescence cannot show</h3>
 <p>The calculation groups CNV lineages by the generation in which they formed. A group of lineages
 born in the same generation is a <strong>birth cohort</strong>. The simulator needs only two numbers for each
@@ -282,14 +290,6 @@ and clonal interference are not represented.</aside>
 complete calculation for samples from the posterior, producing a posterior mean and 50% interval
 for diversity. Uncertainty in the formation rate, selection coefficient, and initial hidden
 fraction therefore remains visible in the diversity prediction.</p>
-<h3>The molecular evidence behind the colors</h3>
-<figure class="paper-figure diversity-molecular-figure"><img loading="lazy" src="assets/chapter/chuong-figure-4e-v2.jpg?v=b5a9d1cbb1ec" alt="Chuong Figure 4E showing colored violin distributions of GAP1 CNV lengths in wild type, LTR deletion, ARS deletion, and double-deletion strains"><figcaption>CNV-length distributions from 177 sequenced clones differ among genomic backgrounds. The spread within every colored distribution is direct molecular evidence that reporter-positive cells contain many distinct CNV alleles. <a href="https://doi.org/10.7554/eLife.98934">Chuong et al. (2025)</a> · Fig. 4E.</figcaption></figure>
-
-<p>The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
-CNVs. Figure 4E shows that CNV length varies within and among strain backgrounds. It validates the
-biological premise that the fluorescence trajectory pools many different alleles, but it does not
-measure their population-wide richness or abundance. Those quantities remain model-based posterior
-predictions.</p>
 <h3>Published prediction</h3>
 <figure class="diversity-prediction-figure"><img loading="eager" fetchpriority="high" width="1000" height="961" src="assets/chapter/chuong-diversity-figure-3b.jpg?v=bf33f6c25e88" alt="Chuong Figure 3B showing posterior predictions of effective CNV lineage diversity through time"><figcaption>Posterior mean effective CNV-lineage diversity through time; the vertical axis is logarithmic. <a href="https://doi.org/10.7554/eLife.98934">Chuong et al. (2025)</a> · Fig. 3B.</figcaption></figure>
 

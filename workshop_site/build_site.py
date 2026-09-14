@@ -991,12 +991,22 @@ def posterior_prediction_section() -> str:
     """Connect parameter inference to the cohort-based diversity estimate in Chuong et al."""
     diversity = versioned_asset("assets/chapter/chuong-diversity-figure-3b.jpg")
     molecular = versioned_asset("assets/chapter/chuong-figure-4e-v2.jpg")
-    source = fr'''## Posterior prediction: from one CNV curve to many lineages
+    source = fr'''## Posterior prediction: can trajectories predict CNV diversity?
 
 Fluorescence reports the **fraction of cells with a reporter-marked CNV**. It does not reveal which
-CNV allele each cell carries or reconstruct a genealogy. {paper("chuong")} therefore estimated
-diversity by adding biological bookkeeping to the same four-genotype Wright–Fisher simulator used
-for inference.
+CNV allele each cell carries or reconstruct a genealogy. Molecular measurements, however, show
+that reporter-positive cells can contain many structurally different CNVs.
+
+<figure class="paper-figure diversity-molecular-figure"><img loading="eager" src="{molecular}" alt="Chuong Figure 4E showing colored violin distributions of GAP1 CNV lengths in wild type, LTR deletion, ARS deletion, and double-deletion strains"><figcaption>CNV-length distributions from 177 sequenced clones differ within and among genomic backgrounds. {paper_html("chuong")} · Fig. 4E.</figcaption></figure>
+
+The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
+CNVs. These measurements establish that a single fluorescence curve pools many alleles, but they do
+not measure the richness or abundance of those alleles across the whole evolving population. This
+creates a useful posterior-prediction question: **can a model fitted to total-frequency trajectories
+predict a different biological quantity—effective CNV diversity?**
+
+{paper("chuong")} addressed that question by adding lineage bookkeeping to the same four-genotype
+Wright–Fisher simulator used for inference.
 
 ### Reconstructing what fluorescence cannot show
 
@@ -1037,16 +1047,6 @@ The interactive view uses one representative parameter set. The published result
 complete calculation for samples from the posterior, producing a posterior mean and 50% interval
 for diversity. Uncertainty in the formation rate, selection coefficient, and initial hidden
 fraction therefore remains visible in the diversity prediction.
-
-### The molecular evidence behind the colors
-
-<figure class="paper-figure diversity-molecular-figure"><img loading="lazy" src="{molecular}" alt="Chuong Figure 4E showing colored violin distributions of GAP1 CNV lengths in wild type, LTR deletion, ARS deletion, and double-deletion strains"><figcaption>CNV-length distributions from 177 sequenced clones differ among genomic backgrounds. The spread within every colored distribution is direct molecular evidence that reporter-positive cells contain many distinct CNV alleles. {paper_html("chuong")} · Fig. 4E.</figcaption></figure>
-
-The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
-CNVs. Figure 4E shows that CNV length varies within and among strain backgrounds. It validates the
-biological premise that the fluorescence trajectory pools many different alleles, but it does not
-measure their population-wide richness or abundance. Those quantities remain model-based posterior
-predictions.
 
 ### Published prediction
 
