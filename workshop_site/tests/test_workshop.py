@@ -500,12 +500,16 @@ def test_presentation_revision_contract():
     assert 'id="diversity-process-canvas"' in sbi and 'id="diversity-next-step"' in sbi
     assert "function diversityPredictionLab()" in script and "Math.exp(entropy)" in script
     assert "selection coefficient" in sbi and "equally abundant" in sbi
-    assert "Count births" in sbi and "birth cohorts" in sbi
+    assert "Form at t" in sbi and "birth cohorts" in sbi
     prediction = sbi[sbi.index('id="posterior-predictions"'):sbi.index('id="cell-zhou-flex-intro"')]
     assert "collective" not in prediction.lower()
     assert prediction.index("chuong-figure-4e-v2.jpg") < prediction.index("Reconstructing what fluorescence cannot show")
     assert "predict a different biological quantity" in prediction
-    assert 'class="diversity-equation-steps"' in prediction and "cells per lineage" in prediction
+    assert 'class="diversity-equation-steps"' in prediction and "new lineages form" in prediction
+    assert "Repeat until generation" in prediction and "New cohorts accumulate" in prediction
+    assert "predicted richness" in prediction and "effective diversity" in prediction
+    assert prediction.count('class="math-scroll"') >= 8 and "diversity-equation-line" not in prediction
+    assert "Prediction generation" in prediction and "Generation <i>T</i>" not in prediction
     assert "1.6 × 10<sup>4</sup>" in prediction and "3.2 × 10<sup>5</sup>" in prediction
     assert "scientific(simulation.delta)" in script and "scientific(simulation.phi)" in script
     assert "cohort.descendants * scale" in script and "cohort.descendants / N" not in script
