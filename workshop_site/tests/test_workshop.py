@@ -477,6 +477,7 @@ def test_presentation_revision_contract():
     assert "Effective population size belongs to the life cycle" in evolution
     assert "Serial dilution: derive the harmonic mean from accumulated drift" in evolution
     assert "Why not use one estimator for both experiments?" in evolution
+    assert "biomass yield coefficient" in evolution and "converts biomass production into substrate use" in evolution
     assert "WF = ODE?" not in evolution and "Infer mutation rate via SBI?" not in evolution
     assert "Appendix: why the quick fits use perturbed parameters" in evolution
     assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi

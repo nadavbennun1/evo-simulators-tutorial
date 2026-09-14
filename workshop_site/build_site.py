@@ -311,10 +311,13 @@ consumption.
 $$\frac{dS}{dt}=D(S_0-S)-\frac{X_A\mu_A(S)+X_C\mu_C(S)+X_B\mu_B(S)}{Y}$$
 
 Here $D$ is the dilution rate, $S_0$ is the substrate concentration in the **incoming fresh
-medium**, and $S(t)$ is the generally lower concentration remaining in the vessel. At startup the
-model may set $S(0)=S_0$; after equilibration, the steady-state value is defined by $dS/dt=0$ and
-need not equal $S_0$. Mutation flow is now visible directly: $\delta_CX_A$ leaves the ancestral
-state and enters the CNV state, while $\delta_BX_A$ enters the other-beneficial state.
+medium**, and $S(t)$ is the generally lower concentration remaining in the vessel. $Y$ is the
+**biomass yield coefficient**: the amount of cell biomass produced per unit of limiting substrate
+consumed. Dividing $X_i\mu_i(S)$ by $Y$ converts biomass production into substrate use. A larger
+$Y$ means that the same biomass growth consumes less substrate. At startup the model may set
+$S(0)=S_0$; after equilibration, the steady-state value is defined by $dS/dt=0$ and need not equal
+$S_0$. Mutation flow is now visible directly: $\delta_CX_A$ leaves the ancestral state and enters
+the CNV state, while $\delta_BX_A$ enters the other-beneficial state.
 
 The ODE exposes reactor biology that the Wright–Fisher approximation compresses into a generation
 clock and an effective population size.''',
