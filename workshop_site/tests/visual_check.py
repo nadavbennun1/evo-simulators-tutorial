@@ -73,6 +73,7 @@ def main() -> None:
         prediction_box.screenshot("/tmp/workshop-posterior-predictions.png")
         diversity_lab = driver.find_element("id", "diversity-lab")
         driver.execute_script("arguments[0].scrollIntoView({block:'start'})", diversity_lab)
+        driver.find_element("id", "diversity-process-canvas").screenshot("/tmp/workshop-diversity-parameters.png")
         for _ in range(4):
             driver.find_element("id", "diversity-next-step").click()
         assert "effective diversity" in driver.find_element("id", "diversity-process-note").text
@@ -85,6 +86,8 @@ def main() -> None:
         diversity_value = float(diversity_label.rstrip("kM")) * (1_000_000 if diversity_label.endswith("M") else 1_000 if diversity_label.endswith("k") else 1)
         assert diversity_value > 1
         assert driver.find_elements("css selector", "#diversity-share-bar i")
+        driver.execute_script("arguments[0].value = 116; arguments[0].dispatchEvent(new Event('input', {bubbles:true}))", driver.find_element("id", "diversity-generation"))
+        assert driver.find_element("id", "diversity-generation-label").text == "116"
         diversity_lab.screenshot("/tmp/workshop-diversity-lab.png")
         flexible = driver.find_element("css selector", ".flexible-npe-illustration")
         flexible_image = driver.find_element("css selector", ".flexible-npe-illustration img")

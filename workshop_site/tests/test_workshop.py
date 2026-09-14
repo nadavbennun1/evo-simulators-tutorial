@@ -495,12 +495,18 @@ def test_presentation_revision_contract():
     assert 'class="mini-posterior-density"' in sbi
     assert "typeset-story-equation" in sbi
     assert "Several mechanisms can match the sampled trajectory" in sbi
-    assert "split evenly among ten lineages" in sbi and 'id="diversity-lab"' in sbi
+    assert "Ten equally abundant lineages give" in sbi and 'id="diversity-lab"' in sbi
     assert "chuong-figure-4e-v2.jpg" in sbi and "molecularly resolved 177" in sbi
     assert 'id="diversity-process-canvas"' in sbi and 'id="diversity-next-step"' in sbi
     assert "function diversityPredictionLab()" in script and "Math.exp(entropy)" in script
     assert "selection coefficient" in sbi and "equally abundant" in sbi
     assert "Count births" in sbi and "birth cohorts" in sbi
+    prediction = sbi[sbi.index('id="posterior-predictions"'):sbi.index('id="cell-zhou-flex-intro"')]
+    assert "collective" not in prediction.lower()
+    assert 'class="diversity-equation-steps"' in prediction and "cells per lineage" in prediction
+    assert "1.6 × 10<sup>4</sup>" in prediction and "3.2 × 10<sup>5</sup>" in prediction
+    assert "scientific(simulation.delta)" in script and "scientific(simulation.phi)" in script
+    assert "cohort.descendants * scale" in script and "cohort.descendants / N" not in script
     assert "different family sizes" not in script[script.index("function diversityPredictionLab()") :]
     assert "Neural posterior estimate for the synthetic trajectory" not in sbi
     assert "modeler-posterior-rescue.png" in sbi and "modeler-replicates.png" in sbi

@@ -400,6 +400,11 @@
 
     const concise = value => value >= 1e6 ? `${(value / 1e6).toFixed(1)}M` : value >= 1e3 ? `${(value / 1e3).toFixed(1)}k` : value.toFixed(value < 10 ? 1 : 0);
     const words = value => value >= 1e6 ? `${(value / 1e6).toFixed(2)} million` : value >= 1e3 ? `${(value / 1e3).toFixed(1)} thousand` : value.toFixed(value < 10 ? 1 : 0);
+    const superscript = exponent => String(exponent).split("").map(character => ({"-":"⁻","0":"⁰","1":"¹","2":"²","3":"³","4":"⁴","5":"⁵","6":"⁶","7":"⁷","8":"⁸","9":"⁹"})[character]).join("");
+    const scientific = value => {
+      const exponent = Math.floor(Math.log10(value)), coefficient = value / 10 ** exponent;
+      return `${coefficient.toFixed(2).replace(/\.?0+$/, "")} × 10${superscript(exponent)}`;
+    };
     const cohortGroup = birth => birth < 0 ? 0 : Math.min(colors.length - 1, 1 + Math.floor(birth / (lastGeneration / (colors.length - 1))));
 
     function drawHistory() {
@@ -409,7 +414,10 @@
         const lower = [], upper = [];
         for (let g = 0; g <= generation; g++) {
           const shares = Array(colors.length).fill(0);
-          states[g].cohorts.forEach(cohort => shares[cohortGroup(cohort.birth)] += cohort.descendants / N);
+          // Cohorts supply the composition; the genotype state supplies the total CNV frequency.
+          // Rescaling puts both on one frequency scale, so the colored areas close exactly at the line.
+          const scale = states[g].totalDescendants > 0 ? states[g].totalCNV / states[g].totalDescendants : 0;
+          states[g].cohorts.forEach(cohort => shares[cohortGroup(cohort.birth)] += cohort.descendants * scale);
           lower.push(shares.slice(0, group).reduce((a, b) => a + b, 0));
           upper.push(shares.slice(0, group + 1).reduce((a, b) => a + b, 0));
         }
@@ -450,18 +458,18 @@
       for(let i=0;i<5;i++){ctx.fillStyle=i<=step?forest:"#dfe3dd";ctx.fillRect(pad+i*(width-2*pad)/5,67,(width-2*pad)/5-5,5);}
       let note="";
       if(step===0){
-        const items=[["sC",simulation.s,"selection"],["δC",simulation.delta,"formation"],["φ",simulation.phi,"initial hidden fraction"]], card=(width-2*pad-20)/3;
-        items.forEach(([symbol,value,name],i)=>{const x=pad+i*(card+10);ctx.fillStyle="#fff";ctx.strokeStyle="#d8d2c5";ctx.beginPath();ctx.roundRect(x,92,card,height-118,13);ctx.fill();ctx.stroke();label(symbol.replace("C","₍C₎"),x+card/2,137,21,colors[i+1],850,"center");label(value.toExponential(2),x+card/2,169,14,ink,750,"center");label(name,x+card/2,200,Math.max(9,Math.min(12,width*.014)),muted,650,"center");});
-        note=`${strain}: one joint draw of sC, δC and φ learned from the fluorescence trajectories.`;
+        const items=[["s꜀",simulation.s.toFixed(3),"selection coefficient"],["δ꜀",scientific(simulation.delta),"formation probability"],["φ",scientific(simulation.phi),"initial hidden fraction"]], card=(width-2*pad-20)/3;
+        items.forEach(([symbol,value,name],i)=>{const x=pad+i*(card+10);ctx.fillStyle="#fff";ctx.strokeStyle="#d8d2c5";ctx.beginPath();ctx.roundRect(x,92,card,height-118,13);ctx.fill();ctx.stroke();label(symbol,x+card/2,137,21,colors[i+1],850,"center");label(value,x+card/2,169,Math.max(11,Math.min(14,width*.015)),ink,750,"center");label(name,x+card/2,200,Math.max(9,Math.min(12,width*.014)),muted,650,"center");});
+        note=`${strain}: one joint draw of s꜀, δ꜀ and φ learned from the fluorescence trajectories.`;
       }else if(step===1){
         const x0=pad+35,x1=width-pad,y0=height-35,y1=93;ctx.strokeStyle=ink;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(x0,y1);ctx.lineTo(x0,y0);ctx.lineTo(x1,y0);ctx.stroke();ctx.strokeStyle=forest;ctx.lineWidth=3;ctx.beginPath();simulation.history.slice(0,current.generation+1).forEach((state,i)=>{const x=x0+(x1-x0)*state.generation/lastGeneration,y=y0-(y0-y1)*state.reported;i?ctx.lineTo(x,y):ctx.moveTo(x,y);});ctx.stroke();label("reported CNV frequency",x0+6,y1+15,12,forest,750);label(`${(100*current.reported).toFixed(1)}% at T = ${current.generation}`,x1-4,y1+15,14,ink,800,"right");
         note=`The Wright–Fisher simulator produces ancestral, reported-CNV and hidden-CNV counts through generation ${current.generation}.`;
       }else if(step===2){
-        const y=height*.58,left=width*.23,right=width*.75;for(let i=0;i<9;i++)cell(left+(i%3)*22-22,y+Math.floor(i/3)*22-22,"#ead7a8");ctx.strokeStyle=clay;ctx.fillStyle=clay;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(width*.38,y);ctx.lineTo(width*.57,y);ctx.stroke();ctx.beginPath();ctx.moveTo(width*.57,y);ctx.lineTo(width*.57-10,y-6);ctx.lineTo(width*.57-10,y+6);ctx.fill();for(let i=0;i<9;i++)cell(right+(i%3)*22-22,y+Math.floor(i/3)*22-22,colors[i%colors.length]);label(`Qₜ = δC × nA(t) ≈ ${concise(current.newLineages)}`,width/2,113,Math.max(15,Math.min(22,width*.026)),ink,850,"center");label("ancestral",left,y+59,11,muted,700,"center");label("unique formations",right,y+59,11,muted,700,"center");
+        const y=height*.58,left=width*.23,right=width*.75;for(let i=0;i<9;i++)cell(left+(i%3)*22-22,y+Math.floor(i/3)*22-22,"#ead7a8");ctx.strokeStyle=clay;ctx.fillStyle=clay;ctx.lineWidth=3;ctx.beginPath();ctx.moveTo(width*.38,y);ctx.lineTo(width*.57,y);ctx.stroke();ctx.beginPath();ctx.moveTo(width*.57,y);ctx.lineTo(width*.57-10,y-6);ctx.lineTo(width*.57-10,y+6);ctx.fill();for(let i=0;i<9;i++)cell(right+(i%3)*22-22,y+Math.floor(i/3)*22-22,colors[i%colors.length]);label(`Qₜ = δ꜀ × nₐ(t) ≈ ${concise(current.newLineages)}`,width/2,113,Math.max(15,Math.min(22,width*.026)),ink,850,"center");label("ancestral",left,y+59,11,muted,700,"center");label("unique formations",right,y+59,11,muted,700,"center");
         note=`At generation ${current.generation}, the model estimates ${words(current.newLineages)} new formation events and treats each as a different lineage.`;
       }else if(step===3){
-        const examples=current.cohorts.length?[current.cohorts[0],current.cohorts[Math.floor(current.cohorts.length/2)],current.cohorts.at(-1)].filter((v,i,a)=>a.indexOf(v)===i):[];examples.forEach((cohort,row)=>{const y=112+row*59,color=colors[cohortGroup(cohort.birth)],radius=Math.max(5,Math.min(10,5+Math.log10(Math.max(1,cohort.descendants/cohort.lineages))*.65));label(cohort.birth<0?"present at start":`born at t = ${cohort.birth}`,pad,y,11,ink,750);for(let i=0;i<5;i++)cell(width*.52+i*radius*2.35,y-5,color,radius);label(`each ≈ ${concise(cohort.descendants/cohort.lineages)} cells`,width-pad,y+20,10,muted,650,"right");});label("same birth time + same sC → same abundance",width/2,height-20,12,forest,850,"center");
-        note="The model retains the number born in each generation and their combined descendants. Same-age lineages share one sC and therefore have equal abundance.";
+        const examples=current.cohorts.length?[current.cohorts[0],current.cohorts[Math.floor(current.cohorts.length/2)],current.cohorts.at(-1)].filter((v,i,a)=>a.indexOf(v)===i):[];examples.forEach((cohort,row)=>{const y=112+row*59,color=colors[cohortGroup(cohort.birth)],radius=Math.max(5,Math.min(10,5+Math.log10(Math.max(1,cohort.descendants/cohort.lineages))*.65));label(cohort.birth<0?"present at start":`born at t = ${cohort.birth}`,pad,y,11,ink,750);for(let i=0;i<5;i++)cell(width*.52+i*radius*2.35,y-5,color,radius);label(`each ≈ ${concise(cohort.descendants/cohort.lineages)} cells`,width-pad,y+20,10,muted,650,"right");});label("same birth time + same s꜀ → same abundance",width/2,height-20,12,forest,850,"center");
+        note="The model retains the number born in each generation and their combined descendants. Same-age lineages share one selection coefficient and therefore have equal abundance.";
       }else{
         const grouped=Array(8).fill(0);current.cohorts.forEach(c=>grouped[Math.min(7,cohortGroup(c.birth))]+=c.descendants);const total=grouped.reduce((a,b)=>a+b,0)||1;let cursor=pad;grouped.forEach((value,i)=>{const w=(width-2*pad)*value/total;ctx.fillStyle=colors[i];ctx.fillRect(cursor,116,w,34);cursor+=w;});ctx.strokeStyle=ink;ctx.strokeRect(pad,116,width-2*pad,34);label("one lineage = (cohort descendants ÷ lineages born) ÷ all CNV cells",width/2,201,Math.max(10,Math.min(15,width*.017)),ink,700,"center");label(`D(${current.generation}) = ${concise(current.diversity)}`,width/2,249,Math.max(20,Math.min(29,width*.033)),forest,850,"center");
         note=`At generation ${current.generation}, these model-based shares give an effective diversity of ${words(current.diversity)}.`;

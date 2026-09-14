@@ -998,38 +998,32 @@ CNV allele each cell carries or reconstruct a genealogy. {paper("chuong")} there
 diversity by adding biological bookkeeping to the same four-genotype Wright–Fisher simulator used
 for inference.
 
-### What the simulator remembers
+### Reconstructing what fluorescence cannot show
 
-For one draw of $(s_C,\delta_C,\varphi)$ from the collective posterior, the simulator supplies the
-ancestral count $n_A(t)$ and population mean fitness $\bar w(t)$ at every generation. The diversity
-calculation then records two quantities for each generation in which CNVs form:
+The calculation groups CNV lineages by the generation in which they formed. A group of lineages
+born in the same generation is a **birth cohort**. The simulator needs only two numbers for each
+cohort: how many lineages formed and how many descendant cells they later produced.
 
-$$Q_t=\delta_C n_A(t),\qquad P_t(t)=Q_t.$$
-
-$Q_t$ is the estimated number of **new, unique CNV lineages** born at generation $t$. $P_t(T)$ is
-the total number of cells at a later generation $T$ descended from that whole birth cohort. Its
-expected selection update is
-
-$$P_t(g+1)=P_t(g)\frac{{1+s_C}}{{\bar w(g)}},$$
-
-followed by the simulator's finite-population sampling. Crucially, the model assigns the same
-selection coefficient $s_C$ to every CNV. The $Q_t$ lineages born together are therefore treated as
-equally abundant, each with estimated size $P_t(T)/Q_t$. Older cohorts can be larger because they
-have had more generations to expand; lineages of the same age do not receive different fitnesses.
-
-<div class="diversity-algorithm" aria-label="How the paper estimates CNV lineage diversity">
-  <ol><li><b>1</b><span><strong>Learn from fluorescence</strong>Infer a posterior over $s_C$, $\delta_C$, and $\varphi$ from the observed total-frequency trajectories.</span></li><li><b>2</b><span><strong>Run the model again</strong>For each posterior draw, simulate ancestral and CNV population sizes through time.</span></li><li><b>3</b><span><strong>Remember birth times</strong>At each generation save how many unique CNVs formed, $Q_t$, and how many descendants their cohort later contains, $P_t(T)$.</span></li><li><b>4</b><span><strong>Convert cohorts to diversity</strong>Treat the $Q_t$ same-age lineages as equal shares, then combine every birth cohort.</span></li></ol>
+<div class="diversity-equation-steps" aria-label="Four steps in the lineage-diversity calculation">
+  <article><b>1</b><div><strong>Count new lineages</strong><p>At generation <i>t</i>, multiply the ancestral-cell count by the CNV formation probability.</p><span class="diversity-equation-line"><i>Q</i><sub>t</sub> = <i>δ</i><sub>C</sub> × <i>n</i><sub>A</sub>(<i>t</i>)</span><small><i>Q</i><sub>t</sub> is the number of assumed-unique CNVs formed at that generation.</small></div></article>
+  <article><b>2</b><div><strong>Follow their descendants</strong><p>Run the evolutionary model forward to generation <i>T</i>. Call the total descendants of that cohort <i>P</i><sub>t</sub>(<i>T</i>).</p><span class="diversity-equation-line">cells per lineage = <i>P</i><sub>t</sub>(<i>T</i>) ÷ <i>Q</i><sub>t</sub></span><small>All CNVs share the same <i>s</i><sub>C</sub>, so lineages of the same age are assigned the same abundance.</small></div></article>
+  <article><b>3</b><div><strong>Find each lineage's share</strong><p>Divide one lineage's cells by the total number of CNV cells at generation <i>T</i>.</p><span class="diversity-equation-line"><i>f</i><sub>t</sub>(<i>T</i>) = [<i>P</i><sub>t</sub>(<i>T</i>) ÷ <i>Q</i><sub>t</sub>] ÷ <i>P</i><sub>CNV</sub>(<i>T</i>)</span><small>There are <i>Q</i><sub>t</sub> lineages with this same share.</small></div></article>
+  <article><b>4</b><div><strong>Summarize the shares</strong><p>Shannon diversity converts all estimated lineage shares into an effective number of lineages.</p><span class="diversity-equation-line"><i>D</i>(<i>T</i>) = exp[−Σ<sub>t</sub> <i>Q</i><sub>t</sub><i>f</i><sub>t</sub>(<i>T</i>) ln <i>f</i><sub>t</sub>(<i>T</i>)]</span><small>Ten equally abundant lineages give <i>D</i> = 10; unequal abundances give a smaller value.</small></div></article>
 </div>
+
+The published calculation advances every cohort with the same selection and finite-population
+sampling used in the Wright–Fisher simulator. Older cohorts can become larger because they have
+had more time to grow—not because the model gives them a different fitness.
 
 <aside class="diversity-assumption"><strong>This is an estimate built from the model.</strong> The
 code does not store millions of lineage identifiers. It assumes every formation event creates a
-different allele, all CNV alleles share one $s_C$, and lineages born in the same generation have the
+different allele, all CNV alleles share one <i>s</i><sub>C</sub>, and lineages born in the same generation have the
 same abundance. Repeated formation of the same allele, fitness variation among CNVs, competition,
 and clonal interference are not represented.</aside>
 
 <section class="diversity-lab" id="diversity-lab" aria-labelledby="diversity-lab-title">
-  <header><p class="section-kicker">Trace the calculation</p><h3 id="diversity-lab-title">How frequency data become an estimated lineage diversity</h3><p>Choose a strain and generation. The interaction uses that strain's collective MAP to expose one calculation; the published bands repeat it across collective-posterior draws.</p></header>
-  <div class="diversity-scenario-controls"><div class="diversity-strains" role="group" aria-label="Choose strain architecture"><button type="button" class="active" data-diversity-strain="WT" aria-pressed="true">WT</button><button type="button" data-diversity-strain="LTRΔ" aria-pressed="false">LTRΔ</button><button type="button" data-diversity-strain="ALLΔ" aria-pressed="false">ALLΔ</button><button type="button" data-diversity-strain="ARSΔ" aria-pressed="false">ARSΔ</button></div><label class="diversity-time"><span>Generation $T$</span><output id="diversity-generation-label">25</output><input id="diversity-generation" type="range" min="0" max="116" step="1" value="25"></label></div>
+  <header><p class="section-kicker">Trace the calculation</p><h3 id="diversity-lab-title">How frequency data become an estimated lineage diversity</h3><p>Choose a strain and generation. The interaction shows one representative posterior estimate; the published result repeats the calculation for many posterior samples.</p></header>
+  <div class="diversity-scenario-controls"><div class="diversity-strains" role="group" aria-label="Choose strain architecture"><button type="button" class="active" data-diversity-strain="WT" aria-pressed="true">WT</button><button type="button" data-diversity-strain="LTRΔ" aria-pressed="false">LTRΔ</button><button type="button" data-diversity-strain="ALLΔ" aria-pressed="false">ALLΔ</button><button type="button" data-diversity-strain="ARSΔ" aria-pressed="false">ARSΔ</button></div><label class="diversity-time"><span>Generation <i>T</i></span><output id="diversity-generation-label">25</output><input id="diversity-generation" type="range" min="0" max="116" step="1" value="25"></label></div>
   <div class="diversity-step-tabs" role="group" aria-label="Choose a diversity calculation step"><button type="button" class="active" data-diversity-process-step="0" aria-pressed="true">Posterior draw</button><button type="button" data-diversity-process-step="1" aria-pressed="false">1 · Run model</button><button type="button" data-diversity-process-step="2" aria-pressed="false">2 · Count births</button><button type="button" data-diversity-process-step="3" aria-pressed="false">3 · Follow descendants</button><button type="button" data-diversity-process-step="4" aria-pressed="false">4 · Calculate</button></div>
   <canvas id="diversity-process-canvas" width="940" height="470" aria-label="Step-by-step calculation from an inferred parameter draw through simulated CNV birth cohorts to effective diversity"></canvas>
   <div class="diversity-process-controls"><div class="button-row"><button id="diversity-next-step" type="button">Next step</button><button id="diversity-play-process" type="button">Play calculation</button><button id="diversity-reset-process" type="button">Reset</button></div><p id="diversity-process-note" aria-live="polite">Begin with one parameter draw learned from the fluorescence trajectories.</p></div>
@@ -1037,23 +1031,12 @@ and clonal interference are not represented.</aside>
   <div class="diversity-lab-grid"><div class="viz"><canvas id="diversity-lineage-canvas" width="820" height="430" aria-label="Contributions of simulated CNV birth cohorts to total CNV frequency through time"></canvas><div class="button-row"><button id="diversity-play" type="button">Play generations</button><button id="diversity-reset" type="button">Reset</button></div></div><div class="diversity-live-calculation" aria-live="polite"><article><small>What fluorescence shows</small><strong id="diversity-total">— reported CNV</strong><p>The trajectory constrains the parameters but contains no lineage labels.</p></article><article><small>What the simulator adds</small><strong id="diversity-lineages">Q(T) = —</strong><div id="diversity-share-bar" class="diversity-share-bar" aria-label="Relative contributions of CNV birth cohorts"></div><p id="diversity-cohort-explanation">Colors summarize the saved birth cohorts.</p></article><article><small>Estimated effective diversity</small><strong id="diversity-effective">D(T) = —</strong><p id="diversity-explanation">Choose a generation to evaluate the saved cohorts.</p></article></div></div>
 </section>
 
-At generation $T$, one lineage from cohort $t$ has frequency
-
-$$f_t(T)=\frac{{P_t(T)/Q_t}}{{\sum_k P_k(T)}}.$$
-
-There are $Q_t$ lineages with that same frequency, so the Shannon sum weights the cohort by $Q_t$:
-
-$$H(T)=-\sum_t Q_t f_t(T)\log f_t(T),\qquad D(T)=\exp[H(T)].$$
-
-For a population split evenly among ten lineages, $D=10$. A birth cohort can contain many unique
-lineages yet contribute little to $D$ when each lineage remains rare.
-
 ### Where uncertainty enters
 
-The interactive view uses one collective MAP. The published result repeats the complete simulator
-and cohort calculation for samples from the collective posterior, producing a posterior mean and
-50% interval for $D(T)$. The uncertainty therefore propagates from the frequency data, through the
-inferred formation rate, selection coefficient, and initial hidden fraction, into diversity.
+The interactive view uses one representative parameter set. The published result repeats the
+complete calculation for samples from the posterior, producing a posterior mean and 50% interval
+for diversity. Uncertainty in the formation rate, selection coefficient, and initial hidden
+fraction therefore remains visible in the diversity prediction.
 
 ### The molecular evidence behind the colors
 
@@ -1072,7 +1055,7 @@ predictions.
 <div class="diversity-rank" aria-label="Predicted final diversity rank"><span class="diversity-wt">WT <b>highest</b></span><i>›</i><span class="diversity-ltr">LTRΔ</span><i>›</i><span class="diversity-all">ALLΔ</span><i>›</i><span class="diversity-ars">ARSΔ <b>lowest</b></span></div>
 
 At the final sampled generation, predicted effective diversity ranged from approximately
-$1.6\times10^4$ lineages for ARSΔ to $3.2\times10^5$ for wild type. The ordering follows the
+1.6 × 10<sup>4</sup> lineages for ARSΔ to 3.2 × 10<sup>5</sup> for wild type. The ordering follows the
 inferred formation rates: more formation events create more assumed-unique lineages. Because the
 calculation treats every new event as a new allele and does not model competition or clonal
 interference among different CNVs, the absolute values are likely overestimates; the between-strain
