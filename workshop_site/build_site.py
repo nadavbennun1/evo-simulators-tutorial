@@ -876,10 +876,21 @@ They also did not infer it from variation among the observed *GAP1* CNV trajecto
 configured a stochastic chemostat model using the experimental growth and dilution conditions,
 then used that model to generate the neutral fluctuations needed for the calculation.
 
-Inside the model, the selected genotypes were replaced by two alleles with identical biological
-rates. The alleles began at $p=q=0.5$ and were simulated for 1,000 generations. The first 100 were
-discarded while the simulated vessel approached steady state; the remaining 900 neutral transitions
-were used for the variance calculation.
+The chemostat model does not contain an effective-population-size parameter. During each short
+time step $\tau$, it generates stochastic numbers of growth and washout events from the current
+cell counts and biological rates:
+
+$$B_i\sim\mathrm{{Poisson}}\!\left[X_i\mu_i(S)\tau\right],
+\qquad
+W_i\sim\mathrm{{Poisson}}\!\left[DX_i\tau\right].$$
+
+Here $B_i$ and $W_i$ are the numbers of births and washout events for neutral type $i$. Randomness
+therefore enters through demographic events themselves; $N_e$ is not supplied to produce it.
+
+For the calibration, the selected genotypes were replaced by two labels with identical biological
+rates. The labels began at $p=q=0.5$. The published notebook simulated ten trajectories for 1,000
+generations and removed the first 100 generations of each trajectory while the simulated vessel
+approached steady state.
 
 Let $p$ be the frequency of one neutral allele in the **current simulated population**, and let
 $p'$ be its frequency one generation later. Because the alleles have identical biological rates,
@@ -890,37 +901,40 @@ For an ideal haploid Wright–Fisher population, the one-generation variance is
 
 $$\mathrm{{Var}}(p'\mid p)=\frac{{p(1-p)}}{{N_e}}.$$
 
-Large random changes imply a small $N_e$; small changes imply a large $N_e$. For each retained
-generation $j$, the model records the current frequency $p_j$, evaluates the conditional variance
-of the next frequency $p'_j$, and averages that quantity across the 900 retained generations:
+Large random changes imply a small $N_e$; small changes imply a large $N_e$. The implementation
+records each retained one-generation change
 
-$$\overline V=\frac1t\sum_{{j=1}}^t\mathrm{{Var}}(p'_j\mid p_j).$$
+$$\Delta p_j=p'_j-p_j$$
 
-The equivalent Wright–Fisher population size is the value that reproduces that average
-**model-generated** chemostat variance:
+and pools those changes across the neutral simulations to obtain
 
-$$\widehat N_e=\frac{{p(1-p)}}{{\overline V}}.$$
+$$V_{{\mathrm{{chemo}}}}=\mathrm{{Var}}\!\left(\Delta p_j\right).$$
 
-The paper writes an unsubscripted $p$ in the numerator because the neutral simulation starts at
-$p=0.5$ and changes very little at this enormous population size. The experiment supplies the
-chemostat conditions used to configure the model, but the neutral-frequency variance itself is a
-simulation output. This is therefore a model-based calibration, not a match to experimentally
-observed neutral-marker variance.
+The equivalent Wright–Fisher population size is the value that reproduces this
+**model-generated** variance:
+
+$$\widehat N_e=
+\frac{{\operatorname{{mean}}_j\!\left[p_j(1-p_j)\right]}}
+{{V_{{\mathrm{{chemo}}}}}}.$$
+
+Because $p$ remains close to $0.5$ at this enormous population size, the numerator remains close to
+$0.5(1-0.5)=0.25$. The experiment supplies the chemostat conditions used to configure the model,
+but the neutral-frequency variance itself is a simulation output. This is therefore a model-based
+calibration, not a match to experimentally observed neutral-marker variance.
 
 With the parameterization used for the experimental chemostat, the calculation gave
 $N_e=3.3\times10^8$, about two-thirds of the model's steady-state census.'''
 
     chemostat_simulator = '''<section class="ne-simulator" id="chemostat-ne-simulator">
-      <div class="ne-simulator-heading"><span>Teaching simulation</span><div><h4>See the variance conversion</h4><p>This compact Wright–Fisher demonstration starts from a chosen <i>N</i><sub>e</sub> and shows how the variance formula recovers it. It does not reproduce the full stochastic chemostat model or compare its output with measured neutral trajectories.</p></div></div>
-      <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat model neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach simulated steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Summarize simulated fluctuations</strong><small>Average conditional variance across 900 transitions</small></span></article><i>→</i><article><b>4</b><span><strong>Translate variance into Wright–Fisher <i>N</i><sub>e</sub></strong><small>Obtain 3.3 × 10<sup>8</sup></small></span></article></div>
+      <div class="ne-simulator-heading"><span>Teaching simulation</span><div><h4>Watch <i>N</i><sub>e</sub> emerge from the chemostat</h4><p>This browser version follows the paper's direction of calculation: chemostat growth and washout generate neutral fluctuations first; their variance is then expressed as an equivalent Wright–Fisher population size. No <i>N</i><sub>e</sub> is used to generate the trajectories.</p></div></div>
+      <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat model neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach simulated steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Summarize simulated fluctuations</strong><small>Pool about 900 transitions per trajectory</small></span></article><i>→</i><article><b>4</b><span><strong>Translate variance into Wright–Fisher <i>N</i><sub>e</sub></strong><small>Obtain 3.3 × 10<sup>8</sup></small></span></article></div>
       <div class="ne-simulator-grid"><form class="controls" id="chemostat-ne-controls">
-        <div class="preset-row"><button type="button" data-chemostat-ne-preset="9">Avecilla value</button><button type="button" data-chemostat-ne-preset="0">Visible-drift example</button></div>
-        <div class="ne-slider-control"><div class="ne-slider-heading"><label for="chemostat-ne">Chosen <i>N</i><sub>e</sub></label><output id="chemostat-ne-label">3.3 × 10⁸ cells</output></div><input id="chemostat-ne" type="range" min="0" max="9" step="1" value="9"><div class="ne-slider-endpoints" aria-hidden="true"><span>10⁴</span><span>3.3 × 10⁸</span></div></div>
-        <label><span>Neutral draws</span><select id="chemostat-ne-draws"><option value="100">100</option><option value="300">300</option><option value="900" selected>900</option></select></label>
+        <div class="chemostat-model-inputs" aria-label="Fixed chemostat model inputs"><span><small>Dilution rate <i>D</i></small><strong>0.12 h<sup>−1</sup></strong></span><span><small>Maximum growth <i>μ</i><sub>A</sub></small><strong>0.35 h<sup>−1</sup></strong></span><span><small>Incoming substrate <i>S</i><sub>0</sub></small><strong>0.800</strong></span><span><small>Yield <i>Y</i></small><strong>6.49 × 10<sup>8</sup></strong></span></div>
+        <label><span>Neutral trajectories</span><select id="chemostat-ne-replicates"><option value="4">4</option><option value="10" selected>10 · paper setting</option><option value="20">20</option></select></label>
         <label><span>Seed</span><input id="chemostat-ne-seed" type="number" min="0" max="99999" value="1633"></label>
-        <div class="button-row"><button id="chemostat-ne-run" type="button">Simulate neutral draws</button><button type="reset">Reset</button></div>
-      </form><div class="viz"><canvas id="chemostat-ne-canvas" width="760" height="390" aria-label="Independent neutral next-generation frequency changes used to estimate effective population size"></canvas><p class="ne-axis-note" id="chemostat-ne-axis"></p><p class="plot-summary" id="chemostat-ne-summary" aria-live="polite">The plot starts empty. Run the neutral simulation to build the variance estimate.</p></div></div>
-      <div class="ne-calculation" id="chemostat-ne-calculation" aria-live="polite"><article><small>1 · neutral diversity</small><b><i>p</i>(1 − <i>p</i>)</b><strong>—</strong></article><article><small>2 · simulated fluctuation</small><b>Var(<i>p</i>′ | <i>p</i>)</b><strong>—</strong></article><article><small>3 · variance match</small><b><i>N̂</i><sub>e</sub> = <i>p</i>(1 − <i>p</i>) / Var</b><strong>—</strong></article></div>
+        <div class="button-row"><button id="chemostat-ne-run" type="button">Run chemostat calibration</button><button type="reset">Reset</button></div>
+      </form><div class="viz"><canvas id="chemostat-ne-canvas" width="760" height="390" aria-label="Neutral frequency changes generated by stochastic chemostat birth and washout events"></canvas><p class="ne-axis-note" id="chemostat-ne-axis"></p><p class="plot-summary" id="chemostat-ne-summary" aria-live="polite">The plot starts empty. Run the chemostat model to generate neutral fluctuations without specifying <i>N</i><sub>e</sub>.</p></div></div>
+      <div class="ne-calculation" id="chemostat-ne-calculation" aria-live="polite"><article><small>1 · model census</small><b><i>N</i><sup>*</sup> = <i>Y</i>(<i>S</i><sub>0</sub> − <i>S</i><sup>*</sup>)</b><strong>—</strong></article><article><small>2 · simulated fluctuation</small><b><i>V</i><sub>chemo</sub> = Var(Δ<i>p</i>)</b><strong>—</strong></article><article><small>3 · equivalent size</small><b><i>N̂</i><sub>e</sub> = mean[<i>p</i>(1 − <i>p</i>)] / <i>V</i><sub>chemo</sub></b><strong>—</strong></article></div>
     </section>'''
 
     serial_text = fr'''### Serial dilution: derive the harmonic mean from accumulated drift

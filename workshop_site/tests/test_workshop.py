@@ -361,16 +361,17 @@ def test_chapter_one_revision_contract():
     assert "The three-state Avecilla model misses the LTRΔ structure!" in text and "misses the early LTRΔ structure" not in text
     assert "Chuong&nbsp;WF" in text
     assert "Black-box stress test" not in text and "Can one selection coefficient describe the whole sweep?" in text
-    assert "Let <math" in text and "frequency of one neutral allele" in text and "remaining 900 neutral transitions" in text
+    assert "Let <math" in text and "frequency of one neutral allele" in text and "published notebook simulated ten trajectories" in text
     assert 'id="chemostat-ne-simulator"' in text and 'id="chemostat-ne-run"' in text and 'id="chemostat-ne-calculation"' in text
     assert 'id="serial-ne-simulator"' in text and 'id="serial-ne-run"' in text and 'id="serial-ne-calculation"' in text
-    assert "Avecilla value" in text and "Visible-drift example" in text and "bottleneck contribution" in text
-    assert 'id="chemostat-ne" type="range" min="0" max="9" step="1"' in text
-    assert "3.3 × 10⁸ cells" in text and "Make the chemostat model neutral" in text and "discard 100" in text
+    assert "Fixed chemostat model inputs" in text and "Neutral trajectories" in text and "bottleneck contribution" in text
+    assert 'id="chemostat-ne" type="range"' not in text and 'id="chemostat-ne-replicates"' in text
+    assert "3.3 × 10<sup>8</sup>" in text and "Make the chemostat model neutral" in text and "discard 100" in text
     assert "did <strong>not</strong> estimate this quantity in a separate neutral-lineage experiment" in text
-    assert "model-generated" in text and "not a match to experimentally" in text
-    assert "function effectivePopulationSimulators()" in script and "p * (1 - p) / variance" in script and "generations / reciprocalSum" in script
-    assert "chemostatNeValues" in script and "selectedChemostatNe" in script
+    assert "model-generated" in text and "not a match to experimentally" in text and "is not supplied to produce it" in text
+    assert "function effectivePopulationSimulators()" in script and "diversity / variance" in script and "generations / reciprocalSum" in script
+    assert "poissonApprox" in script and "chemostatParameters" in script
+    assert "chemostatNeValues" not in script and "selectedChemostatNe" not in script
     assert "more common among new CNVs" not in script
     assert "The two solid curves should not coincide" in text
     assert 'id="de-joint-model"' in text and "What if the two CNVs are modeled jointly?" in text

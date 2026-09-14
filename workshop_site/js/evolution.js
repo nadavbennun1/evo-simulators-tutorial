@@ -237,67 +237,114 @@
     };
     const compact = value => value >= 1e6 ? `${(value / 1e6).toFixed(value >= 1e8 ? 0 : 2)} million` : Math.round(value).toLocaleString();
 
-    const chemoNe = $("#chemostat-ne"), chemoDraws = $("#chemostat-ne-draws"), chemoSeed = $("#chemostat-ne-seed");
+    const chemoReplicates = $("#chemostat-ne-replicates"), chemoSeed = $("#chemostat-ne-seed");
     const chemoCards = $$("#chemostat-ne-calculation article strong");
-    const chemostatNeValues = [1e4, 10 ** 4.5, 1e5, 10 ** 5.5, 1e6, 10 ** 6.5, 1e7, 10 ** 7.5, 1e8, 3.3e8];
-    const selectedChemostatNe = () => chemostatNeValues[Math.max(0, Math.min(chemostatNeValues.length - 1, Math.round(+chemoNe.value)))];
-    const actualNeLabel = value => value === 3.3e8 ? "3.3 × 10⁸ cells" : `${Number((value / (10 ** Math.floor(Math.log10(value)))).toFixed(2))} × 10${String(Math.floor(Math.log10(value))).replace(/0/g,"⁰").replace(/1/g,"¹").replace(/2/g,"²").replace(/3/g,"³").replace(/4/g,"⁴").replace(/5/g,"⁵").replace(/6/g,"⁶").replace(/7/g,"⁷").replace(/8/g,"⁸").replace(/9/g,"⁹")} cells`;
-    let chemoTimer = null, chemoStarted = false, chemoVisible = 0, chemoChanges = [];
+    const chemostatParameters = Object.freeze({
+      inoculum: 1.5e7, dilution: 0.12, maximumGrowth: 0.35, halfSaturation: 0.103,
+      yield: 32445000 * 20, incomingSubstrate: 0.8, hoursPerGeneration: 5.8, tau: 0.1,
+      generations: 1000, burnIn: 100
+    });
+    let chemoTimer = null, chemoStarted = false, chemoVisible = 0;
+    let chemoChanges = [], chemoDiversities = [], chemoCensus = NaN, chemoSteadySubstrate = NaN, chemoLimit = 12;
+
+    function poissonApprox(lambda, R) {
+      if (lambda <= 0) return 0;
+      if (lambda < 30) {
+        const stop = Math.exp(-lambda);
+        let product = 1, count = 0;
+        do { count++; product *= R(); } while (product > stop);
+        return count - 1;
+      }
+      return Math.max(0, Math.round(lambda + Math.sqrt(lambda) * normal(R)));
+    }
 
     function prepareChemostat() {
-      const nEff = Math.round(selectedChemostatNe()), total = +chemoDraws.value;
-      const R = S.mulberry32(+chemoSeed.value || 0), p = 0.5;
-      chemoChanges = Array.from({length: total}, () => binomial(nEff, p, R) / nEff - p);
+      const params = chemostatParameters, replicateCount = +chemoReplicates.value;
+      const R = S.mulberry32(+chemoSeed.value || 0);
+      const stepsPerGeneration = Math.round(params.hoursPerGeneration / params.tau);
+      chemoChanges = []; chemoDiversities = [];
+      let censusSum = 0, censusObservations = 0;
+
+      for (let replicate = 0; replicate < replicateCount; replicate++) {
+        let ancestral = params.inoculum / 2, neutral = params.inoculum / 2;
+        let substrate = params.incomingSubstrate, previousP = 0.5;
+        for (let generation = 0; generation < params.generations; generation++) {
+          for (let step = 0; step < stepsPerGeneration; step++) {
+            const totalCells = ancestral + neutral;
+            const growth = params.maximumGrowth * substrate / (params.halfSaturation + substrate);
+            const ancestralBirths = poissonApprox(ancestral * growth * params.tau, R);
+            const neutralBirths = poissonApprox(neutral * growth * params.tau, R);
+            const ancestralWashout = poissonApprox(ancestral * params.dilution * params.tau, R);
+            const neutralWashout = poissonApprox(neutral * params.dilution * params.tau, R);
+            const substrateChange = params.dilution * (params.incomingSubstrate - substrate)
+              - totalCells * growth / params.yield;
+            ancestral = Math.max(1, ancestral + ancestralBirths - ancestralWashout);
+            neutral = Math.max(1, neutral + neutralBirths - neutralWashout);
+            substrate = Math.max(0, Math.min(params.incomingSubstrate, substrate + params.tau * substrateChange));
+          }
+          const p = neutral / (ancestral + neutral);
+          if (generation >= params.burnIn) {
+            chemoChanges.push(p - previousP);
+            chemoDiversities.push(previousP * (1 - previousP));
+            censusSum += ancestral + neutral;
+            censusObservations++;
+          }
+          previousP = p;
+        }
+      }
+
+      chemoCensus = censusSum / censusObservations;
+      chemoSteadySubstrate = params.dilution * params.halfSaturation / (params.maximumGrowth - params.dilution);
+      const mean = chemoChanges.reduce((sum, value) => sum + value, 0) / chemoChanges.length;
+      const variance = chemoChanges.reduce((sum, value) => sum + (value - mean) ** 2, 0) / chemoChanges.length;
+      chemoLimit = Math.max(1, 4.25 * Math.sqrt(variance) * 1e5);
     }
 
     function drawChemostat() {
-      const nEff = Math.round(selectedChemostatNe()), total = +chemoDraws.value, p = 0.5;
-      const theoreticalSd = Math.sqrt(p * (1 - p) / nEff);
-      const multiplier = theoreticalSd < 1e-4 ? 1e5 : theoreticalSd < 1e-3 ? 1e4 : theoreticalSd < 1e-2 ? 1e3 : 1e2;
-      const limit = 4.25 * theoreticalSd * multiplier;
-      const f = P.frame(chemostatCanvas, -limit, limit, 1, total);
-      $("#chemostat-ne-label").textContent = actualNeLabel(nEff);
-      $("#chemostat-ne-axis").textContent = `Vertical axis: (p′ − p) × ${multiplier.toLocaleString()}. The horizontal line is no frequency change.`;
+      const total = chemoStarted ? chemoChanges.length : (+chemoReplicates.value * 900);
+      const f = P.frame(chemostatCanvas, -chemoLimit, chemoLimit, 1, total);
+      $("#chemostat-ne-axis").textContent = "Vertical axis: one-generation neutral frequency change Δp × 100,000. The horizontal line is no change.";
       P.line(f, [1, total], [0, 0], P.C.muted, 1.4, 1, [5, 4]);
-      P.text(f, "independent neutral draws →", Math.max(2, total * 0.03), limit * 0.9, {color:P.C.muted, font:"11px system-ui"});
+      P.text(f, "retained chemostat transitions →", Math.max(2, total * 0.03), chemoLimit * 0.9, {color:P.C.muted, font:"11px system-ui"});
       if (!chemoStarted) {
         chemoCards.forEach(card => { card.textContent = "—"; });
-        $("#chemostat-ne-summary").textContent = "The plot starts empty. Run the neutral simulation to build the variance estimate.";
+        $("#chemostat-ne-summary").innerHTML = "The plot starts empty. Run the chemostat model to generate neutral fluctuations without specifying <i>N</i><sub>e</sub>.";
         return;
       }
       const shown = chemoChanges.slice(0, chemoVisible), xs = shown.map((_, i) => i + 1);
-      P.points(f, xs, shown.map(value => value * multiplier), P.C.blue, total > 300 ? 1.5 : 2.2);
-      chemoCards[0].innerHTML = `0.500 × 0.500 = <em>0.250</em>`;
+      P.points(f, xs, shown.map(value => value * 1e5), P.C.blue, total > 300 ? 1.45 : 2.2);
+      chemoCards[0].innerHTML = `<i>S</i><sup>*</sup> = ${chemoSteadySubstrate.toFixed(3)}; <em>${sci(chemoCensus, 2)} cells</em>`;
       if (shown.length < 2) {
         chemoCards[1].textContent = "waiting for repeated draws";
         chemoCards[2].textContent = "—";
-        $("#chemostat-ne-summary").textContent = `Draw ${shown.length} of ${total}. Variance requires repeated next-generation draws.`;
+        $("#chemostat-ne-summary").textContent = `Transition ${shown.length} of ${total}. Variance requires repeated neutral changes.`;
         return;
       }
       const mean = shown.reduce((sum, value) => sum + value, 0) / shown.length;
-      const variance = shown.reduce((sum, value) => sum + (value - mean) ** 2, 0) / (shown.length - 1);
-      const estimate = p * (1 - p) / variance;
+      const variance = shown.reduce((sum, value) => sum + (value - mean) ** 2, 0) / shown.length;
+      const diversity = chemoDiversities.slice(0, chemoVisible).reduce((sum, value) => sum + value, 0) / shown.length;
+      const estimate = diversity / variance;
       chemoCards[1].innerHTML = sci(variance, 2);
-      chemoCards[2].innerHTML = `0.250 / ${sci(variance, 2)} = <em>${sci(estimate, 2)}</em>`;
-      $("#chemostat-ne-summary").textContent = `${shown.length} of ${total} draws: the simulated variance is ${variance.toExponential(2)}, giving N̂ₑ = ${compact(estimate)} cells. The generating value is ${compact(nEff)}.`;
+      chemoCards[2].innerHTML = `${diversity.toFixed(3)} / ${sci(variance, 2)} = <em>${sci(estimate, 2)}</em>`;
+      $("#chemostat-ne-summary").textContent = `${shown.length.toLocaleString()} of ${total.toLocaleString()} model-generated transitions: the chemostat variance gives an equivalent N̂ₑ of ${compact(estimate)} cells. No Nₑ was passed to the simulation.`;
     }
 
     function resetChemostat() {
       if (chemoTimer) clearInterval(chemoTimer);
-      chemoTimer = null; chemoStarted = false; chemoVisible = 0; chemoChanges = [];
-      $("#chemostat-ne-run").textContent = "Run neutral simulation"; drawChemostat();
+      chemoTimer = null; chemoStarted = false; chemoVisible = 0;
+      chemoChanges = []; chemoDiversities = []; chemoCensus = NaN; chemoSteadySubstrate = NaN; chemoLimit = 12;
+      $("#chemostat-ne-run").textContent = "Run chemostat calibration"; drawChemostat();
     }
 
-    [chemoNe, chemoDraws, chemoSeed].forEach(node => node.addEventListener("input", resetChemostat));
-    $$('[data-chemostat-ne-preset]').forEach(button => button.addEventListener("click", () => { chemoNe.value = button.dataset.chemostatNePreset; resetChemostat(); }));
+    [chemoReplicates, chemoSeed].forEach(node => node.addEventListener("input", resetChemostat));
     $("#chemostat-ne-run").addEventListener("click", event => {
       if (chemoTimer) { clearInterval(chemoTimer); chemoTimer = null; event.target.textContent = "Resume"; return; }
-      if (!chemoStarted || chemoVisible >= +chemoDraws.value) { chemoVisible = 0; prepareChemostat(); }
+      if (!chemoStarted || chemoVisible >= chemoChanges.length) { chemoVisible = 0; prepareChemostat(); }
       chemoStarted = true; event.target.textContent = "Pause";
-      const chunk = Math.max(2, Math.ceil(+chemoDraws.value / 45));
+      const chunk = Math.max(2, Math.ceil(chemoChanges.length / 55));
       chemoTimer = setInterval(() => {
-        chemoVisible = Math.min(+chemoDraws.value, chemoVisible + chunk); drawChemostat();
-        if (chemoVisible >= +chemoDraws.value) { clearInterval(chemoTimer); chemoTimer = null; event.target.textContent = "Run again"; }
+        chemoVisible = Math.min(chemoChanges.length, chemoVisible + chunk); drawChemostat();
+        if (chemoVisible >= chemoChanges.length) { clearInterval(chemoTimer); chemoTimer = null; event.target.textContent = "Run again"; }
       }, 70);
       drawChemostat();
     });

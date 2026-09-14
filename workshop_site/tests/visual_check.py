@@ -165,12 +165,12 @@ def main() -> None:
         effective_size.screenshot("/tmp/workshop-effective-population-size.png")
         chemostat_ne = driver.find_element("id", "chemostat-ne-simulator")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", chemostat_ne)
-        endpoint_rects = driver.execute_script("return [...document.querySelectorAll('.ne-slider-endpoints span')].map(e => e.getBoundingClientRect().toJSON())")
-        assert len(endpoint_rects) == 2 and endpoint_rects[0]["right"] < endpoint_rects[1]["left"]
-        assert "Half-order steps" not in chemostat_ne.text
+        assert not driver.find_elements("id", "chemostat-ne")
+        assert "No Ne is used to generate the trajectories" in chemostat_ne.text
         driver.find_element("id", "chemostat-ne-run").click()
-        WebDriverWait(driver, 8).until(lambda d: d.find_element("id", "chemostat-ne-summary").text.startswith("900 of 900"))
-        assert "3 · variance match" in driver.find_element("id", "chemostat-ne-calculation").text.lower()
+        WebDriverWait(driver, 12).until(lambda d: d.find_element("id", "chemostat-ne-summary").text.startswith("9,000 of 9,000"))
+        assert "3 · equivalent size" in driver.find_element("id", "chemostat-ne-calculation").text.lower()
+        assert "No Nₑ was passed" in driver.find_element("id", "chemostat-ne-summary").text
         chemostat_ne.screenshot("/tmp/workshop-chemostat-ne-simulation.png")
         serial_ne = driver.find_element("id", "serial-ne-simulator")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", serial_ne)
