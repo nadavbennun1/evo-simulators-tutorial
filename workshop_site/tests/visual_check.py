@@ -41,6 +41,15 @@ def main() -> None:
                 driver.save_screenshot(f"/tmp/workshop-{page}-{label}.png")
         driver.set_window_size(1200, 900); driver.get(f"{base}/sbi.html"); time.sleep(2)
         driver.find_element("id", "cell-fa1ab176").screenshot("/tmp/workshop-bayes-equation.png")
+        prior_section = driver.find_element("id", "designing-the-prior")
+        prior_section.screenshot("/tmp/workshop-prior-design.png")
+        npe_figure = driver.find_element("css selector", ".npe-framework-figure")
+        npe_image = driver.find_element("css selector", ".npe-framework-figure img")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", npe_figure)
+        WebDriverWait(driver, 10).until(lambda d: npe_image.get_property("naturalWidth") == 1029)
+        assert npe_image.size["width"] <= npe_figure.size["width"]
+        assert npe_image.size["height"] <= driver.get_window_size()["height"] * .7
+        npe_figure.screenshot("/tmp/workshop-npe-framework.png")
         abc_framework = driver.find_element("css selector", ".abc-framework-figure")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", abc_framework)
         abc_image = driver.find_element("css selector", ".abc-framework-figure img")

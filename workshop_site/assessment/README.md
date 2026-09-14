@@ -57,6 +57,23 @@ No SQL or database console is required.
 
 The script automatically creates an `assessment_events` tab with readable columns. It executes with the Sheet owner’s permissions, so participants can append validated events without receiving permission to open the private spreadsheet. Visiting the endpoint returns only a health message—never response data. Event UUIDs are checked before append, so retries do not duplicate rows.
 
+### Private dashboard
+
+The same Apps Script includes a small aggregate dashboard; no additional service or credential is needed. After updating `Code.gs`, save the script and reload the Google Sheet. Choose **Assessment dashboard → Refresh dashboard** from the new menu. The script creates or refreshes a private `assessment_dashboard` tab containing:
+
+- pre, post, and anonymously paired completion counts;
+- mean knowledge scores and the mean within-person change;
+- correct-response percentages for all six concepts;
+- pre/post confidence summaries;
+- venue-level counts and post means;
+- the two post-workshop evaluation ratings;
+- item, confidence, and score-distribution charts; and
+- short descriptive signals, including the largest item-level change and the least-certain post-workshop concept.
+
+Refresh is manual so a large live workshop never slows participant submissions by rebuilding charts after every response. The dashboard contains aggregate summaries only and remains inside the restricted spreadsheet. It does not change the append-only `assessment_events` data and does not make the public `/exec` URL readable.
+
+Dashboard scoring rules are explicitly keyed to released assessment versions in `Code.gs`. When releasing a new question-bank version, add its scoring rules there as part of the version bump. Unsupported versions are excluded and reported in the dashboard subtitle rather than being scored with the wrong key.
+
 If the Sheet endpoint is not configured or is temporarily unavailable, completed events remain in the browser’s local retry queue. The participant sees the exact state of the submission. The queue is retried when the browser next loads the assessment or returns online. Clearing site storage before a retry will remove that local copy.
 
 Local previews served from `localhost`, `127.0.0.1`, or `::1` never transmit to the production Sheet. This keeps automated tests and presenter rehearsals out of the research dataset; persistence is enabled only on the deployed site.

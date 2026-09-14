@@ -457,17 +457,17 @@
   function zhouModelPlayground() {
     const canvas = $("#zhou-model-canvas");
     if (!canvas) return;
-    const ids = ["mu-wt", "mu-loh", "w-tri", "w-loh", "p0"];
+    const ids = ["mu-tri", "mu-loh", "w-tri", "w-loh", "p0"];
     const el = Object.fromEntries(ids.map(id => [id, $(`#zhou-model-${id}`)]));
     const play = $("#zhou-model-play");
     let timer = null, started = false, visible = 0;
 
     function draw() {
-      const theta = [+el["mu-wt"].value, +el["w-tri"].value, +el["w-loh"].value, +el["mu-loh"].value];
+      const theta = [+el["mu-tri"].value, +el["w-tri"].value, +el["w-loh"].value, +el["mu-loh"].value];
       const tri0 = +el.p0.value, p0 = [tri0, (1 - tri0) * 0.6, (1 - tri0) * 0.4];
       const trajectory = S.zhouDeterministic(theta, p0, 120).filter((_, i) => i % 10 === 0);
       const xs = Array.from({length: 13}, (_, i) => i), colors = [P.C.muted, P.C.orange, P.C.purple], f = P.frame(canvas, 0, 1, 0, 12);
-      $("#zhou-model-mu-wt-label").textContent = (+el["mu-wt"].value).toFixed(2);
+      $("#zhou-model-mu-tri-label").textContent = (+el["mu-tri"].value).toFixed(2);
       $("#zhou-model-mu-loh-label").textContent = (+el["mu-loh"].value).toFixed(2);
       $("#zhou-model-w-tri-label").textContent = (+el["w-tri"].value).toFixed(3);
       $("#zhou-model-w-loh-label").textContent = (+el["w-loh"].value).toFixed(3);
@@ -500,7 +500,7 @@
     };
     $$('[data-zhou-model-preset]').forEach(button => button.addEventListener("click", () => {
       const values = presets[button.dataset.zhouModelPreset];
-      [el["mu-wt"], el["mu-loh"], el["w-tri"], el["w-loh"], el.p0].forEach((node, i) => { node.value = values[i]; });
+      [el["mu-tri"], el["mu-loh"], el["w-tri"], el["w-loh"], el.p0].forEach((node, i) => { node.value = values[i]; });
       resetView();
     }));
     play.addEventListener("click", () => {

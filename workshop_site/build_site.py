@@ -357,10 +357,10 @@ heterozygosity (LOH). The observation is now a three-part composition, so every 
 which route gained population share.''',
         "b4a01787": r'''## Zhou et al. model of competing chromosome-loss routes
 
-Trisomic cells move to WT at rate $\mu_{WT}$ or LOH at rate $\mu_{LOH}$; the three states then
+Trisomic cells move to WT at rate $\mu_{Tri}$ or LOH at rate $\mu_{LOH}$; the three states then
 compete with relative fitnesses $(w_{Tri},1,w_{LOH})$.
 
-$$M=\begin{pmatrix}1-\mu_{WT}-\mu_{LOH}&0&0\\\mu_{WT}&1&0\\\mu_{LOH}&0&1\end{pmatrix},
+$$M=\begin{pmatrix}1-\mu_{Tri}-\mu_{LOH}&0&0\\\mu_{Tri}&1&0\\\mu_{LOH}&0&1\end{pmatrix},
 \qquad G=\mathrm{diag}(w_{Tri},1,w_{LOH})M$$
 
 This is the same mathematical model with different genotype labels: define allowed transitions,
@@ -428,6 +428,13 @@ was introduced for population-genetic inference by {paper("tavare")}.
   <figcaption>Rejection ABC turns prior draws into posterior samples by retaining simulations sufficiently close to the observation.</figcaption>
 </figure>''',
         "8d7d8c01": r'''## Neural posterior estimation learns a conditional density
+
+<figure class="paper-figure npe-framework-figure">
+  <div class="npe-framework-viewport">
+    <img loading="eager" width="1029" height="1280" src="''' + versioned_asset('assets/chapter/npe-workflow.jpg') + r'''" alt="Neural posterior estimation workflow: parameters sampled from the prior enter the evolutionary model, simulated trajectories and parameters train a neural density estimator, and conditioning on an observed trajectory produces a posterior over CNV formation rate and selection coefficient">
+  </div>
+  <figcaption>Prior draws and their simulated trajectories train the density estimator. Once trained, the network maps an observed trajectory to posterior uncertainty over the generating parameters.</figcaption>
+</figure>
 
 Neural posterior estimation first creates simulated pairs
 $(\theta_i,x_i)\sim p(\theta)p(x\mid\theta)$. A conditional density estimator learns
@@ -551,7 +558,7 @@ def mechanism_code(stem: str, source: str, cell_index: int) -> str:
         ],
         "5f9d90ff": [
             ("setup", "p = np.array([p_tri, p_wt, p_loh])\nw = np.array([w_tri, 1.0, w_loh])", "State and parameters", "The composition records trisomic, wild-type, and LOH cells."),
-            ("mutation", "M = np.array([[1-mu_wt-mu_loh, 0, 0],\n              [mu_wt, 1, 0],\n              [mu_loh, 0, 1]])\np_mut = M @ p", "Mutation", "Two chromosome-loss routes leave the trisomic state."),
+            ("mutation", "M = np.array([[1-mu_tri-mu_loh, 0, 0],\n              [mu_tri, 1, 0],\n              [mu_loh, 0, 1]])\np_mut = M @ p", "Mutation", "Two chromosome-loss routes leave the trisomic state."),
             ("selection", "p_sel = w * p_mut\np_sel /= p_sel.sum()", "Selection", "The three relative fitnesses reshape the descendant mixture."),
             ("drift", "n = rng.multinomial(N_e, p_sel)\np = n / N_e", "Drift", "One finite draw produces the next passage-level population."),
         ],
@@ -589,6 +596,59 @@ def chapter_walkthrough(chapter: str) -> str:
 
 def chapter_outline_heading() -> str:
     return '<header class="chapter-outline-heading"><h2>In this chapter:</h2></header>'
+
+
+def prior_design_section() -> str:
+    source = fr'''<section class="lesson-cell prior-design-section" id="designing-the-prior">
+  <p class="section-kicker">Before simulation</p>
+  <h2>Designing a prior</h2>
+  <p class="prior-lead">The prior defines which parameter values are scientifically plausible
+  <em>before</em> the trajectory being analyzed is used. In experimental evolution, its support
+  usually begins with a literature review: measurements of the same process in related organisms
+  and environments, direct mutation or competition assays, and biological constraints on signs
+  and magnitudes. When that evidence is uncertain, the range should remain broad—and its origin
+  should be recorded.</p>
+
+  <div class="prior-source-flow" aria-label="Prior design moves from existing biological evidence to parameter support and then to prior-predictive simulations">
+    <article><span>01</span><strong>Existing evidence</strong><p>Published rates, fitness assays, comparable conditions</p></article>
+    <i aria-hidden="true">→</i>
+    <article><span>02</span><strong>Parameter support</strong><p>Units, bounds, and parameter transformation</p></article>
+    <i aria-hidden="true">→</i>
+    <article><span>03</span><strong>Prior prediction</strong><p>Simulate to check that the implied trajectories are biologically credible</p></article>
+  </div>
+
+  <aside class="log-prior-note">
+    <div><p class="section-kicker">Why use a logarithm?</p><h3>Small positive parameters live on a multiplicative scale</h3></div>
+    <p>Formation rates and small selection coefficients can span many orders of magnitude. Define
+    $\eta_\delta=\log_{{10}}\delta$: then a one-unit step always means a tenfold change. A uniform
+    prior on $\eta_\delta$ gives equal weight to equal orders of magnitude instead of compressing
+    nearly all useful resolution close to zero. This improves numerical conditioning and makes
+    parameter trade-offs easier to resolve. It does not create identifiability when different
+    parameter combinations genuinely predict the same data.</p>
+  </aside>
+
+  <div class="published-prior">
+    <header><p class="section-kicker">Published example</p><h3>Avecilla et al. prior</h3><p>{paper_html("avecilla")} inferred the <em>GAP1</em> CNV formation rate and its selection coefficient using the same broad priors for ABC-SMC and NPE.</p></header>
+    <div class="prior-range-grid">
+      <article class="prior-range-card prior-delta">
+        <div><strong>CNV formation rate</strong><span>$\delta_C$ per cell division</span></div>
+        <p>$\log_{{10}}\delta_C ∼ \mathrm{{Uniform}}(-12,-3)$</p>
+        <div class="prior-ruler" role="img" aria-label="Log-uniform CNV formation-rate prior from ten to the minus twelve to ten to the minus three per cell division">
+          <span class="prior-ruler-line"></span><i style="left:0%"><b>10⁻¹²</b></i><i style="left:33.3%"><b>10⁻⁹</b></i><i style="left:66.7%"><b>10⁻⁶</b></i><i style="left:100%"><b>10⁻³</b></i>
+        </div>
+      </article>
+      <article class="prior-range-card prior-selection">
+        <div><strong>CNV selection coefficient</strong><span>$s_C$ per generation</span></div>
+        <p>$\log_{{10}}s_C ∼ \mathrm{{Uniform}}(-4,\log_{{10}}0.4)$</p>
+        <div class="prior-ruler" role="img" aria-label="Log-uniform CNV selection-coefficient prior from ten to the minus four to zero point four per generation">
+          <span class="prior-ruler-line"></span><i style="left:0%"><b>10⁻⁴</b></i><i style="left:27.8%"><b>10⁻³</b></i><i style="left:55.5%"><b>10⁻²</b></i><i style="left:83.3%"><b>10⁻¹</b></i><i style="left:100%"><b>0.4</b></i>
+        </div>
+      </article>
+    </div>
+    <p class="prior-provenance"><strong>What came from the literature?</strong> The paper reports these as deliberately broad prior bounds rather than direct measurements of <em>GAP1</em>. Literature enters explicitly through the competing-beneficial background: $\delta_B=10^{{-5}}$ and $s_B=0.001$ were fixed using estimates from earlier yeast experiments, then varied in a sensitivity analysis. The posterior can only occupy the chosen support, so both the bounds and those fixed assumptions remain part of the biological model.</p>
+  </div>
+</section>'''
+    return math_to_html(source)
 
 
 def avecilla_model_builder_section() -> str:
@@ -734,7 +794,7 @@ def chuong_code_exercise(cell_index: int) -> str:
     blanks = [
         ("Initial state", r'$$n=\left(N\ast(1-\varphi),\ 0,\ N\ast\varphi,\ 0\right)$$', "n", "phi sets the standing CNV⁻ count; the other derived states begin at zero.", "np.array([N*(1-phi),0,N*phi,0])", ["np.array([N*(1-phi),0,N*phi,0])", "[N*(1-phi),0,N*phi,0]", "np.asarray([N*(1-phi),0,N*phi,0])"]),
         ("Mutation", r'$$x^{(m)}=Mx_t$$', "mutated", "p is the current frequency vector and M is the four-state mutation matrix.", "M @ p", ["M@p", "np.matmul(M,p)", "M.dot(p)"]),
-        ("Selection", r'$$u=w\odot x^{(m)}$$', "weighted", "w is the relative-fitness vector; normalization is deferred to the drift line.", "w * mutated", ["w*mutated", "np.multiply(w,mutated)", "mutated*w"]),
+        ("Selection", r'$$u_i=w_i x_i^{(m)}\ \text{for each genotype }i,\qquad u=w\odot x^{(m)}$$', "weighted", "The circled dot means element-by-element multiplication: each genotype frequency is multiplied by its own relative fitness. Normalization is deferred to the drift line.", "w * mutated", ["w*mutated", "np.multiply(w,mutated)", "mutated*w"]),
         ("Drift", r'$$n_{t+1}\sim\mathrm{Multinomial}(N,u/\sum_j u_j)$$', "n", "N is the effective population size and weighted.sum() normalizes the sampling probabilities.", "np.random.multinomial(N, weighted / weighted.sum())", ["np.random.multinomial(N,weighted/weighted.sum())", "rng.multinomial(N,weighted/weighted.sum())", "np.random.multinomial(N,weighted/np.sum(weighted))"]),
     ]
     rows = []
@@ -765,7 +825,7 @@ population.
 | source state | ancestor $A$ | trisomic |
 | first descendant | *GAP1* CNV $C$ | wild type |
 | second descendant | other beneficial $B$ | LOH |
-| two transition rates | $\delta_C,\delta_B$ | $\mu_{WT},\mu_{LOH}$ |
+| two transition rates | $\delta_C,\delta_B$ | $\mu_{Tri},\mu_{LOH}$ |
 | relative fitnesses | $1,1+s_C,1+s_B$ | $w_{Tri},1,w_{LOH}$ |
 
 The difference is parameterization, not model topology. In the displayed Avecilla fit, the
@@ -981,6 +1041,8 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(chuong_standing_variation_section())
         if key == "evolution" and cid == "b4a01787":
             blocks.append(model_equivalence_section())
+        if key == "sbi" and cid == "fa1ab176":
+            blocks.append(prior_design_section())
         if key == "sbi" and cid == "098a16bd":
             blocks.append(posterior_prediction_section())
     coverage.sort(key=lambda row: row["index"])
@@ -1029,7 +1091,7 @@ def station_markup(name: str) -> str:
         body = '''<h2>Explore competing chromosome-loss routes</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
         <div class="preset-row"><button data-zhou-model-preset="fit">Reference values</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
         <div class="interactive-grid"><form class="controls" id="zhou-model-controls">
-          <label>Tri → WT log₁₀ rate <output id="zhou-model-mu-wt-label"></output><input id="zhou-model-mu-wt" type="range" min="-6" max="-2.5" step="0.05" value="-3.47"></label>
+          <label>μ<sub>Tri</sub> · Tri → WT log₁₀ rate <output id="zhou-model-mu-tri-label"></output><input id="zhou-model-mu-tri" type="range" min="-6" max="-2.5" step="0.05" value="-3.47"></label>
           <label>Tri → LOH log₁₀ rate <output id="zhou-model-mu-loh-label"></output><input id="zhou-model-mu-loh" type="range" min="-6" max="-2.5" step="0.05" value="-3.28"></label>
           <label>Trisomic fitness <output id="zhou-model-w-tri-label"></output><input id="zhou-model-w-tri" type="range" min="0.85" max="1.05" step="0.002" value="0.92"></label>
           <label>LOH fitness <output id="zhou-model-w-loh-label"></output><input id="zhou-model-w-loh" type="range" min="0.85" max="1.05" step="0.002" value="0.986"></label>

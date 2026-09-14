@@ -67,8 +67,8 @@ def test_zhou_hashes_and_asset_contract():
 
 def _python_zhou(theta, p0, generations=120):
     p = np.asarray(p0, float); out = [p.copy()]
-    mu_wt, mu_loh = 10 ** theta[0], 10 ** theta[3]
-    matrix = np.array([[1 - mu_wt - mu_loh, 0, 0], [mu_wt, 1, 0], [mu_loh, 0, 1]])
+    mu_tri, mu_loh = 10 ** theta[0], 10 ** theta[3]
+    matrix = np.array([[1 - mu_tri - mu_loh, 0, 0], [mu_tri, 1, 0], [mu_loh, 0, 1]])
     growth = np.diag([theta[1], 1, theta[2]]) @ matrix
     for _ in range(generations):
         p = growth @ p; p /= p.sum(); out.append(p.copy())
@@ -231,6 +231,9 @@ def test_assessment_is_versioned_private_by_design_and_recomputable():
     assert "function doPost" in receiver and "function doGet" in receiver
     assert "new Date().toISOString()" in receiver and "JSON.stringify(record.payload)" in receiver
     assert "duplicate" in receiver and "data: 'not-readable'" in receiver
+    assert "function refreshAssessmentDashboard" in receiver
+    assert "DASHBOARD_SCORING_RULES" in receiver and "assessment_dashboard" in receiver
+    assert "completed assessments only" in receiver and "no participant-level rows" in receiver
     subprocess.run(["node", "--check", str(assessment / "app.js")], check=True)
     subprocess.run(["node", "--check", str(assessment / "backend.js")], check=True)
 
@@ -393,6 +396,12 @@ def test_sbi_revision_contract():
     assert "In this chapter:" in text
     assert "Tavaré et al. (1997)" in text and "10.1093/genetics/145.2.505" in text
     assert 'class="bayes-components"' in text and "The simulator samples from the likelihood" in text
+    assert 'id="designing-the-prior"' in text and "Designing a prior" in text
+    assert "CNV formation-rate prior" in text and "10⁻¹²" in text and "0.4" in text
+    assert "does not create identifiability" in text and "What came from the literature?" in text
+    assert '<a href="https://doi.org/10.1371/journal.pbio.3001633">Avecilla et al. (2022)</a>' in text
+    assert "[Avecilla et al. (2022)]" not in text
+    assert text.index('class="bayes-components"') < text.index('id="designing-the-prior"') < text.index("Rejection ABC approximates the posterior")
     assert 'class="amortization-note"' in text and 'class="intermediate-summary"' in text
     assert "Flexibility has a contract" not in text
     assert "Using Bayes' rule we can get:" in text and "removes the additional copies of the shared prior" in text
@@ -400,8 +409,13 @@ def test_sbi_revision_contract():
     assert "Accepted simulations turn a distance threshold into parameter uncertainty" not in text
     assert "NPE returns a joint posterior after one conditioning step" not in text
     assert 'class="paper-figure abc-framework-figure"' in text and 'class="abc-framework-viewport"' in text and "abc-framework.png" in text
+    assert 'class="paper-figure npe-framework-figure"' in text and "npe-workflow.jpg" in text
+    assert text.index("npe-workflow.jpg") < text.index("Neural posterior estimation first creates simulated pairs")
+    assert (SITE / "assets" / "chapter" / "npe-workflow.jpg").exists()
     assert ".abc-framework-viewport{overflow:hidden" in (SITE / "css" / "workshop.css").read_text()
     assert ".abc-framework-viewport img{position:static;display:block;width:100%;max-width:100%;height:auto" in (SITE / "css" / "workshop.css").read_text()
+    assert ".npe-framework-viewport{display:grid;place-items:center;overflow:hidden;width:100%" in (SITE / "css" / "workshop.css").read_text()
+    assert ".npe-framework-viewport img{display:block;width:auto;max-width:100%;height:auto;max-height:min(68vh,680px)" in (SITE / "css" / "workshop.css").read_text()
     assert '<details class="code-panel" open' not in text
     assert "Run ABC progressively" not in text and ">Run ABC</button>" in text
     assert 'const displayOrder = [1, 0, 2, 3]' in script
