@@ -321,7 +321,7 @@ def test_chapter_one_revision_contract():
     assert "100 / (1 + RMSE)" in sbi
     assert 'id="chuong-parameter-challenge"' not in text
     assert sbi.index('id="chuong-parameter-challenge"') < sbi.index('class="chapter-walkthrough"')
-    assert text.index('id="zhou-model-playground"') > text.index('data-cell-id="2e99f96f"')
+    assert text.index('id="zhou-model-playground"') < text.index('data-cell-id="2e99f96f"')
     assert text.index('data-cell-id="21748f7d"') < text.index('id="avecilla-model-builder"')
     assert text.index('id="avecilla-model-builder"') < text.index('id="effective-population-size"') < text.index('id="evolution-playground"')
     assert text.index('id="evolution-playground"') < text.index('data-cell-id="6ec896e6"')
@@ -375,7 +375,7 @@ def test_chapter_one_revision_contract():
     assert 'id="de-joint-model"' in text and "What if the two CNVs are modeled jointly?" in text
     assert "de-epistasis-model.jpg" in text and "de-epistasis-ppc.jpg" in text
     assert "simpler independent model is" in text and "epistasis" in text
-    assert text.count("modeler-model-success.png") == 5
+    assert text.count("modeler-model-success.png") == 6
     assert "modeler-head-scratching.png" in text
     assert "Order effect preset makes their non-commutativity visible" not in text
     assert 'id="evolution-references"' in text
@@ -519,7 +519,8 @@ def test_presentation_revision_contract():
     assert evolution.index('data-cell-id="54e9f8de"') < evolution.index('alt="Researchers celebrate the Avecilla Wright–Fisher model fit"')
     assert evolution.index('data-cell-id="66cce2fa"') < evolution.index('alt="Researchers celebrate the Chuong model fit"')
     assert evolution.index('data-cell-id="65a843c6"') < evolution.index('alt="Researchers celebrate the De model fit"')
-    assert evolution.index('data-cell-id="2e99f96f"') < evolution.index('alt="Researchers celebrate the Zhou model fit"')
+    assert evolution.index('id="zhou-model-playground"') < evolution.index('data-cell-id="2e99f96f"') < evolution.index('alt="Researchers celebrate the Zhou model fit"')
+    assert evolution.index('data-cell-id="f37292e6"') < evolution.index('alt="Researchers celebrate the completed DFE analysis"') < evolution.index('<h2>Summary</h2>')
     assert re.search(r'<h2>Summary</h2>\s*<figure class="take-home-visual">', sbi)
     assert "Mechanism → predictive checks → a new biological question." not in sbi
     assert "<strong>Important:</strong> inference is not finished" in sbi

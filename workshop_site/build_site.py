@@ -1208,6 +1208,8 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the {name} model fit", "", "model-complete-illustration"))
         if key == "evolution" and cid == "d29cac1e":
             blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate agreement between continuous chemostat and Wright–Fisher simulations", "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics.", "model-complete-illustration"))
+        if key == "evolution" and cid == "f37292e6":
+            blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate the completed DFE analysis", "", "model-complete-illustration"))
         if key == "sbi" and cid == "928bf2bf":
             blocks.append(chapter_illustration("modeler-posterior-success.png", "Researchers celebrate robust posterior distributions", "The collective posterior preserves shared information while limiting the leverage of a poorly supported replicate."))
     coverage.sort(key=lambda row: row["index"])

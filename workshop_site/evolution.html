@@ -511,8 +511,6 @@ p = n / N_e</span></code></pre><div class="code-annotations"><article class="cod
 print(&quot;✓ zhou_model defined&quot;)
 print(&quot;  Inferred parameters: mu_tri (log10), mu_loh (log10), w_tri, w_loh&quot;)
 </code></pre></details></section>
-<aside class="fit-scope-note"><strong>Model-fit preview · Zhou et al.</strong><p>This comparison asks whether the simulator can reproduce the main pattern in the data. Parameter inference and uncertainty are introduced systematically in Chapter 2.</p></aside>
-<section class="lesson-cell output-only-cell" id="cell-2e99f96f" data-cell-id="2e99f96f"><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/2e99f96f-out-0.png?v=90fc08c15104" alt="Zhou model fit"><figcaption>Observed genotype frequencies compared with Zhou et al. model predictions</figcaption></figure></section>
 <section class="station answer-gated" id="zhou-model-playground" data-station="zhou-model-playground">
       <div class="station-kicker">Interactive station</div><h2>Explore competing chromosome-loss routes</h2><p class="prediction">Prediction: does the trisomic population resolve mainly through euploid recovery, LOH, or a fitness-driven mixture?</p>
         <div class="preset-row"><button data-zhou-model-preset="fit">Reference values</button><button data-zhou-model-preset="wt">WT route</button><button data-zhou-model-preset="loh">LOH route</button><button data-zhou-model-preset="fitness">Fitness reversal</button></div>
@@ -526,6 +524,8 @@ print(&quot;  Inferred parameters: mu_tri (log10), mu_loh (log10), w_tri, w_loh&
           <div class="viz"><canvas id="zhou-model-canvas" width="760" height="430" aria-label="Animated Zhou trisomic, wild-type, and LOH trajectories"></canvas><p id="zhou-model-summary" class="plot-summary" aria-live="polite">The plot starts empty. Choose a scenario, then press Play.</p><div class="composition" id="zhou-model-composition"></div></div></div>
         <div class="what-changed"><strong>What changed?</strong> <span id="zhou-model-change"></span></div><div class="static-fallback"><img src="assets/fallback/zhou-model-playground.png?v=6a1e65c43716" alt="Representative static result for zhou model playground"><p>This representative result remains available when scripting is unavailable.</p></div>
       <noscript><p class="noscript">JavaScript is off; use the static result and conclusion above.</p></noscript></section>
+<aside class="fit-scope-note"><strong>Model-fit preview · Zhou et al.</strong><p>This comparison asks whether the simulator can reproduce the main pattern in the data. Parameter inference and uncertainty are introduced systematically in Chapter 2.</p></aside>
+<section class="lesson-cell output-only-cell" id="cell-2e99f96f" data-cell-id="2e99f96f"><figure class="notebook-figure"><img loading="lazy" src="assets/notebook/2e99f96f-out-0.png?v=90fc08c15104" alt="Zhou model fit"><figcaption>Observed genotype frequencies compared with Zhou et al. model predictions</figcaption></figure></section>
 <figure class="chapter-illustration model-complete-illustration"><img loading="lazy" src="assets/chapter/modeler-model-success.png?v=977e44335ce7" alt="Researchers celebrate the Zhou model fit"></figure>
 <section class="lesson-cell prose-cell" id="cell-629428f4" data-cell-id="629428f4"><h2>Can one selection coefficient describe the whole sweep?</h2>
 <p>The comparisons in this section ask a limited question: can the simulator reproduce the observed
@@ -570,6 +570,7 @@ but this is evidence against a single constant effect—not proof of a DFE. Dete
 clonal interference, and an incorrectly fixed <math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><msub><mi>&#x003B4;</mi><mi>C</mi></msub></mrow></math> can create related patterns.</p>
 <p>For inference, fit DFE parameters directly or use the windowed-<math xmlns="http://www.w3.org/1998/Math/MathML" display="inline"><mrow><mover><mrow><mi>s</mi></mrow><mo stretchy="false">&#x0005E;</mo></mover></mrow></math> trend as a posterior
 predictive diagnostic of the simpler model.</p></section>
+<figure class="chapter-illustration model-complete-illustration"><img loading="lazy" src="assets/chapter/modeler-model-success.png?v=977e44335ce7" alt="Researchers celebrate the completed DFE analysis"></figure>
 <section class="lesson-cell prose-cell" id="cell-49b50682" data-cell-id="49b50682"><h2>Summary</h2>
 <table>
 <thead>
