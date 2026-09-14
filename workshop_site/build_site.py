@@ -310,14 +310,24 @@ consumption.
 
 $$\frac{dS}{dt}=D(S_0-S)-\frac{X_A\mu_A(S)+X_C\mu_C(S)+X_B\mu_B(S)}{Y}$$
 
+The division by $Y$ follows from the definition of yield:
+
+$$Y=\frac{\text{biomass produced}}{\text{substrate consumed}}
+\qquad\Longrightarrow\qquad
+\text{substrate consumed}=\frac{\text{biomass produced}}{Y}.$$
+
+For genotype $i$, $X_i\mu_i(S)$ is its rate of biomass production, so
+$X_i\mu_i(S)/Y$ is its rate of substrate consumption. Dividing by $Y$ therefore converts biomass
+production into substrate use. A high yield means that cells produce more biomass from each unit
+of nutrient and consume less substrate for the same amount of growth.
+
 Here $D$ is the dilution rate, $S_0$ is the substrate concentration in the **incoming fresh
 medium**, and $S(t)$ is the generally lower concentration remaining in the vessel. $Y$ is the
 **biomass yield coefficient**: the amount of cell biomass produced per unit of limiting substrate
-consumed. Dividing $X_i\mu_i(S)$ by $Y$ converts biomass production into substrate use. A larger
-$Y$ means that the same biomass growth consumes less substrate. At startup the model may set
-$S(0)=S_0$; after equilibration, the steady-state value is defined by $dS/dt=0$ and need not equal
-$S_0$. Mutation flow is now visible directly: $\delta_CX_A$ leaves the ancestral state and enters
-the CNV state, while $\delta_BX_A$ enters the other-beneficial state.
+consumed. At startup the model may set $S(0)=S_0$; after equilibration, the steady-state value is
+defined by $dS/dt=0$ and need not equal $S_0$. Mutation flow is now visible directly:
+$\delta_CX_A$ leaves the ancestral state and enters the CNV state, while $\delta_BX_A$ enters the
+other-beneficial state.
 
 The ODE exposes reactor biology that the Wright–Fisher approximation compresses into a generation
 clock and an effective population size.''',
@@ -855,16 +865,21 @@ a generic second mutant.'''
 def effective_population_section() -> str:
     introduction = fr'''## Effective population size belongs to the life cycle
 
-$N_e$ is the size of an ideal Wright–Fisher population with the same drift variance as the
-experiment. It is not automatically the largest cell count—or even the census average.
+$N_e$ is the size of an ideal Wright–Fisher population that would produce the same neutral
+frequency fluctuations as the biological life cycle being approximated. It is not automatically
+the largest cell count—or even the census average.
 
-### Chemostat: match the variance of neutral frequency change
+### Chemostat: translate simulated neutral drift into $N_e$
 
 {paper("avecilla")} did **not** estimate this quantity in a separate neutral-lineage experiment.
-They calibrated it inside the stochastic chemostat model. The authors replaced the selected
-genotypes with two neutral alleles, initialized both at frequency $p=q=0.5$, simulated 1,000
-generations, discarded the first 100 while the vessel approached steady state, and measured the
-remaining 900 neutral transitions.
+They also did not infer it from variation among the observed *GAP1* CNV trajectories. Instead, they
+configured a stochastic chemostat model using the experimental growth and dilution conditions,
+then used that model to generate the neutral fluctuations needed for the calculation.
+
+Inside the model, the selected genotypes were replaced by two alleles with identical biological
+rates. The alleles began at $p=q=0.5$ and were simulated for 1,000 generations. The first 100 were
+discarded while the simulated vessel approached steady state; the remaining 900 neutral transitions
+were used for the variance calculation.
 
 Let $p$ be the frequency of one neutral allele in the **current simulated population**, and let
 $p'$ be its frequency one generation later. Because the alleles have identical biological rates,
@@ -881,26 +896,29 @@ of the next frequency $p'_j$, and averages that quantity across the 900 retained
 
 $$\overline V=\frac1t\sum_{{j=1}}^t\mathrm{{Var}}(p'_j\mid p_j).$$
 
-The ideal Wright–Fisher population size is chosen to reproduce that average chemostat variance:
+The equivalent Wright–Fisher population size is the value that reproduces that average
+**model-generated** chemostat variance:
 
 $$\widehat N_e=\frac{{p(1-p)}}{{\overline V}}.$$
 
 The paper writes an unsubscripted $p$ in the numerator because the neutral simulation starts at
-$p=0.5$ and changes very little at this enormous population size. The estimator is therefore a
-**simulation calibration**: find the Wright–Fisher size that produces the same neutral variance as
-the continuous chemostat model under the actual experimental dilution and growth conditions.
+$p=0.5$ and changes very little at this enormous population size. The experiment supplies the
+chemostat conditions used to configure the model, but the neutral-frequency variance itself is a
+simulation output. This is therefore a model-based calibration, not a match to experimentally
+observed neutral-marker variance.
 
-Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the steady-state census.'''
+With the parameterization used for the experimental chemostat, the calculation gave
+$N_e=3.3\times10^8$, about two-thirds of the model's steady-state census.'''
 
     chemostat_simulator = '''<section class="ne-simulator" id="chemostat-ne-simulator">
-      <div class="ne-simulator-heading"><span>Teaching simulation</span><div><h4>See the variance match</h4><p>This compact Wright–Fisher demonstration checks the last step of the paper's calibration. It is not the full continuous chemostat simulation used by Avecilla et al.</p></div></div>
-      <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Measure fluctuations</strong><small>Average conditional variance across 900 transitions</small></span></article><i>→</i><article><b>4</b><span><strong>Match Wright–Fisher drift</strong><small>Obtain <i>N</i><sub>e</sub> = 3.3 × 10<sup>8</sup></small></span></article></div>
+      <div class="ne-simulator-heading"><span>Teaching simulation</span><div><h4>See the variance conversion</h4><p>This compact Wright–Fisher demonstration starts from a chosen <i>N</i><sub>e</sub> and shows how the variance formula recovers it. It does not reproduce the full stochastic chemostat model or compare its output with measured neutral trajectories.</p></div></div>
+      <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat model neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach simulated steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Summarize simulated fluctuations</strong><small>Average conditional variance across 900 transitions</small></span></article><i>→</i><article><b>4</b><span><strong>Translate variance into Wright–Fisher <i>N</i><sub>e</sub></strong><small>Obtain 3.3 × 10<sup>8</sup></small></span></article></div>
       <div class="ne-simulator-grid"><form class="controls" id="chemostat-ne-controls">
-        <div class="preset-row"><button type="button" data-chemostat-ne-preset="9">Avecilla estimate</button><button type="button" data-chemostat-ne-preset="0">Visible drift</button></div>
-        <div class="ne-slider-control"><div class="ne-slider-heading"><label for="chemostat-ne">Actual <i>N</i><sub>e</sub></label><output id="chemostat-ne-label">3.3 × 10⁸ cells</output></div><input id="chemostat-ne" type="range" min="0" max="9" step="1" value="9"><div class="ne-slider-endpoints" aria-hidden="true"><span>10⁴</span><span>3.3 × 10⁸</span></div></div>
+        <div class="preset-row"><button type="button" data-chemostat-ne-preset="9">Avecilla value</button><button type="button" data-chemostat-ne-preset="0">Visible-drift example</button></div>
+        <div class="ne-slider-control"><div class="ne-slider-heading"><label for="chemostat-ne">Chosen <i>N</i><sub>e</sub></label><output id="chemostat-ne-label">3.3 × 10⁸ cells</output></div><input id="chemostat-ne" type="range" min="0" max="9" step="1" value="9"><div class="ne-slider-endpoints" aria-hidden="true"><span>10⁴</span><span>3.3 × 10⁸</span></div></div>
         <label><span>Neutral draws</span><select id="chemostat-ne-draws"><option value="100">100</option><option value="300">300</option><option value="900" selected>900</option></select></label>
         <label><span>Seed</span><input id="chemostat-ne-seed" type="number" min="0" max="99999" value="1633"></label>
-        <div class="button-row"><button id="chemostat-ne-run" type="button">Run neutral simulation</button><button type="reset">Reset</button></div>
+        <div class="button-row"><button id="chemostat-ne-run" type="button">Simulate neutral draws</button><button type="reset">Reset</button></div>
       </form><div class="viz"><canvas id="chemostat-ne-canvas" width="760" height="390" aria-label="Independent neutral next-generation frequency changes used to estimate effective population size"></canvas><p class="ne-axis-note" id="chemostat-ne-axis"></p><p class="plot-summary" id="chemostat-ne-summary" aria-live="polite">The plot starts empty. Run the neutral simulation to build the variance estimate.</p></div></div>
       <div class="ne-calculation" id="chemostat-ne-calculation" aria-live="polite"><article><small>1 · neutral diversity</small><b><i>p</i>(1 − <i>p</i>)</b><strong>—</strong></article><article><small>2 · simulated fluctuation</small><b>Var(<i>p</i>′ | <i>p</i>)</b><strong>—</strong></article><article><small>3 · variance match</small><b><i>N̂</i><sub>e</sub> = <i>p</i>(1 − <i>p</i>) / Var</b><strong>—</strong></article></div>
     </section>'''
@@ -1205,7 +1223,7 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             name = "Chuong" if cid == "66cce2fa" else "Zhou"
             blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the {name} model fit", "", "model-complete-illustration"))
         if key == "evolution" and cid == "d29cac1e":
-            blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate agreement between continuous chemostat and Wright–Fisher simulations", "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics.", "model-complete-illustration"))
+            blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate agreement between continuous chemostat and Wright–Fisher simulations", "", "model-complete-illustration"))
         if key == "evolution" and cid == "f37292e6":
             blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate the completed DFE analysis", "", "model-complete-illustration"))
         if key == "sbi" and cid == "928bf2bf":

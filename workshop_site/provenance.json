@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-14T21:34:57.440685+00:00",
+  "generated_at_utc": "2026-09-14T21:45:59.149010+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -60,7 +60,7 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "e557c1a7c2630d1b8ad2f3bc5afc4275465116aef2fd750c398e2d9db1d5b38f",
+    "evolution.html": "274a9513e1e42b9bb60dbd187f12ab6e28214059af140e04f32de1262926de86",
     "index.html": "76f8438c3ea422a312904f778278018718dd57b5310e3f41e4dd562e7ef35a8e",
     "sbi.html": "eb2ab4054458a3e5f21edd609060eaae80e60ab7cb02cfcfd165e37f3f7937a2"
   },

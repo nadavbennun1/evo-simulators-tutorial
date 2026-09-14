@@ -364,10 +364,11 @@ def test_chapter_one_revision_contract():
     assert "Let <math" in text and "frequency of one neutral allele" in text and "remaining 900 neutral transitions" in text
     assert 'id="chemostat-ne-simulator"' in text and 'id="chemostat-ne-run"' in text and 'id="chemostat-ne-calculation"' in text
     assert 'id="serial-ne-simulator"' in text and 'id="serial-ne-run"' in text and 'id="serial-ne-calculation"' in text
-    assert "Avecilla estimate" in text and "Visible drift" in text and "bottleneck contribution" in text
+    assert "Avecilla value" in text and "Visible-drift example" in text and "bottleneck contribution" in text
     assert 'id="chemostat-ne" type="range" min="0" max="9" step="1"' in text
-    assert "3.3 × 10⁸ cells" in text and "Make the chemostat neutral" in text and "discard 100" in text
+    assert "3.3 × 10⁸ cells" in text and "Make the chemostat model neutral" in text and "discard 100" in text
     assert "did <strong>not</strong> estimate this quantity in a separate neutral-lineage experiment" in text
+    assert "model-generated" in text and "not a match to experimentally" in text
     assert "function effectivePopulationSimulators()" in script and "p * (1 - p) / variance" in script and "generations / reciprocalSum" in script
     assert "chemostatNeValues" in script and "selectedChemostatNe" in script
     assert "more common among new CNVs" not in script
@@ -477,7 +478,8 @@ def test_presentation_revision_contract():
     assert "Effective population size belongs to the life cycle" in evolution
     assert "Serial dilution: derive the harmonic mean from accumulated drift" in evolution
     assert "Why not use one estimator for both experiments?" in evolution
-    assert "biomass yield coefficient" in evolution and "converts biomass production into substrate use" in evolution
+    assert "biomass yield coefficient" in evolution and "converts biomass" in evolution and "production into substrate use" in evolution
+    assert "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics." not in evolution
     assert "WF = ODE?" not in evolution and "Infer mutation rate via SBI?" not in evolution
     assert "Appendix: why the quick fits use perturbed parameters" in evolution
     assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi
