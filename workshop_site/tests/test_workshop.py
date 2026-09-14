@@ -344,7 +344,8 @@ def test_chapter_one_revision_contract():
     assert "n = ____  # (1)" in text and "mutated = ____  # (2)" in text and "weighted = ____  # (3)" in text and "n = ____  # (4)" in text
     assert text.count('class="annotated-code-layout"') == 3 and "equivalent NumPy expressions are accepted" in text
     assert "Chuong chemostat data" in text and "simpler model" in text
-    assert "incoming fresh" in text and "mutation flow" in text and "summation notation is unnecessary" in text
+    assert "incoming fresh" in text and "mutation flow" in text and "realized <strong>per-capita growth rate</strong>" in text
+    assert "summation notation is unnecessary" not in text and "not a mutation rate" in text
     assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
     assert "Lauer et al. (2018)" in text and "journal.pbio.3000069" in text
     assert "Motivation: repeated" in text and "finite populations <strong>sample</strong>" not in text
@@ -356,15 +357,25 @@ def test_chapter_one_revision_contract():
     assert "The three-state Avecilla model misses the LTRΔ structure!" in text and "misses the early LTRΔ structure" not in text
     assert "Chuong&nbsp;WF" in text
     assert "Black-box stress test" not in text and "Can one selection coefficient describe the whole sweep?" in text
-    assert "Let <math" in text and "fraction of cells carrying one label" in text and "t</mi><mo>&#x0003D;</mo><mn>900" in text
+    assert "Let <math" in text and "frequency of one neutral allele" in text and "remaining 900 neutral transitions" in text
     assert 'id="chemostat-ne-simulator"' in text and 'id="chemostat-ne-run"' in text and 'id="chemostat-ne-calculation"' in text
     assert 'id="serial-ne-simulator"' in text and 'id="serial-ne-run"' in text and 'id="serial-ne-calculation"' in text
-    assert "Published scale" in text and "Visible drift" in text and "bottleneck contribution" in text
+    assert "Avecilla estimate" in text and "Visible drift" in text and "bottleneck contribution" in text
+    assert 'id="chemostat-ne" type="range" min="0" max="9" step="1"' in text
+    assert "3.3 × 10⁸ cells" in text and "Make the chemostat neutral" in text and "discard 100" in text
+    assert "did <strong>not</strong> estimate this quantity in a separate neutral-lineage experiment" in text
     assert "function effectivePopulationSimulators()" in script and "p * (1 - p) / variance" in script and "generations / reciprocalSum" in script
+    assert "chemostatNeValues" in script and "selectedChemostatNe" in script
     assert "more common among new CNVs" not in script
     assert "The two solid curves should not coincide" in text
+    assert 'id="de-joint-model"' in text and "What if the two CNVs are modeled jointly?" in text
+    assert "de-epistasis-model.jpg" in text and "de-epistasis-ppc.jpg" in text
+    assert "simpler independent model is" in text and "epistasis" in text
+    assert text.count("modeler-model-success.png") == 4
+    assert "modeler-head-scratching.png" in text
+    assert "Order effect preset makes their non-commutativity visible" not in text
     assert 'id="evolution-references"' in text
-    assert all(label in text for label in ("Lauer et al. (2018)", "Avecilla et al. (2022)", "Chuong et al. (2025)", "De et al. (2025)"))
+    assert all(label in text for label in ("Lauer et al. (2018)", "Avecilla et al. (2022)", "Chuong et al. (2025)", "De et al. (2026)"))
     assert "What does s mean?" in text and "fraction of newly formed CNVs" in text
     assert "recurring grammar" not in text and "The executable mechanism" not in text
     assert text.count("Model-fit preview") == 5
@@ -460,7 +471,8 @@ def test_presentation_revision_contract():
     assert len(re.findall(r'<pre class="annotated-code(?: |")', evolution)) == 4
     assert evolution.count('class="code-fill-list"') == 1
     assert "Effective population size belongs to the life cycle" in evolution
-    assert "Serial dilution: bottlenecks dominate the harmonic mean" in evolution
+    assert "Serial dilution: derive the harmonic mean from accumulated drift" in evolution
+    assert "Why not use one estimator for both experiments?" in evolution
     assert "WF = ODE?" not in evolution and "Infer mutation rate via SBI?" not in evolution
     assert "Appendix: why the quick fits use perturbed parameters" in evolution
     assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi
@@ -469,7 +481,7 @@ def test_presentation_revision_contract():
     assert "paper-figure-wide" not in sbi
     assert "log₁₀ ε" in sbi and "Math.LN10" in script
     assert "const caseOrder = [3, 0, 4, 2, 1]" in script
-    assert "Posterior prediction of CNV-lineage diversity" in sbi
+    assert "Posterior prediction: from one CNV curve to many lineages" in sbi
     assert "Effective diversity" in sbi and "Shannon entropy" in sbi and "3.2" in sbi and "ARSΔ" in sbi
     assert "<h3>References</h3>" in sbi and "Short references" not in sbi
     assert "assets/chapter/chuong-diversity-figure-3b.jpg" in sbi
@@ -478,7 +490,12 @@ def test_presentation_revision_contract():
     assert 'class="mini-posterior-density"' in sbi
     assert "typeset-story-equation" in sbi
     assert "Several mechanisms can match the sampled trajectory" in sbi
-    assert "ten equally abundant lineages" in sbi and 'class="diversity-calculation"' in sbi
+    assert "split evenly among ten lineages" in sbi and 'id="diversity-lab"' in sbi
+    assert "chuong-figure-4e.jpg" in sbi and "molecularly resolved 177" in sbi
+    assert "function diversityPredictionLab()" in script and "Math.exp(entropy)" in script
+    assert "modeler-posterior-rescue.png" in sbi and "modeler-replicates.png" in sbi
+    assert "modeler-posterior-success.png" in sbi and "take-home-visual" in sbi
+    assert "flexible-npe-time-embedding.svg" in sbi
     assert "<strong>Important:</strong> inference is not finished" in sbi
     assert "∝" not in evolution + sbi
     assert "MathJax" in sbi and "mml-chtml.js" in sbi
@@ -495,7 +512,7 @@ def test_presentation_revision_contract():
         assert removed not in evolution + sbi
     for doi in (
         "10.1371/journal.pbio.3001633", "10.7554/eLife.98934",
-        "10.1101/2025.07.21.665951", "10.1371/journal.pcbi.1014534",
+        "10.1093/molbev/msag095", "10.1371/journal.pcbi.1014534",
         "10.21105/joss.02505",
     ):
         assert doi in evolution + sbi

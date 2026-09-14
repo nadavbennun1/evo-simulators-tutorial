@@ -239,21 +239,24 @@
 
     const chemoNe = $("#chemostat-ne"), chemoDraws = $("#chemostat-ne-draws"), chemoSeed = $("#chemostat-ne-seed");
     const chemoCards = $$("#chemostat-ne-calculation article strong");
+    const chemostatNeValues = [1e4, 10 ** 4.5, 1e5, 10 ** 5.5, 1e6, 10 ** 6.5, 1e7, 10 ** 7.5, 1e8, 3.3e8];
+    const selectedChemostatNe = () => chemostatNeValues[Math.max(0, Math.min(chemostatNeValues.length - 1, Math.round(+chemoNe.value)))];
+    const actualNeLabel = value => value === 3.3e8 ? "3.3 × 10⁸ cells" : `${Number((value / (10 ** Math.floor(Math.log10(value)))).toFixed(2))} × 10${String(Math.floor(Math.log10(value))).replace(/0/g,"⁰").replace(/1/g,"¹").replace(/2/g,"²").replace(/3/g,"³").replace(/4/g,"⁴").replace(/5/g,"⁵").replace(/6/g,"⁶").replace(/7/g,"⁷").replace(/8/g,"⁸").replace(/9/g,"⁹")} cells`;
     let chemoTimer = null, chemoStarted = false, chemoVisible = 0, chemoChanges = [];
 
     function prepareChemostat() {
-      const nEff = Math.round(10 ** (+chemoNe.value)), total = +chemoDraws.value;
+      const nEff = Math.round(selectedChemostatNe()), total = +chemoDraws.value;
       const R = S.mulberry32(+chemoSeed.value || 0), p = 0.5;
       chemoChanges = Array.from({length: total}, () => binomial(nEff, p, R) / nEff - p);
     }
 
     function drawChemostat() {
-      const nEff = Math.round(10 ** (+chemoNe.value)), total = +chemoDraws.value, p = 0.5;
+      const nEff = Math.round(selectedChemostatNe()), total = +chemoDraws.value, p = 0.5;
       const theoreticalSd = Math.sqrt(p * (1 - p) / nEff);
       const multiplier = theoreticalSd < 1e-4 ? 1e5 : theoreticalSd < 1e-3 ? 1e4 : theoreticalSd < 1e-2 ? 1e3 : 1e2;
       const limit = 4.25 * theoreticalSd * multiplier;
       const f = P.frame(chemostatCanvas, -limit, limit, 1, total);
-      $("#chemostat-ne-label").textContent = (+chemoNe.value).toFixed(2);
+      $("#chemostat-ne-label").textContent = actualNeLabel(nEff);
       $("#chemostat-ne-axis").textContent = `Vertical axis: (p′ − p) × ${multiplier.toLocaleString()}. The horizontal line is no frequency change.`;
       P.line(f, [1, total], [0, 0], P.C.muted, 1.4, 1, [5, 4]);
       P.text(f, "independent neutral draws →", Math.max(2, total * 0.03), limit * 0.9, {color:P.C.muted, font:"11px system-ui"});

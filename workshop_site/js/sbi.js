@@ -322,8 +322,84 @@
     }
   }
 
+  function diversityPredictionLab() {
+    const canvas = $("#diversity-lineage-canvas");
+    if (!canvas) return;
+    const slider = $("#diversity-generation"), palette = ["#577d91", "#b56a50", "#c59b4f", "#315f52", "#8e6bbf", "#54a58a", "#df835e", "#79a9c5", "#b9a35d", "#765d8f", "#8aba6f", "#d06077"];
+    const settings = {
+      "WT": {lineages: 36, midpoint: 58, slope: .071, births: 84},
+      "LTRΔ": {lineages: 28, midpoint: 63, slope: .074, births: 88},
+      "ALLΔ": {lineages: 20, midpoint: 69, slope: .078, births: 92},
+      "ARSΔ": {lineages: 13, midpoint: 75, slope: .083, births: 96}
+    };
+    let strain = "WT", timer = null;
+    const lineagesFor = name => Array.from({length: settings[name].lineages}, (_, i) => {
+      const birth = 7 + Math.round(settings[name].births * ((i + .35) / settings[name].lineages) ** 1.18);
+      return {birth, death: i % 5 === 2 ? Math.min(116, birth + 13 + (i * 7) % 24) : 117,
+        rate: .024 + .007 * (.5 + .5 * Math.sin(i * 2.17 + name.length)),
+        weight: .72 + .5 * (.5 + .5 * Math.cos(i * 1.73)), color: palette[i % palette.length]};
+    });
+
+    function stateAt(generation, members) {
+      const total = generation < 7 ? 0 : .965 / (1 + Math.exp(-settings[strain].slope * (generation - settings[strain].midpoint)));
+      const active = members.filter(item => item.birth <= generation && generation < item.death);
+      const raw = active.map(item => item.weight * Math.exp(item.rate * (generation - item.birth)));
+      const sum = raw.reduce((a, b) => a + b, 0) || 1;
+      return {total, active, shares: raw.map(value => value / sum)};
+    }
+
+    function draw() {
+      const generation = +slider.value, members = lineagesFor(strain), xs = Array.from({length: 117}, (_, i) => i);
+      const f = P.frame(canvas, 0, 1, 0, 116), histories = xs.map(g => stateAt(g, members));
+      const {ctx, X, Y} = f;
+      members.forEach((member, i) => {
+        const top = [], bottom = [];
+        for (let g = 0; g <= generation; g++) {
+          const state = histories[g], position = state.active.indexOf(member);
+          const before = position < 0 ? 0 : state.shares.slice(0, position).reduce((a, b) => a + b, 0);
+          const own = position < 0 ? 0 : state.shares[position];
+          bottom.push(state.total * before); top.push(state.total * (before + own));
+        }
+        ctx.save(); ctx.globalAlpha = .82; ctx.fillStyle = member.color; ctx.beginPath();
+        top.forEach((value, g) => g ? ctx.lineTo(X(g), Y(value)) : ctx.moveTo(X(g), Y(value)));
+        for (let g = generation; g >= 0; g--) ctx.lineTo(X(g), Y(bottom[g]));
+        ctx.closePath(); ctx.fill(); ctx.restore();
+      });
+      const totals = histories.map(state => state.total);
+      P.line(f, xs, totals, P.C.ink, 2.4, .28, [5, 4]);
+      P.line(f, [generation, generation], [0, 1], P.C.ink, 1.2, .7, [4, 4]);
+      P.text(f, "CNV frequency", 2, .96, {color:P.C.muted, font:"bold 11px system-ui"});
+      P.text(f, "generation", 102, .05, {color:P.C.muted, font:"11px system-ui"});
+
+      const selected = stateAt(generation, members), entropy = -selected.shares.reduce((sum, share) => sum + (share > 0 ? share * Math.log(share) : 0), 0), effective = selected.shares.length ? Math.exp(entropy) : 0;
+      $("#diversity-generation-label").textContent = String(generation);
+      $("#diversity-total").textContent = `${(100 * selected.total).toFixed(selected.total < .1 ? 1 : 0)}% CNV`;
+      $("#diversity-lineages").textContent = `${selected.active.length} colored ${selected.active.length === 1 ? "lineage" : "lineages"} present`;
+      $("#diversity-effective").textContent = `D = ${effective.toFixed(effective < 10 ? 1 : 0)}`;
+      $("#diversity-explanation").textContent = selected.active.length ? `${selected.active.length} lineages survive, but their unequal shares behave like ${effective.toFixed(1)} equally abundant lineages.` : "Advance time to form CNV lineages.";
+      const ranked = selected.shares.map((share, i) => ({share, color:selected.active[i].color})).sort((a,b) => b.share-a.share);
+      const shown = ranked.slice(0, 10), other = ranked.slice(10).reduce((sum, item) => sum + item.share, 0);
+      $("#diversity-share-bar").innerHTML = shown.map((item, i) => `<i style="width:${(100 * item.share).toFixed(2)}%;background:${item.color}" title="Lineage ${i + 1}: ${(100 * item.share).toFixed(1)}%"></i>`).join("") + (other ? `<i class="other-lineages" style="width:${(100 * other).toFixed(2)}%" title="Other lineages: ${(100 * other).toFixed(1)}%"></i>` : "");
+    }
+
+    function stop(label = "Play lineage history") { if (timer) clearInterval(timer); timer = null; $("#diversity-play").textContent = label; }
+    slider.addEventListener("input", () => { stop(); draw(); });
+    $$("[data-diversity-strain]").forEach(button => button.addEventListener("click", () => {
+      strain = button.dataset.diversityStrain; $$("[data-diversity-strain]").forEach(node => { const on = node === button; node.classList.toggle("active", on); node.setAttribute("aria-pressed", String(on)); }); slider.value = 0; stop(); draw();
+    }));
+    $("#diversity-play").addEventListener("click", () => {
+      if (timer) { stop("Resume"); return; }
+      if (+slider.value >= 116) slider.value = 0;
+      $("#diversity-play").textContent = "Pause";
+      timer = setInterval(() => { slider.value = Math.min(116, +slider.value + 2); draw(); if (+slider.value >= 116) stop("Play again"); }, 85);
+    });
+    $("#diversity-reset").addEventListener("click", () => { slider.value = 0; stop(); draw(); });
+    addEventListener("resize", draw); draw();
+  }
+
   trainingViewer().catch(console.error);
   collectiveLab().catch(console.error);
   zhouDesigner().catch(console.error);
   abcAndPpcExercises().catch(console.error);
+  diversityPredictionLab();
 })();

@@ -47,7 +47,7 @@ PAPERS = {
     "lauer": ("Lauer et al. (2018)", "https://doi.org/10.1371/journal.pbio.3000069"),
     "avecilla": ("Avecilla et al. (2022)", "https://doi.org/10.1371/journal.pbio.3001633"),
     "chuong": ("Chuong et al. (2025)", "https://doi.org/10.7554/eLife.98934"),
-    "de": ("De et al. (2025)", "https://doi.org/10.1101/2025.07.21.665951"),
+    "de": ("De et al. (2026)", "https://doi.org/10.1093/molbev/msag095"),
     "collective": ("Ben Nun et al. (2026)", "https://doi.org/10.1371/journal.pcbi.1014534"),
     "sbi": ("Tejero-Cantero et al. (2020)", "https://doi.org/10.21105/joss.02505"),
     "tavare": ("Tavaré et al. (1997)", "https://doi.org/10.1093/genetics/145.2.505"),
@@ -286,12 +286,15 @@ predictive diagnostic of the simpler model.''',
 
 A chemostat has overlapping generations and nutrient-limited growth. The model tracks ancestral,
 CNV, and other-beneficial cells together with the limiting-substrate concentration $S(t)$ inside
-the vessel. The paper writes one equation for each genotype; summation notation is unnecessary for
-these three states. Nutrient availability first sets each genotype's realized growth rate:
+the vessel. Nutrient availability first sets each genotype's realized growth rate:
 
 $$\mu_i(S)=r_i\frac{S}{S+k}$$
 
-Each population equation is then ordinary biological accounting: growth minus washout, with
+Here $\mu_i(S)$ is the realized **per-capita growth rate** of genotype $i$ at the substrate
+concentration currently in the vessel, measured per hour. It is not a mutation rate. The parameter
+$r_i$ is that genotype's maximum growth rate, and $k$ is the substrate concentration at which its
+realized rate is half of $r_i$. Each population equation is then ordinary biological accounting:
+growth minus washout, with
 mutation moving ancestral cells into the two beneficial states.
 
 $$\frac{dX_A}{dt}=X_A\bigl(\mu_A(S)-D\bigr)-\delta_CX_A-\delta_BX_A$$
@@ -843,38 +846,44 @@ experiment. It is not automatically the largest cell count—or even the census 
 
 ### Chemostat: match the variance of neutral frequency change
 
-{paper("avecilla")} estimated the drift scale by labeling two otherwise identical, neutral
-lineages. Let $p$ be the fraction of cells carrying one label in the **current** generation; the
-other label has frequency $1-p$. Let $p'$ be the fraction carrying that same label one generation
-later. Because neither label has a fitness advantage, changes from $p$ to $p'$ measure drift alone.
-Here, $p$ is simply a lineage frequency—not a model parameter and not the CNV frequency.
+{paper("avecilla")} did **not** estimate this quantity in a separate neutral-lineage experiment.
+They calibrated it inside the stochastic chemostat model. The authors replaced the selected
+genotypes with two neutral alleles, initialized both at frequency $p=q=0.5$, simulated 1,000
+generations, discarded the first 100 while the vessel approached steady state, and measured the
+remaining 900 neutral transitions.
+
+Let $p$ be the frequency of one neutral allele in the **current simulated population**, and let
+$p'$ be its frequency one generation later. Because the alleles have identical biological rates,
+changes from $p$ to $p'$ isolate the stochasticity created by birth, death, and washout in the
+chemostat. Here $p$ is a neutral-allele frequency—not a fitted parameter and not the CNV frequency.
 
 For an ideal haploid Wright–Fisher population, the one-generation variance is
 
 $$\mathrm{{Var}}(p'\mid p)=\frac{{p(1-p)}}{{N_e}}.$$
 
-Large random changes imply a small $N_e$; small changes imply a large $N_e$. The neutral lineages
-begin at $p=1/2$. After the chemostat reaches steady state, the analysis retains $t=900$
-generation-to-generation transitions. For transition $j$, $p_j$ is the current frequency and
-$p'_j=p_{{j+1}}$ is the next frequency. Their conditional variances are averaged:
+Large random changes imply a small $N_e$; small changes imply a large $N_e$. For each retained
+generation $j$, the model records the current frequency $p_j$, evaluates the conditional variance
+of the next frequency $p'_j$, and averages that quantity across the 900 retained generations:
 
 $$\overline V=\frac1t\sum_{{j=1}}^t\mathrm{{Var}}(p'_j\mid p_j).$$
 
-The Wright–Fisher population size is then chosen to reproduce that average chemostat variance:
+The ideal Wright–Fisher population size is chosen to reproduce that average chemostat variance:
 
 $$\widehat N_e=\frac{{p(1-p)}}{{\overline V}}.$$
 
-The paper writes an unsubscripted $p$ in this last expression: it is the neutral-lineage frequency
-at which the Wright–Fisher variance is matched. In this very large population it remains close to
-its initial value $1/2$; $p_j$ identifies the frequency in a particular retained transition.
+The paper writes an unsubscripted $p$ in the numerator because the neutral simulation starts at
+$p=0.5$ and changes very little at this enormous population size. The estimator is therefore a
+**simulation calibration**: find the Wright–Fisher size that produces the same neutral variance as
+the continuous chemostat model under the actual experimental dilution and growth conditions.
 
 Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the steady-state census.'''
 
     chemostat_simulator = '''<section class="ne-simulator" id="chemostat-ne-simulator">
-      <div class="ne-simulator-heading"><span>Simulation 1</span><div><h4>Estimate <i>N</i><sub>e</sub> from neutral fluctuations</h4><p>Each point is an independent next generation drawn from the same neutral population at <i>p</i> = 0.5. The vertical displacement is <i>p</i>′ − <i>p</i>. Repeating the draw reveals its variance.</p></div></div>
+      <div class="ne-simulator-heading"><span>Teaching simulation</span><div><h4>See the variance match</h4><p>This compact Wright–Fisher demonstration checks the last step of the paper's calibration. It is not the full continuous chemostat simulation used by Avecilla et al.</p></div></div>
+      <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Measure fluctuations</strong><small>Average conditional variance across 900 transitions</small></span></article><i>→</i><article><b>4</b><span><strong>Match Wright–Fisher drift</strong><small>Obtain <i>N</i><sub>e</sub> = 3.3 × 10<sup>8</sup></small></span></article></div>
       <div class="ne-simulator-grid"><form class="controls" id="chemostat-ne-controls">
-        <div class="preset-row"><button type="button" data-chemostat-ne-preset="8.5185">Published scale</button><button type="button" data-chemostat-ne-preset="4">Visible drift</button></div>
-        <label><span>Simulated log₁₀(<i>N</i><sub>e</sub>)</span><output id="chemostat-ne-label">8.52</output><input id="chemostat-ne" type="range" min="4" max="8.5185" step="0.0001" value="8.5185"></label>
+        <div class="preset-row"><button type="button" data-chemostat-ne-preset="9">Avecilla estimate</button><button type="button" data-chemostat-ne-preset="0">Visible drift</button></div>
+        <label><span>Actual <i>N</i><sub>e</sub></span><output id="chemostat-ne-label">3.3 × 10⁸ cells</output><input id="chemostat-ne" type="range" min="0" max="9" step="1" value="9" aria-describedby="chemostat-ne-scale"><span class="log-slider-scale"><small>10⁴</small><small>3.3 × 10⁸</small></span><small class="log-slider-note" id="chemostat-ne-scale">Half-order steps · two per order of magnitude</small></label>
         <label><span>Neutral draws</span><select id="chemostat-ne-draws"><option value="100">100</option><option value="300">300</option><option value="900" selected>900</option></select></label>
         <label><span>Seed</span><input id="chemostat-ne-seed" type="number" min="0" max="99999" value="1633"></label>
         <div class="button-row"><button id="chemostat-ne-run" type="button">Run neutral simulation</button><button type="reset">Reset</button></div>
@@ -882,10 +891,31 @@ Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the ste
       <div class="ne-calculation" id="chemostat-ne-calculation" aria-live="polite"><article><small>1 · neutral diversity</small><b><i>p</i>(1 − <i>p</i>)</b><strong>—</strong></article><article><small>2 · simulated fluctuation</small><b>Var(<i>p</i>′ | <i>p</i>)</b><strong>—</strong></article><article><small>3 · variance match</small><b><i>N̂</i><sub>e</sub> = <i>p</i>(1 − <i>p</i>) / Var</b><strong>—</strong></article></div>
     </section>'''
 
-    serial_text = fr'''### Serial dilution: bottlenecks dominate the harmonic mean
+    serial_text = fr'''### Serial dilution: derive the harmonic mean from accumulated drift
 
-{paper("de")} used 1:64 transfers, corresponding to six doublings per cycle. For generation-level
-sizes $N_0,\ldots,N_5$, the appropriate cycle summary is
+In a batch culture the number of cells changes sharply within every transfer cycle. A generation
+containing $N_g$ cells contributes approximately
+
+$$\mathrm{{Var}}_g(p'\mid p)=\frac{{p(1-p)}}{{N_g}}$$
+
+to neutral drift. Variance accumulates across the $G$ generations in a cycle, so the total is
+
+$$p(1-p)\sum_{{g=0}}^{{G-1}}\frac1{{N_g}}.$$
+
+Now define one constant ideal population that accumulates the same drift over those same $G$
+generations. Its total contribution would be $G\,p(1-p)/N_e^{{cycle}}$. Equating the two totals and
+cancelling $p(1-p)$ gives
+
+$$\frac{{G}}{{N_e^{{cycle}}}}=\sum_{{g=0}}^{{G-1}}\frac1{{N_g}}
+\qquad\Longrightarrow\qquad
+N_e^{{cycle}}=\frac{{G}}{{\sum_{{g=0}}^{{G-1}}1/N_g}}.$$
+
+That is the harmonic mean. It appears because drift accumulates in proportion to $1/N_g$, so the
+small populations immediately after transfer matter much more than the large population before
+the next transfer.
+
+{paper("de")} used 1:64 transfers, corresponding to $G=6$ doublings per cycle. For
+$N_0,\ldots,N_5$ the calculation becomes
 
 $$N_e^{{cycle}}=\frac6{{\sum_{{g=0}}^5 1/N_g}}.$$
 
@@ -904,7 +934,7 @@ because drift is strongest when the culture is smallest.'''
       <div class="ne-calculation" id="serial-ne-calculation" aria-live="polite"><article><small>1 · reciprocal sum</small><b>Σ 1/<i>N</i><sub>g</sub></b><strong>—</strong></article><article><small>2 · harmonic mean</small><b><i>N</i><sub>e</sub><sup>cycle</sup> = <i>G</i> / Σ(1/<i>N</i><sub>g</sub>)</b><strong>—</strong></article><article><small>3 · bottleneck contribution</small><b>(1/<i>N</i><sub>0</sub>) / Σ(1/<i>N</i><sub>g</sub>)</b><strong>—</strong></article></div>
     </section>'''
 
-    contrast = math_to_html(r'''<div class="ne-contrast"><span><b>Chemostat</b> infer $N_e$ from neutral variance at steady state</span><i>vs.</i><span><b>Serial dilution</b> harmonically average the changing population sizes</span></div>''')
+    contrast = math_to_html(r'''<div class="ne-method-contrast"><h3>Why not use one estimator for both experiments?</h3><div><article><b>Continuous chemostat</b><p>Birth, nutrient-limited growth, death, and washout overlap at an approximately steady census. There is no known sequence of discrete generation sizes to average, so the full demographic process is simulated and its neutral variance is matched.</p></article><span>different life cycles<br>create drift differently</span><article><b>Serial dilution</b><p>The experiment imposes a known bottleneck followed by discrete doublings. Because each generation's drift contribution is proportional to $1/N_g$, the matching constant size is obtained directly from the harmonic mean.</p></article></div><p>A census average describes how many cells were present. An effective size describes how strongly the life cycle randomizes allele frequencies; the estimator must therefore follow that life cycle.</p></div>''')
     return f'<section class="lesson-cell prose-cell ne-section" id="effective-population-size">{math_to_html(introduction)}{chemostat_simulator}{math_to_html(serial_text)}{serial_simulator}{contrast}</section>'
 
 
@@ -917,51 +947,95 @@ def inverse_problem_figure() -> str:
     </section>'''
 
 
+def de_epistasis_section() -> str:
+    """Explain the joint two-CNV extension tested in the De supplement."""
+    model = versioned_asset("assets/chapter/de-epistasis-model.jpg")
+    checks = versioned_asset("assets/chapter/de-epistasis-ppc.jpg")
+    source = fr'''<section class="lesson-cell prose-cell epistasis-box" id="de-joint-model">
+<p class="section-kicker">A natural extension</p>
+<h2>What if the two CNVs are modeled jointly?</h2>
+<p>Some De et al. strains carried both the <em>GAP1</em> amplification and the <em>MEP2</em>
+amplification. Their supplement therefore considered four joint genotypes: both CNVs present,
+only <em>GAP1</em> reverted, only <em>MEP2</em> reverted, and both reverted. In the fully general model,
+the rate of losing one CNV and the fitness of the resulting genotype may depend on whether the
+other CNV is still present. That dependence is where epistasis can enter.</p>
+<figure class="paper-figure compact-paper-figure"><img loading="lazy" src="{model}" alt="Four-state joint model for GAP1 and MEP2 CNV reversion"><figcaption>Joint genotype states and the two possible orders of CNV reversion. {paper_html("de")} · Supplementary Fig. S6.</figcaption></figure>
+<p>The simpler null model makes two independence assumptions: joint fitness is the product of the
+single-CNV fitness effects, and each CNV has the same reversion rate whether or not the other CNV
+is present. Posterior predictions from parameters inferred separately for <em>GAP1</em> and
+<em>MEP2</em> reproduced the double-CNV trajectories reasonably well.</p>
+<figure class="paper-figure de-ppc-figure"><img loading="lazy" src="{checks}" alt="Posterior predictive checks for strains carrying both GAP1 and MEP2 CNVs"><figcaption>Observed joint trajectories and predictions from the independent-effects model. {paper_html("de")} · Supplementary Fig. S7.</figcaption></figure>
+<aside class="measured-conclusion"><strong>Conclusion.</strong> The data do not prove that epistasis
+is absent; a richer epistatic model is possible. They show that the simpler independent model is
+sufficient at the resolution of these trajectories, so ten extra joint-model parameters are not
+yet justified.</aside>
+</section>'''
+    return math_to_html(source)
+
+
 def posterior_prediction_section() -> str:
-    """Connect parameter inference to a derived biological prediction."""
-    figure_url = versioned_asset("assets/chapter/chuong-diversity-figure-3b.jpg")
-    source = fr'''## Posterior prediction of CNV-lineage diversity
+    """Connect parameter inference to the lineage-diversity prediction in Chuong et al."""
+    diversity = versioned_asset("assets/chapter/chuong-diversity-figure-3b.jpg")
+    molecular = versioned_asset("assets/chapter/chuong-figure-4e.jpg")
+    source = fr'''## Posterior prediction: from one CNV curve to many lineages
 
-Parameter estimation is often only an intermediate step. Posterior prediction propagates every
-plausible parameter value through the simulator and then calculates a quantity that was not used
-as the inference target.
+The fluorescence measurement reports the **total fraction of CNV cells**. It cannot tell whether
+that fraction contains one successful CNV lineage or thousands of independently formed lineages.
+In {paper("chuong")}, parameters inferred from the total-frequency trajectories were passed back
+through a lineage-resolved simulator to predict that hidden diversity.
 
-### Purpose
+### First, what counts as a lineage?
 
-In {paper("chuong")}, CNV-frequency trajectories constrain formation rate and selection. The fitted
-model is then used to ask a different biological question: **how many effectively distinct CNV
-lineages should coexist through time?**
+Every independent CNV formation event starts a new lineage. Its descendants keep the same lineage
+identity. At a chosen generation, divide each lineage's cell count by the total number of CNV cells:
+$f_i=n_i/\sum_j n_j$. These shares—not the fraction of the whole culture—are the input to diversity.
 
-<figure class="diversity-prediction-figure">
-  <img loading="eager" fetchpriority="high" width="1000" height="961" src="{figure_url}" alt="Chuong Figure 3B showing posterior predictions of CNV Shannon diversity through time for wild type, LTR deletion, ARS deletion, and ALL deletion strains">
-  <figcaption>The vertical axis is logarithmic and reports the effective number of CNV lineages; curves show the posterior mean. {paper_html("chuong")} · Fig. 3B.</figcaption>
-</figure>
+<div class="diversity-algorithm" aria-label="Lineage diversity algorithm">
+  <ol><li><b>Form</b><span>Each new CNV event receives a new color.</span></li><li><b>Grow</b><span>Selection changes the number of descendants in every color.</span></li><li><b>Sample</b><span>Finite-population drift changes which colors persist.</span></li><li><b>Summarize</b><span>Convert the surviving color shares into an effective count.</span></li></ol>
+  <pre aria-label="Pseudocode for posterior prediction of CNV lineage diversity"><code>for each posterior parameter draw:
+    simulate independently formed CNV lineages
+    for each generation:
+        form new lineages
+        grow lineages under selection
+        sample the finite next population
+        f = lineage_counts / all_CNV_cells
+        diversity = exp(-sum(f * log(f)))</code></pre>
+</div>
+
+<section class="diversity-lab" id="diversity-lab" aria-labelledby="diversity-lab-title">
+  <header><p class="section-kicker">Dynamic calculation</p><h3 id="diversity-lab-title">Watch the total CNV population split into lineages</h3><p>This scaled teaching population shows the calculation; it is not a redraw of the paper's absolute lineage counts.</p></header>
+  <div class="diversity-strains" role="group" aria-label="Choose strain architecture"><button type="button" class="active" data-diversity-strain="WT" aria-pressed="true">WT</button><button type="button" data-diversity-strain="LTRΔ" aria-pressed="false">LTRΔ</button><button type="button" data-diversity-strain="ALLΔ" aria-pressed="false">ALLΔ</button><button type="button" data-diversity-strain="ARSΔ" aria-pressed="false">ARSΔ</button></div>
+  <div class="diversity-lab-grid"><div class="viz"><canvas id="diversity-lineage-canvas" width="820" height="430" aria-label="Colored CNV lineage shares changing through generations"></canvas><label class="diversity-time"><span>Generation</span><output id="diversity-generation-label">0</output><input id="diversity-generation" type="range" min="0" max="116" step="1" value="0"></label><div class="button-row"><button id="diversity-play" type="button">Play lineage history</button><button id="diversity-reset" type="button">Reset</button></div></div><div class="diversity-live-calculation" aria-live="polite"><article><small>Total reporter signal</small><strong id="diversity-total">0% CNV</strong><p>The frequency curve combines every colored lineage.</p></article><article><small>Lineage shares</small><strong id="diversity-lineages">0 present</strong><div id="diversity-share-bar" class="diversity-share-bar" aria-label="Relative shares among CNV lineages"></div></article><article><small>Effective number</small><strong id="diversity-effective">D = 0</strong><p id="diversity-explanation">Advance time to form CNV lineages.</p></article></div></div>
+</section>
+
+For a population split evenly among ten lineages, the effective number is ten. If one lineage takes
+most of the CNV cells, the effective number falls even if ten colors remain detectable:
+
+Shannon entropy $H$ summarizes the evenness of the lineage shares. **Effective diversity** $D$
+exponentiates that entropy and returns it to intuitive lineage-count units.
+
+$$H(t)=-\sum_i f_i(t)\log f_i(t),\qquad D(t)=\exp[H(t)].$$
+
+### The molecular evidence behind the colors
+
+<figure class="paper-figure diversity-molecular-figure"><img loading="lazy" src="{molecular}" alt="Chuong Figure 4E showing distinct GAP1 CNV breakpoint pairs, mechanisms, and copy numbers in four strain architectures"><figcaption>Sequenced CNV clones occupy many breakpoint positions, use several formation mechanisms, and carry different copy numbers. Each point is molecular evidence that a single reporter-positive class contains distinct CNV alleles. {paper_html("chuong")} · Fig. 4E.</figcaption></figure>
+
+The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
+CNVs. Figure 4E validates the biological premise that the fluorescent trajectory pools many
+different alleles. It does not directly count every lineage in the evolving population; that larger
+number remains a posterior prediction from the lineage-resolved simulator.
+
+### Published prediction
+
+<figure class="diversity-prediction-figure"><img loading="eager" fetchpriority="high" width="1000" height="961" src="{diversity}" alt="Chuong Figure 3B showing posterior predictions of effective CNV lineage diversity through time"><figcaption>Posterior mean effective CNV-lineage diversity through time; the vertical axis is logarithmic. {paper_html("chuong")} · Fig. 3B.</figcaption></figure>
 
 <div class="diversity-rank" aria-label="Predicted final diversity rank"><span class="diversity-wt">WT <b>highest</b></span><i>›</i><span class="diversity-ltr">LTRΔ</span><i>›</i><span class="diversity-all">ALLΔ</span><i>›</i><span class="diversity-ars">ARSΔ <b>lowest</b></span></div>
 
-### Calculation
-
-At one time point, the simulator gives the fraction $f_i(t)$ carried by each CNV lineage. A simple
-lineage count would treat a lineage at 40% frequency exactly like one at 0.001%. Shannon entropy
-instead uses the complete frequency distribution, so abundant lineages contribute more than rare
-ones.
-
-<div class="diversity-calculation" aria-label="Three steps from lineage frequencies to effective diversity"><span><b>1</b><strong>Lineage fractions</strong><small>$f_1(t),f_2(t),\ldots$ sum to one</small></span><i>→</i><span><b>2</b><strong>Shannon entropy</strong><small>summarizes how evenly frequency is distributed</small></span><i>→</i><span><b>3</b><strong>Effective diversity</strong><small>converts entropy back to a lineage count</small></span></div>
-
-$$H^{{(m)}}(t)=-\sum_i f_i^{{(m)}}(t)\log f_i^{{(m)}}(t),\qquad
-D^{{(m)}}(t)=\exp\!\left[H^{{(m)}}(t)\right]$$
-
-The interpretation is direct: ten equally abundant lineages give $D=10$. If a few lineages
-dominate the same population, $D$ is smaller. The calculation is repeated for every posterior draw
-$m$, producing uncertainty in diversity at each time point.
-
-### Result
-
-Predicted diversity rises rapidly during selection and then saturates. At the final time point it
-ranges from about $1.6\times10^4$ lineages for ARSΔ to $3.2\times10^5$ for wild type, with the rank
-order **WT > LTRΔ > ALLΔ > ARSΔ**, mirroring inferred CNV formation rates. Because this model omits
-competition, clonal interference, and recurrent formation, the absolute values are likely
-overestimates; the between-strain comparison is the more defensible prediction.
+At the final sampled generation, predicted effective diversity ranged from approximately
+$1.6\times10^4$ lineages for ARSΔ to $3.2\times10^5$ for wild type. The ordering follows the
+inferred formation rates: more formation events seed more independent lineages. The model omits
+competition among CNVs, clonal interference, and recurrent formation, so the authors emphasize the
+between-strain ranking more strongly than the absolute counts.
 '''
     return f'<section class="lesson-cell prose-cell prediction-box" id="posterior-predictions">{math_to_html(source)}</section>'
 
@@ -974,6 +1048,30 @@ def evolution_references() -> str:
 - {paper("chuong")} — standing CNV variation and lineage-diversity predictions
 - {paper("de")} — CNV stability and reversion during serial dilution'''
     return f'<section class="lesson-cell prose-cell chapter-references" id="evolution-references">{math_to_html(source)}</section>'
+
+
+def chapter_illustration(asset: str, alt: str, caption: str = "", modifier: str = "") -> str:
+    caption_html = f"<figcaption>{html.escape(caption)}</figcaption>" if caption else ""
+    return f'''<figure class="chapter-illustration {modifier}"><img loading="lazy" src="{versioned_asset(f'assets/chapter/{asset}')}" alt="{html.escape(alt)}">{caption_html}</figure>'''
+
+
+def flexible_npe_figure() -> str:
+    return chapter_illustration(
+        "flexible-npe-time-embedding.svg",
+        "Irregular observations and their times, mask, and experimental context pass through a time-aware embedding into one neural posterior estimator",
+        "A time-aware embedding turns each measured value, its time, its observation mask, and its experimental context into one summary for flexible posterior inference.",
+        "chapter-illustration-wide flexible-npe-illustration",
+    )
+
+
+def take_home_visual() -> str:
+    panels = [
+        ("modeler-model-success.png", "Mechanistic model agrees with observed evolutionary trajectories"),
+        ("modeler-posterior-rescue.png", "Simulation-based inference turns trajectories into posterior uncertainty"),
+        ("modeler-posterior-success.png", "Researchers evaluate posterior distributions and uncertainty"),
+    ]
+    images = "".join(f'<img loading="lazy" src="{versioned_asset(f"assets/chapter/{asset}")}" alt="{alt}">' for asset, alt in panels)
+    return f'''<figure class="take-home-visual"><div>{images}</div><figcaption>Mechanism → posterior uncertainty → a biological conclusion that survives predictive checks.</figcaption></figure>'''
 
 
 def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, list[dict]]:
@@ -990,6 +1088,16 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             coverage.append({"index": index, "cell_id": cid, "type": cell.cell_type,
                              "status": "excluded", "reason": "empty cell"})
             continue
+        if key == "evolution" and cid == "54e9f8de":
+            blocks.append(chapter_illustration("modeler-head-scratching.png", "An evolutionary biologist connects a genotype model to observed trajectories", "A plausible mechanism is a hypothesis. The first fit asks whether it can reproduce the data."))
+        if key == "sbi" and cid == "fa1ab176":
+            blocks.append(chapter_illustration("modeler-posterior-rescue.png", "A posterior distribution resolves uncertainty left by several plausible evolutionary trajectories", "The inverse problem needs a distribution over plausible explanations, not one curve chosen by eye."))
+        if key == "sbi" and cid == "zhou-flex-intro":
+            blocks.append(flexible_npe_figure())
+        if key == "sbi" and cid == "928bf2bf":
+            blocks.append(chapter_illustration("modeler-replicates.png", "Researchers compare evolutionary trajectories from several replicate populations", "Replicates contain shared biological information, but they need not agree perfectly."))
+        if key == "sbi" and cid == "3fce18ac":
+            blocks.append(take_home_visual())
         anchor = f'cell-{cid}'
         if cell.cell_type == "markdown":
             curated = curated_markdown(key, cid, source)
@@ -1039,12 +1147,19 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(chuong_equation_exercise())
         if key == "evolution" and cid == "6cfee4f5":
             blocks.append(chuong_standing_variation_section())
+        if key == "evolution" and cid == "2539f7c5":
+            blocks.append(de_epistasis_section())
         if key == "evolution" and cid == "b4a01787":
             blocks.append(model_equivalence_section())
         if key == "sbi" and cid == "fa1ab176":
             blocks.append(prior_design_section())
         if key == "sbi" and cid == "098a16bd":
             blocks.append(posterior_prediction_section())
+        if key == "evolution" and cid in {"efcdf8fa", "6cfee4f5", "2539f7c5", "5f9d90ff"}:
+            names = {"efcdf8fa": "Avecilla", "6cfee4f5": "Chuong", "2539f7c5": "De", "5f9d90ff": "Zhou"}
+            blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the completed {names[cid]} evolutionary model", f"{names[cid]} model: biological states, transitions, fitness, and drift are now explicit.", "model-complete-illustration"))
+        if key == "sbi" and cid == "928bf2bf":
+            blocks.append(chapter_illustration("modeler-posterior-success.png", "Researchers celebrate robust posterior distributions", "The collective posterior preserves shared information while limiting the leverage of a poorly supported replicate."))
     coverage.sort(key=lambda row: row["index"])
     return "\n".join(blocks), coverage
 
@@ -1068,7 +1183,7 @@ def station_markup(name: str) -> str:
           <label><span>Replicate trajectories</span><input id="evo-reps" type="number" min="1" max="24" value="8"></label>
           <label><span>Seed</span><input id="evo-seed" type="number" min="0" value="20260825"></label>
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
-          <div class="viz"><div class="plot-pair order-comparison"><figure><figcaption>Mutation → selection → drift</figcaption><canvas id="evo-canvas" width="760" height="440" aria-label="Population-frequency trajectories when mutation occurs before selection"></canvas></figure><figure><figcaption>Selection → mutation → drift</figcaption><canvas id="evo-order-canvas" width="760" height="440" aria-label="Population-frequency trajectories when selection occurs before mutation"></canvas></figure></div><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div><div class="what-changed"><strong>What if selection happens first?</strong> <span id="evo-order-summary">At the published mutation rates the two conventions are nearly indistinguishable; the Order effect preset makes their non-commutativity visible.</span></div></div></div>'''
+          <div class="viz"><div class="plot-pair order-comparison"><figure><figcaption>Mutation → selection → drift</figcaption><canvas id="evo-canvas" width="760" height="440" aria-label="Population-frequency trajectories when mutation occurs before selection"></canvas></figure><figure><figcaption>Selection → mutation → drift</figcaption><canvas id="evo-order-canvas" width="760" height="440" aria-label="Population-frequency trajectories when selection occurs before mutation"></canvas></figure></div><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div><div class="what-changed"><strong>What if selection happens first?</strong> <span id="evo-order-summary">At the published mutation rates the two conventions are nearly indistinguishable.</span></div></div></div>'''
     elif name == "dfe-example":
         body = '''<h2>Fitness effects differ among newly formed CNVs</h2><p class="prediction">Imagine measuring the growth advantage of a very large collection of independent GAP1 CNVs immediately after they arise, before selection changes their abundance. Each CNV contributes one value of s. High regions of the curve correspond to effects that occur commonly among these new mutation events; low regions correspond to rarer effects.</p>
         <div class="dfe-biological-key"><article><b>What does s mean?</b><p>A CNV with s = 0.04 has relative fitness 1.04: under this model it contributes about 4% more descendants per generation than the ancestor.</p></article><article><b>What does an interval mean?</b><p>The area of the curve between two s values is the expected fraction of newly formed CNVs whose effects fall in that range.</p></article></div>
