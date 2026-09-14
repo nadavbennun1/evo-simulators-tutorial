@@ -87,7 +87,7 @@ OUTPUT_CAPTIONS = {
     "35d77585": ("The reversion model follows movement from CNV to single copy", "De et al. two-genotype model diagram"),
     "65a843c6": ("Different reporter loci can imply different reversion dynamics", "De et al. model fit"),
     "7fd6e35c": ("Chromosome loss can resolve through euploid recovery or LOH", "Zhou three-state model diagram"),
-    "2e99f96f": ("Three measured states constrain two loss routes and their fitnesses", "Zhou model fit"),
+    "2e99f96f": ("Observed genotype frequencies compared with Zhou et al. model predictions", "Zhou model fit"),
     "cdda66b7": ("The same parameters produce a family of stochastic observations", "Repeated Wright-Fisher simulations"),
     "0ba5658f": ("A synthetic observation gives us a known answer for checking ABC", "Synthetic trajectory for ABC"),
     "da54003d": ("Rejection ABC posterior for the synthetic trajectory", "ABC posterior result"),
@@ -250,28 +250,31 @@ changes their expected contributions, and drift samples a finite next generation
 The comparisons in this section ask a limited question: can the simulator reproduce the observed
 trajectory? Chapter 2 develops the inference procedure and quantifies parameter uncertainty.
 
-A *GAP1* CNV is not a single molecular genotype. Independently arising CNVs can differ in copy
-number, length, and breakpoint, and those differences can produce different growth advantages.
-A **distribution of fitness effects (DFE)** describes that biological variation at the moment new
-CNVs arise. Imagine collecting many newly formed CNVs before selection has had time to amplify
-some lineages and eliminate others. Each CNV has a selection coefficient $s$: fitness $1+s$
-relative to the ancestor. The DFE records what fraction of those new CNVs have small, intermediate,
-or large effects.
+A *GAP1* CNV is not one molecular genotype. Independent amplifications can differ in copy number,
+length, and breakpoint, so they need not have the same growth advantage. A **distribution of
+fitness effects (DFE)** is simply the collection of those advantages at the moment the CNVs form.
 
-The mean of this distribution is the average advantage among **new mutation events**. It need not
-equal the mean advantage among CNV cells later in the experiment: selection preferentially expands
-lineages with larger $s$. Divide the new CNVs into fitness classes, with class $k$ containing CNVs
-that share effect $s_k$. The fraction of CNV cells descended from class $k$ after $t$ generations is
+Start with one new CNV. If its selection coefficient is $s$, its relative fitness is
 
-$$\Pr(k\mid\mathrm{{CNV\ at\ }}t)=
-\frac{{\Pr(k\mid\mathrm{{new\ CNV}})(1+s_k)^t}}
-{{\sum_j\Pr(j\mid\mathrm{{new\ CNV}})(1+s_j)^t}}$$
+$$w=1+s.$$
 
-The numerator combines how frequently class $k$ arises with how much it multiplies. The denominator
-adds that same contribution across every class, converting the values into fractions that sum to one.
-Thus, the distribution among new mutations stays fixed, but the CNV-bearing population becomes
-enriched for its higher-fitness classes. A constant-$s$ fit applied to successive time windows should
-therefore rise for DFE-generated data and remain flat when every CNV truly has the same $s$.''',
+Now imagine many independent CNVs. Each formation event draws its own effect from the DFE:
+
+$$s_k\sim\mathrm{DFE}.$$
+
+The DFE describes **new events**, before selection has made some colors common and others rare.
+After $t$ generations, a lineage with starting share $a_k$ and effect $s_k$ contributes
+$a_k(1+s_k)^t$ descendants. Dividing by the contribution of every lineage gives its share among
+CNV cells:
+
+$$f_k(t)=\frac{a_k(1+s_k)^t}{\sum_j a_j(1+s_j)^t}.$$
+
+The interactive panel below makes the distinction visible. The blue distribution is the fixed
+recipe from which new CNVs arise. The orange distribution is the same set of lineages after growth:
+selection progressively shifts cellular abundance toward the larger effects. The mean effect among
+**new events** can therefore remain constant while the mean effect among **CNV cells** increases.
+A constant-$s$ fit applied to successive time windows should rise for DFE-generated data and remain
+flat when every CNV truly has the same $s$.''',
         "f37292e6": r'''The full trajectory alone cannot reliably separate one large constant effect from a DFE
 with a lower mean and a compensating upper tail. Windowed fits add a temporal diagnostic.
 
@@ -445,6 +448,8 @@ $q_\phi(\theta\mid x)$ by minimizing
 
 $$\mathcal L(\phi)=-\mathbb E_{p(\theta,x)}[\log q_\phi(\theta\mid x)].$$
 
+''' + npe_loss_explorer() + r'''
+
 <aside class="amortization-note"><strong>Amortization.</strong> Training pays the computational cost
 once across many simulated parameter–trajectory pairs. The trained estimator can then condition on
 each new supported observation and produce posterior samples without retraining or rerunning ABC.</aside>
@@ -457,6 +462,8 @@ learn an amortized posterior from simulated pairs. We can now consider extension
 tailored to the genotype-frequency observations collected in experimental evolution.</aside>
 
 ## One trained NPE can accept different passage schedules
+
+''' + flexible_npe_figure() + r'''
 
 The observation schedule is part of the data. A design-conditioned estimator learns
 
@@ -795,7 +802,7 @@ $$x_t\xrightarrow{\ M\ }x^{(m)}\xrightarrow{\ W\ }x^{(s)}
 
 def chuong_code_exercise(cell_index: int) -> str:
     blanks = [
-        ("Initial state", r'$$n=\left(N\ast(1-\varphi),\ 0,\ N\ast\varphi,\ 0\right)$$', "n", "phi sets the standing CNV⁻ count; the other derived states begin at zero.", "np.array([N*(1-phi),0,N*phi,0])", ["np.array([N*(1-phi),0,N*phi,0])", "[N*(1-phi),0,N*phi,0]", "np.asarray([N*(1-phi),0,N*phi,0])"]),
+        ("Initial state", r'$$n=\left(N\ast(1-\varphi),\ 0,\ N\ast\varphi,\ 0\right)$$', "n", "The paper's φ sets the standing CNV⁻ count; the other derived states begin at zero.", "np.array([N*(1-phi),0,N*phi,0])", ["np.array([N*(1-phi),0,N*phi,0])", "[N*(1-phi),0,N*phi,0]", "np.asarray([N*(1-phi),0,N*phi,0])"]),
         ("Mutation", r'$$x^{(m)}=Mx_t$$', "mutated", "p is the current frequency vector and M is the four-state mutation matrix.", "M @ p", ["M@p", "np.matmul(M,p)", "M.dot(p)"]),
         ("Selection", r'$$u_i=w_i x_i^{(m)}\ \text{for each genotype }i,\qquad u=w\odot x^{(m)}$$', "weighted", "The circled dot means element-by-element multiplication: each genotype frequency is multiplied by its own relative fitness. Normalization is deferred to the drift line.", "w * mutated", ["w*mutated", "np.multiply(w,mutated)", "mutated*w"]),
         ("Drift", r'$$n_{t+1}\sim\mathrm{Multinomial}(N,u/\sum_j u_j)$$', "n", "N is the effective population size and weighted.sum() normalizes the sampling probabilities.", "np.random.multinomial(N, weighted / weighted.sum())", ["np.random.multinomial(N,weighted/weighted.sum())", "rng.multinomial(N,weighted/weighted.sum())", "np.random.multinomial(N,weighted/np.sum(weighted))"]),
@@ -805,6 +812,7 @@ def chuong_code_exercise(cell_index: int) -> str:
         rows.append(f'''<article class="code-fill-row" data-code-line="{index}"><header><span>{index}</span><div><b>{html.escape(label)}</b>{math_to_html(equation)}</div></header><p>{html.escape(meaning)}</p><div class="code-line-entry"><code>{html.escape(lhs)} =</code><input type="text" autocomplete="off" spellcheck="false" data-code-lhs="{html.escape(lhs)}" data-code-answer="{html.escape(answer, quote=True)}" data-code-alternatives="{html.escape('|||'.join(alternatives), quote=True)}" aria-label="Complete the {html.escape(label)} expression" placeholder="right-hand side"><button type="button" data-check-code-line>Check</button><small aria-live="polite"></small></div></article>''')
     scaffold = '''<span class="code-setup">def WF_Chuong(log_s, log_delta, log_phi, N, generations):
     s, delta, phi = 10 ** np.array([log_s, log_delta, log_phi])
+    # phi is the code variable for the paper's φ
     w = np.array([1, 1+s, 1+s, 1+S_SNV])
     M = chuong_mutation_matrix(delta, M_SNV)</span>
 <span class="code-mutation">    n = ____  # (1)</span>
@@ -883,7 +891,7 @@ Their chemostat conditions gave $N_e=3.3\times10^8$, about two-thirds of the ste
       <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Measure fluctuations</strong><small>Average conditional variance across 900 transitions</small></span></article><i>→</i><article><b>4</b><span><strong>Match Wright–Fisher drift</strong><small>Obtain <i>N</i><sub>e</sub> = 3.3 × 10<sup>8</sup></small></span></article></div>
       <div class="ne-simulator-grid"><form class="controls" id="chemostat-ne-controls">
         <div class="preset-row"><button type="button" data-chemostat-ne-preset="9">Avecilla estimate</button><button type="button" data-chemostat-ne-preset="0">Visible drift</button></div>
-        <label><span>Actual <i>N</i><sub>e</sub></span><output id="chemostat-ne-label">3.3 × 10⁸ cells</output><input id="chemostat-ne" type="range" min="0" max="9" step="1" value="9" aria-describedby="chemostat-ne-scale"><span class="log-slider-scale"><small>10⁴</small><small>3.3 × 10⁸</small></span><small class="log-slider-note" id="chemostat-ne-scale">Half-order steps · two per order of magnitude</small></label>
+        <div class="ne-slider-control"><div class="ne-slider-heading"><label for="chemostat-ne">Actual <i>N</i><sub>e</sub></label><output id="chemostat-ne-label">3.3 × 10⁸ cells</output></div><input id="chemostat-ne" type="range" min="0" max="9" step="1" value="9"><div class="ne-slider-endpoints" aria-hidden="true"><span>10⁴</span><span>3.3 × 10⁸</span></div></div>
         <label><span>Neutral draws</span><select id="chemostat-ne-draws"><option value="100">100</option><option value="300">300</option><option value="900" selected>900</option></select></label>
         <label><span>Seed</span><input id="chemostat-ne-seed" type="number" min="0" max="99999" value="1633"></label>
         <div class="button-row"><button id="chemostat-ne-run" type="button">Run neutral simulation</button><button type="reset">Reset</button></div>
@@ -976,7 +984,7 @@ yet justified.</aside>
 def posterior_prediction_section() -> str:
     """Connect parameter inference to the lineage-diversity prediction in Chuong et al."""
     diversity = versioned_asset("assets/chapter/chuong-diversity-figure-3b.jpg")
-    molecular = versioned_asset("assets/chapter/chuong-figure-4e.jpg")
+    molecular = versioned_asset("assets/chapter/chuong-figure-4e-v2.jpg")
     source = fr'''## Posterior prediction: from one CNV curve to many lineages
 
 The fluorescence measurement reports the **total fraction of CNV cells**. It cannot tell whether
@@ -991,7 +999,7 @@ identity. At a chosen generation, divide each lineage's cell count by the total 
 $f_i=n_i/\sum_j n_j$. These shares—not the fraction of the whole culture—are the input to diversity.
 
 <div class="diversity-algorithm" aria-label="Lineage diversity algorithm">
-  <ol><li><b>Form</b><span>Each new CNV event receives a new color.</span></li><li><b>Grow</b><span>Selection changes the number of descendants in every color.</span></li><li><b>Sample</b><span>Finite-population drift changes which colors persist.</span></li><li><b>Summarize</b><span>Convert the surviving color shares into an effective count.</span></li></ol>
+  <ol><li><b>1</b><span><strong>Form</strong>Each new CNV event receives a new color.</span></li><li><b>2</b><span><strong>Grow</strong>Selection changes the number of descendants in every color.</span></li><li><b>3</b><span><strong>Sample</strong>Finite-population drift changes which colors persist.</span></li><li><b>4</b><span><strong>Summarize</strong>Convert the surviving color shares into an effective count.</span></li></ol>
   <pre aria-label="Pseudocode for posterior prediction of CNV lineage diversity"><code>for each posterior parameter draw:
     simulate independently formed CNV lineages
     for each generation:
@@ -1003,7 +1011,11 @@ $f_i=n_i/\sum_j n_j$. These shares—not the fraction of the whole culture—are
 </div>
 
 <section class="diversity-lab" id="diversity-lab" aria-labelledby="diversity-lab-title">
-  <header><p class="section-kicker">Dynamic calculation</p><h3 id="diversity-lab-title">Watch the total CNV population split into lineages</h3><p>This scaled teaching population shows the calculation; it is not a redraw of the paper's absolute lineage counts.</p></header>
+  <header><p class="section-kicker">Trace the algorithm</p><h3 id="diversity-lab-title">Follow CNV lineages through one simulated generation</h3><p>Every color is one independently formed CNV and stays attached to its descendants.</p></header>
+  <div class="diversity-step-tabs" role="group" aria-label="Choose a lineage simulation step"><button type="button" class="active" data-diversity-process-step="0" aria-pressed="true">Start</button><button type="button" data-diversity-process-step="1" aria-pressed="false">1 · Form</button><button type="button" data-diversity-process-step="2" aria-pressed="false">2 · Grow</button><button type="button" data-diversity-process-step="3" aria-pressed="false">3 · Sample</button><button type="button" data-diversity-process-step="4" aria-pressed="false">4 · Summarize</button></div>
+  <canvas id="diversity-process-canvas" width="940" height="470" aria-label="Step-by-step lineage simulation showing CNV formation, selection, finite-population sampling, and the diversity calculation"></canvas>
+  <div class="diversity-process-controls"><div class="button-row"><button id="diversity-next-step" type="button">Next step</button><button id="diversity-play-process" type="button">Play one generation</button><button id="diversity-reset-process" type="button">Reset</button></div><p id="diversity-process-note" aria-live="polite">Begin with ancestral cells and three existing CNV lineages. A lineage color is inherited by every descendant.</p></div>
+  <div class="diversity-history-heading"><p class="section-kicker">Repeat the cycle</p><h4>What many generations produce</h4><p>The same four operations, repeated through time, generate the reporter trajectory and its hidden lineage composition.</p></div>
   <div class="diversity-strains" role="group" aria-label="Choose strain architecture"><button type="button" class="active" data-diversity-strain="WT" aria-pressed="true">WT</button><button type="button" data-diversity-strain="LTRΔ" aria-pressed="false">LTRΔ</button><button type="button" data-diversity-strain="ALLΔ" aria-pressed="false">ALLΔ</button><button type="button" data-diversity-strain="ARSΔ" aria-pressed="false">ARSΔ</button></div>
   <div class="diversity-lab-grid"><div class="viz"><canvas id="diversity-lineage-canvas" width="820" height="430" aria-label="Colored CNV lineage shares changing through generations"></canvas><label class="diversity-time"><span>Generation</span><output id="diversity-generation-label">0</output><input id="diversity-generation" type="range" min="0" max="116" step="1" value="0"></label><div class="button-row"><button id="diversity-play" type="button">Play lineage history</button><button id="diversity-reset" type="button">Reset</button></div></div><div class="diversity-live-calculation" aria-live="polite"><article><small>Total reporter signal</small><strong id="diversity-total">0% CNV</strong><p>The frequency curve combines every colored lineage.</p></article><article><small>Lineage shares</small><strong id="diversity-lineages">0 present</strong><div id="diversity-share-bar" class="diversity-share-bar" aria-label="Relative shares among CNV lineages"></div></article><article><small>Effective number</small><strong id="diversity-effective">D = 0</strong><p id="diversity-explanation">Advance time to form CNV lineages.</p></article></div></div>
 </section>
@@ -1018,12 +1030,13 @@ $$H(t)=-\sum_i f_i(t)\log f_i(t),\qquad D(t)=\exp[H(t)].$$
 
 ### The molecular evidence behind the colors
 
-<figure class="paper-figure diversity-molecular-figure"><img loading="lazy" src="{molecular}" alt="Chuong Figure 4E showing distinct GAP1 CNV breakpoint pairs, mechanisms, and copy numbers in four strain architectures"><figcaption>Sequenced CNV clones occupy many breakpoint positions, use several formation mechanisms, and carry different copy numbers. Each point is molecular evidence that a single reporter-positive class contains distinct CNV alleles. {paper_html("chuong")} · Fig. 4E.</figcaption></figure>
+<figure class="paper-figure diversity-molecular-figure"><img loading="lazy" src="{molecular}" alt="Chuong Figure 4E showing colored violin distributions of GAP1 CNV lengths in wild type, LTR deletion, ARS deletion, and double-deletion strains"><figcaption>CNV-length distributions from 177 sequenced clones differ among genomic backgrounds. The spread within every colored distribution is direct molecular evidence that reporter-positive cells contain many distinct CNV alleles. {paper_html("chuong")} · Fig. 4E.</figcaption></figure>
 
 The study isolated reporter-positive clones at generations 79 and 125 and molecularly resolved 177
-CNVs. Figure 4E validates the biological premise that the fluorescent trajectory pools many
-different alleles. It does not directly count every lineage in the evolving population; that larger
-number remains a posterior prediction from the lineage-resolved simulator.
+CNVs. Figure 4E shows that CNV length varies within and among strain backgrounds. It validates the
+biological premise that the fluorescent trajectory pools many different alleles, but it does not
+directly count every lineage in the evolving population. That larger number remains a posterior
+prediction from the lineage-resolved simulator.
 
 ### Published prediction
 
@@ -1064,14 +1077,21 @@ def flexible_npe_figure() -> str:
     )
 
 
+def npe_loss_explorer() -> str:
+    return '''<section class="npe-loss-explorer" id="npe-loss-explorer" aria-labelledby="npe-loss-title">
+      <header><p class="section-kicker">Make the loss visible</p><h3 id="npe-loss-title">What does one NPE training example reward?</h3><p>The simulator created this pair, so the generating parameter is known during training. After seeing the simulated trajectory <i>x</i><sub>i</sub>, the network is rewarded for assigning high density to its generating value θ<sub>i</sub>.</p></header>
+      <div class="npe-loss-pair" aria-label="One simulated training pair"><span><small>Known input</small>θ<sub>i</sub> = 0</span><b>+</b><span><small>Simulated from it</small>x<sub>i</sub></span><i>→</i><span><small>Network predicts</small>q<sub>ϕ</sub>(θ | x<sub>i</sub>)</span></div>
+      <div class="npe-loss-grid"><form class="controls" id="npe-loss-controls">
+        <label><span>Prediction offset from θ<sub>i</sub></span><output id="npe-loss-offset-label">1.30</output><input id="npe-loss-offset" type="range" min="-2.2" max="2.2" step="0.02" value="1.3"></label>
+        <label><span>Posterior width</span><output id="npe-loss-width-label">0.65</output><input id="npe-loss-width" type="range" min="0.45" max="1.2" step="0.01" value="0.65"></label>
+        <div class="button-row"><button id="npe-loss-improve" type="button">Improve one training step</button><button type="reset">Reset</button></div>
+      </form><div class="viz"><canvas id="npe-loss-canvas" width="760" height="390" aria-label="Learned posterior density and the known parameter that generated one simulated training trajectory"></canvas><div class="npe-loss-readout" aria-live="polite"><article><small>Density placed at the answer</small><strong id="npe-loss-density">q = —</strong></article><article><small>This example's loss</small><strong id="npe-loss-value">−log q = —</strong></article></div><div class="npe-loss-meter" aria-hidden="true"><i id="npe-loss-meter-fill"></i></div><p class="plot-summary" id="npe-loss-summary"></p></div></div>
+      <p class="npe-loss-average"><strong>Training repeats this across many simulations.</strong> The expectation in the equation is the average of these per-example surprises. A density centered on the generating parameters makes that average smaller.</p>
+    </section>'''
+
+
 def take_home_visual() -> str:
-    panels = [
-        ("modeler-model-success.png", "Mechanistic model agrees with observed evolutionary trajectories"),
-        ("modeler-posterior-rescue.png", "Simulation-based inference turns trajectories into posterior uncertainty"),
-        ("modeler-posterior-success.png", "Researchers evaluate posterior distributions and uncertainty"),
-    ]
-    images = "".join(f'<img loading="lazy" src="{versioned_asset(f"assets/chapter/{asset}")}" alt="{alt}">' for asset, alt in panels)
-    return f'''<figure class="take-home-visual"><div>{images}</div><figcaption>Mechanism → posterior uncertainty → a biological conclusion that survives predictive checks.</figcaption></figure>'''
+    return f'''<figure class="take-home-visual"><img loading="eager" src="{versioned_asset('assets/chapter/workshop-take-home-exact.png')}" alt="Three-panel workshop summary: observations motivate an evolutionary model, predictive checks test whether the mechanism reproduces the data, and posterior predictions guide a new experiment"><figcaption>Mechanism → predictive checks → a new biological question.</figcaption></figure>'''
 
 
 def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, list[dict]]:
@@ -1092,8 +1112,6 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(chapter_illustration("modeler-head-scratching.png", "An evolutionary biologist connects a genotype model to observed trajectories", "A plausible mechanism is a hypothesis. The first fit asks whether it can reproduce the data."))
         if key == "sbi" and cid == "fa1ab176":
             blocks.append(chapter_illustration("modeler-posterior-rescue.png", "A posterior distribution resolves uncertainty left by several plausible evolutionary trajectories", "The inverse problem needs a distribution over plausible explanations, not one curve chosen by eye."))
-        if key == "sbi" and cid == "zhou-flex-intro":
-            blocks.append(flexible_npe_figure())
         if key == "sbi" and cid == "928bf2bf":
             blocks.append(chapter_illustration("modeler-replicates.png", "Researchers compare evolutionary trajectories from several replicate populations", "Replicates contain shared biological information, but they need not agree perfectly."))
         if key == "sbi" and cid == "3fce18ac":
@@ -1155,9 +1173,15 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             blocks.append(prior_design_section())
         if key == "sbi" and cid == "098a16bd":
             blocks.append(posterior_prediction_section())
-        if key == "evolution" and cid in {"efcdf8fa", "6cfee4f5", "2539f7c5", "5f9d90ff"}:
-            names = {"efcdf8fa": "Avecilla", "6cfee4f5": "Chuong", "2539f7c5": "De", "5f9d90ff": "Zhou"}
-            blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the completed {names[cid]} evolutionary model", f"{names[cid]} model: biological states, transitions, fitness, and drift are now explicit.", "model-complete-illustration"))
+        if key == "evolution" and cid in {"efcdf8fa", "2539f7c5"}:
+            names = {"efcdf8fa": "Avecilla", "2539f7c5": "De"}
+            caption = "Avecilla model: biological states, transitions, fitness, and drift are now explicit." if cid == "efcdf8fa" else ""
+            blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the completed {names[cid]} evolutionary model", caption, "model-complete-illustration"))
+        if key == "evolution" and cid in {"66cce2fa", "2e99f96f"}:
+            name = "Chuong" if cid == "66cce2fa" else "Zhou"
+            blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the {name} model fit", "", "model-complete-illustration"))
+        if key == "evolution" and cid == "d29cac1e":
+            blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate agreement between continuous chemostat and Wright–Fisher simulations", "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics.", "model-complete-illustration"))
         if key == "sbi" and cid == "928bf2bf":
             blocks.append(chapter_illustration("modeler-posterior-success.png", "Researchers celebrate robust posterior distributions", "The collective posterior preserves shared information while limiting the leverage of a poorly supported replicate."))
     coverage.sort(key=lambda row: row["index"])
@@ -1185,14 +1209,15 @@ def station_markup(name: str) -> str:
           <div class="button-row"><button id="evo-play" type="button">Play</button><button class="reset" type="reset">Reset</button></div></form>
           <div class="viz"><div class="plot-pair order-comparison"><figure><figcaption>Mutation → selection → drift</figcaption><canvas id="evo-canvas" width="760" height="440" aria-label="Population-frequency trajectories when mutation occurs before selection"></canvas></figure><figure><figcaption>Selection → mutation → drift</figcaption><canvas id="evo-order-canvas" width="760" height="440" aria-label="Population-frequency trajectories when selection occurs before mutation"></canvas></figure></div><p class="plot-summary" id="evo-summary" aria-live="polite"></p><div class="composition" id="evo-composition"></div><div class="what-changed"><strong>What if selection happens first?</strong> <span id="evo-order-summary">At the published mutation rates the two conventions are nearly indistinguishable.</span></div></div></div>'''
     elif name == "dfe-example":
-        body = '''<h2>Fitness effects differ among newly formed CNVs</h2><p class="prediction">Imagine measuring the growth advantage of a very large collection of independent GAP1 CNVs immediately after they arise, before selection changes their abundance. Each CNV contributes one value of s. High regions of the curve correspond to effects that occur commonly among these new mutation events; low regions correspond to rarer effects.</p>
-        <div class="dfe-biological-key"><article><b>What does s mean?</b><p>A CNV with s = 0.04 has relative fitness 1.04: under this model it contributes about 4% more descendants per generation than the ancestor.</p></article><article><b>What does an interval mean?</b><p>The area of the curve between two s values is the expected fraction of newly formed CNVs whose effects fall in that range.</p></article></div>
+        body = '''<h2>Watch a DFE enter the simulation</h2><p class="prediction">Each independently formed <em>GAP1</em> CNV draws one growth advantage from the same distribution. The distribution at formation is a biological input; selection then changes how many cells descend from each draw.</p>
+        <div class="dfe-biological-key"><article><b>One lineage, one effect</b><p>If <i>s</i> = 0.04, relative fitness is 1.04. In this model the lineage contributes about 4% more descendants per generation than the ancestor.</p></article><article><b>The curve is a recipe</b><p>A wide region contains many possible effects. More area over an interval means a larger fraction of newly formed CNVs begin within that range.</p></article></div>
         <div class="interactive-grid"><form class="controls" id="dfe-controls">
-          <label>Mean effect s̄ <output id="dfe-mean-label"></output><input id="dfe-mean" type="range" min="0.01" max="0.09" step="0.0025" value="0.045"></label>
-          <label>Spread and skew (gamma shape) <output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
-          <button type="reset">Reset</button></form>
-          <div class="viz"><canvas id="dfe-canvas" width="760" height="400" aria-label="Distribution of growth advantages among newly formed GAP1 CNVs"></canvas><div class="dfe-axis-caption"><span>smaller growth advantage</span><b>selection coefficient s</b><span>larger growth advantage</span></div><p id="dfe-summary" class="plot-summary" aria-live="polite"></p></div></div>
-        <div class="what-changed"><strong>Consequence for the evolving population.</strong> <span id="dfe-change"></span></div>'''
+          <label><span>Average effect among new CNVs</span><output id="dfe-mean-label"></output><input id="dfe-mean" type="range" min="0.01" max="0.09" step="0.0025" value="0.045"></label>
+          <label><span>Variation among effects</span><output id="dfe-shape-label"></output><input id="dfe-shape" type="range" min="0.7" max="5" step="0.1" value="2"></label>
+          <label><span>Generations of selection</span><output id="dfe-time-label">0</output><input id="dfe-time" type="range" min="0" max="80" step="1" value="0"></label>
+          <div class="button-row"><button id="dfe-play" type="button">Play selection</button><button type="reset">Reset</button></div></form>
+          <div class="viz"><div class="dfe-plot-pair"><figure><figcaption>Effects when CNVs form</figcaption><canvas id="dfe-canvas" width="620" height="410" aria-label="Distribution of growth advantages among newly formed GAP1 CNVs"></canvas></figure><figure><figcaption>Cellular abundance after selection</figcaption><canvas id="dfe-selected-canvas" width="620" height="410" aria-label="The same CNV fitness classes reweighted by their descendant abundance after selection"></canvas></figure></div><div class="dfe-axis-caption"><span>smaller advantage</span><b>selection coefficient <i>s</i></b><span>larger advantage</span></div><div class="dfe-live-summary" aria-live="polite"><article><small>New CNV events</small><strong id="dfe-new-mean">mean <i>s</i> = 0.045</strong></article><article><small>CNV cells now</small><strong id="dfe-selected-mean">mean <i>s</i> = 0.045</strong></article></div><p id="dfe-summary" class="plot-summary"></p></div></div>
+        <div class="what-changed"><strong>What selection changes.</strong> <span id="dfe-change"></span></div>'''
     elif name == "chuong-parameter-challenge":
         body = '''<h2>Infer selection, formation, and initial frequency</h2><p class="prediction">Each round generates a synthetic CNV-frequency dataset. Estimate log₁₀(s), log₁₀(δ), and log₁₀(φ); the score is determined by parameter RMSE.</p>
         <div class="interactive-grid"><form class="controls" id="chuong-challenge-controls">

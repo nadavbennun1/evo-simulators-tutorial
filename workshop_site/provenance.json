@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at_utc": "2026-09-14T17:57:03.244022+00:00",
+  "generated_at_utc": "2026-09-14T19:31:57.166943+00:00",
   "source_notebooks": {
     "evolution_simulators.ipynb": "f8176f1ba4f77c11e99cf0022df161d49b5b6567556d0032174b3ca633b019bc",
     "SBI_tutorial.ipynb": "55569d9357e53d52492529f5a38d170b13f14f66d103acd89184286ec67e4d7d"
@@ -23,6 +23,7 @@
     "assets/chapter/abc-framework.png": "7c345221e10d1ed698f83610d6fcc74a774218395c4cb262cb8e5be7a9c34edb",
     "assets/chapter/assortative-mating-cartoon.jpg": "50874daf49c51e4067d7bb5d024cf064169529cbb199c3c7af6e47e4aa5363cd",
     "assets/chapter/chuong-diversity-figure-3b.jpg": "bf33f6c25e8856b2491ade647ad46de99fe8c5624264aae6fd7ac321398f4482",
+    "assets/chapter/chuong-figure-4e-v2.jpg": "b5a9d1cbb1ec69f501b9369d87c8d0b7031b14b9807da883d624c585e2796318",
     "assets/chapter/chuong-figure-4e.jpg": "78cc41d96f9719f819eb889f71f4b90f63492452e25c56863306405168d72217",
     "assets/chapter/chuong-fit-orange.png": "6595401580517f68f2b0e5bc02887fba1d4f2344bf567e41daadf5a8d5bf7fab",
     "assets/chapter/collective-figure-1.png": "62b1488b550c83b4edffebfaf6edf52a35ef84d181e582f218982fb4c1a6650c",
@@ -30,7 +31,7 @@
     "assets/chapter/de-epistasis-model.jpg": "8b32fb92b8023f6798422a57a3462c3901de9628dd98facecc7fdd683fe30260",
     "assets/chapter/de-epistasis-ppc.jpg": "88fd7e9780e1ca9b8c08663df5424ee0f88f378c36339206614994cb94696875",
     "assets/chapter/drift-cartoon.jpg": "866d49620a32a3a3f1be010d833f09645301f98d90e6fbd67e09cefd2220852c",
-    "assets/chapter/flexible-npe-time-embedding.svg": "4c4620c4b2cbc1a6369e4fa5aaca6307eca76fe02c7cf2035e3fea782b4b4679",
+    "assets/chapter/flexible-npe-time-embedding.svg": "07fe2c8270622e616de30290314c3d82db26328ad2503b2b245c89262e9cf743",
     "assets/chapter/lauer-experimental-primer.jpg": "725db59f120688fa184dbb8843a38c64dde69c9562d7c22c63946ca64efb96cf",
     "assets/chapter/migration-cartoon.jpg": "7c8239d99fce525d7207ae3ada728918af500c0a5b03eded36c1f7c1eec5651d",
     "assets/chapter/modeler-head-scratching.png": "52a4c4d59f68ad07a25d50e5335a85c1fcf65c01d1268c3225d6d76c748ab450",
@@ -41,6 +42,7 @@
     "assets/chapter/mutation-cartoon.jpg": "e1b9782d070522a671934b1c6f8706977604781afeafcaba2cee5de16536b618",
     "assets/chapter/npe-workflow.jpg": "f1013a30d6d46e0de3515ef0a5022d7ced505d4f491ec47202e35548a2b6e486",
     "assets/chapter/selection-cartoon.jpg": "810c4ecb303e34429ca91841e73cffccc7cb7f3403e10e005cee671a55281895",
+    "assets/chapter/workshop-take-home-exact.png": "a556403d3a0459c80775dde94bb2dc3c0c8ecf66fc3a6d2dc8344c19abc14e09",
     "assets/fallback/chuong-parameter-challenge.png": "7b0531c28d1de5de1cd8f8b378363cac049b7e5a30f81ba25fea3e08900d7da2",
     "assets/fallback/collective-outlier-lab.png": "ae68012c55fcdddc476dc5f711bc8670db4a54604e0c4280ef3ea89ea5cec7e2",
     "assets/fallback/dfe-example.png": "3b2329a0242afc300fedf8b1b0d8c6904a0955cb2e74a3ffe7bb5cc41912b12e",
@@ -58,9 +60,9 @@
     "data/zhou_manifest.json": "a7de8c76a29b9aae23f12482d7445836ea51517fb5e1b413a3eb12ca4a657e0b",
     "data/zhou_quantiles.f32": "627b8f5455ee78c7429ba8fba174527bc11229fa70e2f0e6815444efbde18ab3",
     "data/zhou_seed_quantiles.f32": "eeb61561e4d28b808733cfa81b4a10b7d11afff8cda387a0ad662ff38e7c8edb",
-    "evolution.html": "115bbf0a254d16c6c056dd18ea6612a5398a32790b697da48b57f6df98a38417",
-    "index.html": "a161b9fea1c250e9b946a4e64fc533543e795c178c512f4e8001a95afabe812c",
-    "sbi.html": "f1be55d637e004448943cd76729ec28e00918bd7680b9da7bba3fd05e59cfeb2"
+    "evolution.html": "aa913d2cf5809df781454e059d9d4fe59e38477280a28f5fbef2d70974a324ad",
+    "index.html": "3f48558e9d25c878e5c426427c5ffea0e512701993d904c8f1bbe336358154b8",
+    "sbi.html": "30bf8d3dc9aff4f9d5fbe93ceb77bee7a0a1e1a6825728a17d0465b9d5018816"
   },
   "scientific_caveats": [
     "Zhou assets are an illustrative inference-flexibility demonstration, not a coverage study.",

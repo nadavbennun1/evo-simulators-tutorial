@@ -316,7 +316,8 @@ def test_chapter_one_revision_contract():
     notebook = (ROOT / "evolution_simulators.ipynb").read_text()
     assert "Predict a three-genotype chemostat trajectory" in text
     assert 'id="evo-delta-c"' in text and 'id="evo-order-canvas"' in text
-    assert "Fitness effects differ among newly formed CNVs" in text
+    assert "Watch a DFE enter the simulation" in text
+    assert 'id="dfe-selected-canvas"' in text and 'id="dfe-time"' in text and 'id="dfe-play"' in text
     assert "100 / (1 + RMSE)" in sbi
     assert 'id="chuong-parameter-challenge"' not in text
     assert sbi.index('id="chuong-parameter-challenge"') < sbi.index('class="chapter-walkthrough"')
@@ -339,6 +340,9 @@ def test_chapter_one_revision_contract():
     assert 'id="chuong-standing-variation"' in text and "φ = 10⁻¹²" in text and "φ = 10⁻⁴" in text
     assert 'id="chuong-phi-play"' in text and 'id="chuong-phi" type="range"' in text
     assert "baseline = simulate(-12)" in script and '"φ=0 baseline"' in script and "observed (dashed)" in script
+    assert "The paper&#x27;s φ sets the standing CNV⁻ count" in text
+    assert "ϕ" not in text and "&#x003D5;" not in text
+    assert "&#x003C6;" in text
     assert 'id="chuong-equation-exercise"' in text and 'class="chuong-matrix" hidden' in text
     assert 'class="code-fill-list"' in text and text.count('data-code-answer=') == 4 and text.count('data-check-code-line') == 4
     assert "n = ____  # (1)" in text and "mutated = ____  # (2)" in text and "weighted = ____  # (3)" in text and "n = ____  # (4)" in text
@@ -371,12 +375,12 @@ def test_chapter_one_revision_contract():
     assert 'id="de-joint-model"' in text and "What if the two CNVs are modeled jointly?" in text
     assert "de-epistasis-model.jpg" in text and "de-epistasis-ppc.jpg" in text
     assert "simpler independent model is" in text and "epistasis" in text
-    assert text.count("modeler-model-success.png") == 4
+    assert text.count("modeler-model-success.png") == 5
     assert "modeler-head-scratching.png" in text
     assert "Order effect preset makes their non-commutativity visible" not in text
     assert 'id="evolution-references"' in text
     assert all(label in text for label in ("Lauer et al. (2018)", "Avecilla et al. (2022)", "Chuong et al. (2025)", "De et al. (2026)"))
-    assert "What does s mean?" in text and "fraction of newly formed CNVs" in text
+    assert "One lineage, one effect" in text and "The curve is a recipe" in text
     assert "recurring grammar" not in text and "The executable mechanism" not in text
     assert text.count("Model-fit preview") == 5
     assert "color=C['avecilla_wf']" in notebook
@@ -491,11 +495,23 @@ def test_presentation_revision_contract():
     assert "typeset-story-equation" in sbi
     assert "Several mechanisms can match the sampled trajectory" in sbi
     assert "split evenly among ten lineages" in sbi and 'id="diversity-lab"' in sbi
-    assert "chuong-figure-4e.jpg" in sbi and "molecularly resolved 177" in sbi
+    assert "chuong-figure-4e-v2.jpg" in sbi and "molecularly resolved 177" in sbi
+    assert 'id="diversity-process-canvas"' in sbi and 'id="diversity-next-step"' in sbi
     assert "function diversityPredictionLab()" in script and "Math.exp(entropy)" in script
     assert "modeler-posterior-rescue.png" in sbi and "modeler-replicates.png" in sbi
-    assert "modeler-posterior-success.png" in sbi and "take-home-visual" in sbi
+    assert "modeler-posterior-success.png" in sbi and "workshop-take-home-exact.png" in sbi
     assert "flexible-npe-time-embedding.svg" in sbi
+    assert sbi.index("One trained NPE can accept different passage schedules") < sbi.index("flexible-npe-time-embedding.svg")
+    assert 'id="npe-loss-explorer"' in sbi and 'id="npe-loss-canvas"' in sbi
+    assert "Improve one training step" in sbi and "function npeLossExplorer()" in script
+    assert "q<sub>ϕ</sub>" in sbi and "qφ(θ | S)" not in (SITE / "assets/chapter/flexible-npe-time-embedding.svg").read_text()
+    assert "Half-order steps" not in evolution
+    assert "Chuong model: biological states, transitions, fitness, and drift are now explicit." not in evolution
+    assert "De model: biological states, transitions, fitness, and drift are now explicit." not in evolution
+    assert "Zhou model: biological states, transitions, fitness, and drift are now explicit." not in evolution
+    assert "Three measured states constrain two loss routes and their fitnesses" not in evolution
+    assert evolution.index('data-cell-id="66cce2fa"') < evolution.index('alt="Researchers celebrate the Chuong model fit"')
+    assert evolution.index('data-cell-id="2e99f96f"') < evolution.index('alt="Researchers celebrate the Zhou model fit"')
     assert "<strong>Important:</strong> inference is not finished" in sbi
     assert "∝" not in evolution + sbi
     assert "MathJax" in sbi and "mml-chtml.js" in sbi

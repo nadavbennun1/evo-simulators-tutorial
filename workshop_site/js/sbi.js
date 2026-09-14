@@ -322,9 +322,40 @@
     }
   }
 
-  function diversityPredictionLab() {
-    const canvas = $("#diversity-lineage-canvas");
+  function npeLossExplorer() {
+    const canvas = $("#npe-loss-canvas");
     if (!canvas) return;
+    const offset = $("#npe-loss-offset"), width = $("#npe-loss-width");
+    function draw() {
+      const center = +offset.value, sd = +width.value;
+      const xs = Array.from({length:241},(_,i)=>-3+6*i/240);
+      const density = x => Math.exp(-0.5*((x-center)/sd)**2)/(sd*Math.sqrt(2*Math.PI));
+      const ys = xs.map(density), atTruth = density(0), loss = -Math.log(Math.max(atTruth,1e-12));
+      const f = P.frame(canvas,0,1,-3,3);
+      P.band(f,xs,xs.map(()=>0),ys,P.C.blue,.22);
+      P.line(f,xs,ys,P.C.blue,3);
+      P.line(f,[0,0],[0,Math.min(1,atTruth)],P.C.orange,2.5,1,[6,4]);
+      P.points(f,[0],[Math.min(1,atTruth)],P.C.orange,5);
+      P.text(f,"known generating θᵢ",.08,.94,{color:P.C.orange,font:"bold 11px system-ui"});
+      P.text(f,"learned density qϕ(θ | xᵢ)",-2.85,.86,{color:P.C.blue,font:"bold 11px system-ui"});
+      P.text(f,"parameter θ",2.05,.06,{color:P.C.muted,font:"11px system-ui"});
+      $("#npe-loss-offset-label").textContent = `${center>=0?"+":""}${center.toFixed(2)}`;
+      $("#npe-loss-width-label").textContent = sd.toFixed(2);
+      $("#npe-loss-density").innerHTML = `q<sub>ϕ</sub>(θ<sub>i</sub> | x<sub>i</sub>) = ${atTruth.toFixed(3)}`;
+      $("#npe-loss-value").textContent = `−log q = ${loss.toFixed(2)}`;
+      $("#npe-loss-meter-fill").style.width = `${Math.max(3,Math.min(100,100*Math.exp(-loss)))}%`;
+      const distance = Math.abs(center);
+      $("#npe-loss-summary").textContent = distance < .08 ? "The density is centered on the parameter that generated this trajectory, so this training example contributes little surprise." : distance < .55 ? "The generating parameter lies under substantial density. Training still nudges the prediction toward it." : "The network placed little density on the parameter that actually generated this simulation, so this example contributes a large loss.";
+    }
+    [offset,width].forEach(node=>node.addEventListener("input",draw));
+    $("#npe-loss-improve").addEventListener("click",()=>{ const next=Math.abs(+offset.value)<.03?0:+offset.value*.55; offset.value=next.toFixed(2); draw(); });
+    $("#npe-loss-controls").addEventListener("reset",()=>setTimeout(draw));
+    addEventListener("resize",draw); draw();
+  }
+
+  function diversityPredictionLab() {
+    const canvas = $("#diversity-lineage-canvas"), processCanvas = $("#diversity-process-canvas");
+    if (!canvas || !processCanvas) return;
     const slider = $("#diversity-generation"), palette = ["#577d91", "#b56a50", "#c59b4f", "#315f52", "#8e6bbf", "#54a58a", "#df835e", "#79a9c5", "#b9a35d", "#765d8f", "#8aba6f", "#d06077"];
     const settings = {
       "WT": {lineages: 36, midpoint: 58, slope: .071, births: 84},
@@ -332,7 +363,92 @@
       "ALLΔ": {lineages: 20, midpoint: 69, slope: .078, births: 92},
       "ARSΔ": {lineages: 13, midpoint: 75, slope: .083, births: 96}
     };
-    let strain = "WT", timer = null;
+    let strain = "WT", timer = null, processStep = 0, processTimer = null;
+
+    const processNotes = [
+      "Begin with ancestral cells and three existing CNV lineages. A lineage color is inherited by every descendant.",
+      "Formation: a new CNV event appears in one ancestral cell. It receives a new purple identity that its descendants retain.",
+      "Growth: fitness changes descendant number. The orange lineage has the largest advantage here, so its family becomes the largest.",
+      "Sampling: only a finite set enters the next generation. Some colors gain or lose share by chance; a rare lineage can disappear.",
+      "Summarize: first pool all colors for the reporter frequency, then normalize within CNV cells. Here the surviving shares give an effective diversity of 3.5 lineages."
+    ];
+
+    function drawProcess() {
+      const width = Math.max(700, Math.round(processCanvas.getBoundingClientRect().width || 940));
+      const height = Math.round(width * 0.5), ratio = Math.min(devicePixelRatio || 1, 2);
+      processCanvas.width = Math.round(width * ratio); processCanvas.height = Math.round(height * ratio);
+      const ctx = processCanvas.getContext("2d"); ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.clearRect(0, 0, width, height);
+      const ink = "#25332f", muted = "#66736d", border = "#d8d2c5", cream = "#fffdf8", ancestor = "#ead7a8";
+      const colors = ["#577d91", "#54a58a", "#df835e", "#8e6bbf"], centers = [width*.09, width*.29, width*.49, width*.69, width*.89], top = height*.23;
+      const titles = ["START", "FORM", "GROW", "SAMPLE", "SUMMARIZE"];
+      ctx.fillStyle = cream; ctx.fillRect(0, 0, width, height);
+      const rounded = (x,y,w,h,r,fill,stroke=border) => { ctx.beginPath(); ctx.roundRect(x,y,w,h,r); ctx.fillStyle=fill; ctx.fill(); ctx.strokeStyle=stroke; ctx.lineWidth=1; ctx.stroke(); };
+      const arrow = (x1,x2,y,active) => { ctx.save(); ctx.globalAlpha=active?1:.16; ctx.strokeStyle="#b56a50"; ctx.fillStyle="#b56a50"; ctx.lineWidth=2.5; ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke(); ctx.beginPath(); ctx.moveTo(x2,y); ctx.lineTo(x2-8,y-5); ctx.lineTo(x2-8,y+5); ctx.closePath(); ctx.fill(); ctx.restore(); };
+      const cell = (x,y,color,r=10,alpha=1) => { ctx.save(); ctx.globalAlpha=alpha; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fillStyle=color; ctx.fill(); ctx.strokeStyle="#31423c"; ctx.lineWidth=1; ctx.stroke(); ctx.beginPath(); ctx.arc(x-r*.3,y-r*.25,r*.18,0,Math.PI*2); ctx.fillStyle="rgba(255,255,255,.72)"; ctx.fill(); ctx.restore(); };
+      const label = (text,x,y,size=12,color=muted,weight=600,align="center") => { ctx.fillStyle=color; ctx.font=`${weight} ${size}px system-ui`; ctx.textAlign=align; ctx.fillText(text,x,y); };
+
+      centers.forEach((x,i) => {
+        const active = i <= processStep;
+        rounded(x-width*.08, height*.12, width*.16, height*.72, 14, active?"#ffffff":"#f5f4ef");
+        label(titles[i],x,top-17,Math.max(11,width*.014),active?ink:"#a8aea9",800);
+        if (i < 4) arrow(x+width*.082,centers[i+1]-width*.082,height*.48,i<processStep);
+      });
+
+      // Starting cells: beige ancestors plus three already formed CNV lineages.
+      const startCells = [[-25,-42,ancestor], [5,-45,ancestor], [28,-20,ancestor], [-31,-6,ancestor], [0,-10,colors[0]], [27,13,colors[1]], [-18,26,colors[2]], [9,42,ancestor]];
+      startCells.forEach(([dx,dy,c]) => cell(centers[0]+dx, height*.48+dy,c,9,processStep>=0?1:.15));
+      label("3 CNV colors",centers[0],height*.75,11,muted,600);
+
+      if (processStep >= 1) {
+        startCells.forEach(([dx,dy,c]) => cell(centers[1]+dx*.82,height*.48+dy*.82,c,8));
+        cell(centers[1]+34,height*.48-34,colors[3],9);
+        label("✦ new lineage",centers[1]+2,height*.72,11,colors[3],800);
+      }
+
+      if (processStep >= 2) {
+        const clusters = [
+          {color:colors[0], y:height*.33, n:3}, {color:colors[1], y:height*.45, n:5},
+          {color:colors[2], y:height*.59, n:8}, {color:colors[3], y:height*.72, n:2}
+        ];
+        clusters.forEach((group,g) => {
+          ctx.save(); ctx.globalAlpha=.28; ctx.strokeStyle=group.color; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(centers[1]+(g===3?34:(g-1)*12),height*.48+(g-1)*8); ctx.quadraticCurveTo((centers[1]+centers[2])/2,group.y,centers[2]-25,group.y); ctx.stroke(); ctx.restore();
+          for(let i=0;i<group.n;i++) cell(centers[2]-24+(i%4)*16,group.y+(Math.floor(i/4)-.35)*15,group.color,6.5);
+        });
+        label("different family sizes",centers[2],height*.79,11,muted,600);
+      }
+
+      if (processStep >= 3) {
+        ctx.save(); ctx.strokeStyle="#7f9189"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(centers[3]-43,height*.31); ctx.lineTo(centers[3]-19,height*.51); ctx.lineTo(centers[3]-43,height*.70); ctx.stroke(); ctx.restore();
+        label("finite draw",centers[3]-31,height*.26,9,muted,700);
+        const sampled = [colors[0],colors[1],colors[2],colors[2],colors[2],colors[3]];
+        sampled.forEach((color,i) => cell(centers[3]+2+(i%2)*20,height*.37+Math.floor(i/2)*28,color,8));
+        label("6 sampled cells",centers[3]+7,height*.76,11,muted,600);
+      }
+
+      if (processStep >= 4) {
+        const shares = [.167,.167,.5,.166]; let cursor = centers[4]-width*.06;
+        shares.forEach((share,i) => { const w=width*.12*share; ctx.fillStyle=colors[i]; ctx.fillRect(cursor,height*.39,w,height*.075); cursor+=w; });
+        ctx.strokeStyle=ink; ctx.strokeRect(centers[4]-width*.06,height*.39,width*.12,height*.075);
+        label("lineage shares",centers[4],height*.35,11,ink,700);
+        label("D = 3.5",centers[4],height*.59,Math.max(14,width*.019),"#315f52",800);
+        label("effective lineages",centers[4],height*.66,10,muted,600);
+      }
+      $("#diversity-process-note").textContent = processNotes[processStep];
+      $$('[data-diversity-process-step]').forEach(button => { const on=+button.dataset.diversityProcessStep===processStep; button.classList.toggle("active",on); button.setAttribute("aria-pressed",String(on)); });
+      $("#diversity-next-step").textContent = processStep >= 4 ? "Start again" : "Next step";
+    }
+
+    function stopProcess(label="Play one generation") { if(processTimer) clearInterval(processTimer); processTimer=null; $("#diversity-play-process").textContent=label; }
+    $$('[data-diversity-process-step]').forEach(button => button.addEventListener("click", () => { stopProcess(); processStep=+button.dataset.diversityProcessStep; drawProcess(); }));
+    $("#diversity-next-step").addEventListener("click", () => { stopProcess(); processStep=processStep>=4?0:processStep+1; drawProcess(); });
+    $("#diversity-play-process").addEventListener("click", () => {
+      if(processTimer){ stopProcess("Resume generation"); return; }
+      if(processStep>=4) processStep=0;
+      $("#diversity-play-process").textContent="Pause"; drawProcess();
+      const delay = matchMedia("(prefers-reduced-motion: reduce)").matches ? 80 : 850;
+      processTimer=setInterval(()=>{ processStep++; drawProcess(); if(processStep>=4) stopProcess("Play again"); },delay);
+    });
+    $("#diversity-reset-process").addEventListener("click", () => { stopProcess(); processStep=0; drawProcess(); });
     const lineagesFor = name => Array.from({length: settings[name].lineages}, (_, i) => {
       const birth = 7 + Math.round(settings[name].births * ((i + .35) / settings[name].lineages) ** 1.18);
       return {birth, death: i % 5 === 2 ? Math.min(116, birth + 13 + (i * 7) % 24) : 117,
@@ -394,12 +510,13 @@
       timer = setInterval(() => { slider.value = Math.min(116, +slider.value + 2); draw(); if (+slider.value >= 116) stop("Play again"); }, 85);
     });
     $("#diversity-reset").addEventListener("click", () => { slider.value = 0; stop(); draw(); });
-    addEventListener("resize", draw); draw();
+    addEventListener("resize", () => { drawProcess(); draw(); }); drawProcess(); draw();
   }
 
   trainingViewer().catch(console.error);
   collectiveLab().catch(console.error);
   zhouDesigner().catch(console.error);
   abcAndPpcExercises().catch(console.error);
+  npeLossExplorer();
   diversityPredictionLab();
 })();

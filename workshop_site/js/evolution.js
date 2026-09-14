@@ -370,37 +370,72 @@
   }
 
   function dfeExample() {
-    const canvas = $("#dfe-canvas");
-    if (!canvas) return;
-    const mean = $("#dfe-mean"), shape = $("#dfe-shape");
+    const canvas = $("#dfe-canvas"), selectedCanvas = $("#dfe-selected-canvas");
+    if (!canvas || !selectedCanvas) return;
+    const mean = $("#dfe-mean"), shape = $("#dfe-shape"), time = $("#dfe-time"), play = $("#dfe-play");
+    let timer = null;
+    function stop(label = "Play selection") {
+      if (timer) clearInterval(timer);
+      timer = null;
+      play.textContent = label;
+    }
     function draw() {
-      const mu = +mean.value, k = +shape.value, scale = mu / k, xMax = 0.18;
+      const mu = +mean.value, k = +shape.value, generations = +time.value, scale = mu / k, xMax = 0.18;
       const xs = Array.from({length: 241}, (_, i) => xMax * i / 240);
       const raw = xs.map(x => {
         const safeX = Math.max(x, xMax / 240);
         return safeX ** (k - 1) * Math.exp(-safeX / scale);
       });
-      const peak = Math.max(...raw.filter(Number.isFinite)), ys = raw.map(x => Math.min(1, x / peak));
-      const f = P.frame(canvas, 0, 1.08, 0, xMax);
-      P.band(f, xs, xs.map(() => 0), ys, P.C.orange, 0.2);
-      P.line(f, xs, ys, P.C.orange, 3);
-      const grid = Array.from({length: 25}, (_, i) => xMax * (i + 1) / 25), gy = grid.map(x => {
-        const value = x ** (k - 1) * Math.exp(-x / scale);
-        return Math.min(1, value / peak);
-      });
-      P.points(f, grid, gy, P.C.orange, 2.2);
-      P.line(f, [mu, mu], [0, 1], P.C.ink, 1.5, 1, [5, 4]);
-      P.text(f, `average new-CNV effect s̄ = ${mu.toFixed(3)}`, Math.min(mu + 0.004, 0.105), 0.96, {font: "bold 11px system-ui"});
+      const birthPeak = Math.max(...raw.filter(Number.isFinite)), birthDensity = raw.map(value => Math.min(1, value / birthPeak));
+      const selectedRaw = raw.map((value, i) => value * ((1 + xs[i]) ** generations));
+      const selectedPeak = Math.max(...selectedRaw.filter(Number.isFinite)), selectedDensity = selectedRaw.map(value => Math.min(1, value / selectedPeak));
+      const birthFrame = P.frame(canvas, 0, 1.08, 0, xMax), selectedFrame = P.frame(selectedCanvas, 0, 1.08, 0, xMax);
+      P.band(birthFrame, xs, xs.map(() => 0), birthDensity, P.C.blue, 0.22);
+      P.line(birthFrame, xs, birthDensity, P.C.blue, 3);
+      P.band(selectedFrame, xs, xs.map(() => 0), selectedDensity, P.C.orange, 0.24);
+      P.line(selectedFrame, xs, selectedDensity, P.C.orange, 3);
+      const grid = Array.from({length: 17}, (_, i) => xMax * (i + 1) / 18);
+      const densityAt = (x, weights, peak) => {
+        const index = Math.min(xs.length - 1, Math.round(x / xMax * (xs.length - 1)));
+        return Math.min(1, weights[index] / peak);
+      };
+      P.points(birthFrame, grid, grid.map(x => densityAt(x, raw, birthPeak)), P.C.blue, 2.5);
+      P.points(selectedFrame, grid, grid.map(x => densityAt(x, selectedRaw, selectedPeak)), P.C.orange, 2.5);
+      const weightedMean = weights => {
+        const totalWeight = weights.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
+        return weights.reduce((sum, value, i) => sum + (Number.isFinite(value) ? value * xs[i] : 0), 0) / totalWeight;
+      };
+      const birthMean = weightedMean(raw), selectedMean = weightedMean(selectedRaw);
+      P.line(birthFrame, [birthMean, birthMean], [0, 1], P.C.ink, 1.5, 1, [5, 4]);
+      P.line(selectedFrame, [selectedMean, selectedMean], [0, 1], P.C.ink, 1.5, 1, [5, 4]);
+      P.text(birthFrame, "new formation events", 0.008, 0.99, {color:P.C.blue, font:"bold 11px system-ui"});
+      P.text(selectedFrame, `descendants at generation ${generations}`, 0.008, 0.99, {color:P.C.orange, font:"bold 11px system-ui"});
       const total = raw.reduce((a, b) => a + (Number.isFinite(b) ? b : 0), 0);
       let cumulative = 0, q90 = xs.at(-1);
       for (let i = 0; i < xs.length; i++) { cumulative += Number.isFinite(raw[i]) ? raw[i] : 0; if (cumulative >= 0.9 * total) { q90 = xs[i]; break; } }
       $("#dfe-mean-label").textContent = mu.toFixed(3);
-      $("#dfe-shape-label").textContent = k.toFixed(1);
-      $("#dfe-summary").textContent = `The average newly formed CNV has s=${mu.toFixed(3)}. About 10% of new CNVs have effects above s=${q90.toFixed(3)}. The 25 dots are the fitness classes represented in the simulation.`;
-      $("#dfe-change").textContent = k < 1.2 ? "Most new CNVs are nearly neutral, while a small minority confer much larger growth advantages. Those rare lineages can later dominate the population." : k > 3.5 ? "New CNVs have relatively similar growth advantages, so selection changes their relative abundance more slowly." : "Many new CNVs have modest advantages and a smaller group has substantially larger effects. Selection progressively enriches that high-fitness group.";
+      $("#dfe-shape-label").textContent = k < 1.3 ? "very broad" : k < 2.5 ? "broad" : k < 4 ? "moderate" : "narrow";
+      $("#dfe-time-label").textContent = String(generations);
+      $("#dfe-new-mean").innerHTML = `mean <i>s</i> = ${birthMean.toFixed(3)}`;
+      $("#dfe-selected-mean").innerHTML = `mean <i>s</i> = ${selectedMean.toFixed(3)}`;
+      $("#dfe-summary").textContent = `About 10% of new CNV events begin above s = ${q90.toFixed(3)}. Both panels contain the same possible fitness classes; only their cellular abundance changes.`;
+      const shift = selectedMean - birthMean;
+      $("#dfe-change").textContent = generations === 0 ? "At formation the two distributions are identical because no lineage has yet had time to outgrow another." : `After ${generations} generations, lineages with larger s contribute more descendants. Their abundance-weighted mean advantage is now ${selectedMean.toFixed(3)}, a shift of ${shift.toFixed(3)} from the original DFE.`;
     }
-    [mean, shape].forEach(node => node.addEventListener("input", draw));
-    $("#dfe-controls").addEventListener("reset", () => setTimeout(draw));
+    [mean, shape].forEach(node => node.addEventListener("input", () => { stop(); draw(); }));
+    time.addEventListener("input", () => { stop("Resume selection"); draw(); });
+    play.addEventListener("click", () => {
+      if (timer) { stop("Resume selection"); return; }
+      if (+time.value >= +time.max) time.value = 0;
+      play.textContent = "Pause";
+      timer = setInterval(() => {
+        time.value = Math.min(+time.max, +time.value + 2);
+        draw();
+        if (+time.value >= +time.max) stop("Play again");
+      }, 150);
+      draw();
+    });
+    $("#dfe-controls").addEventListener("reset", () => setTimeout(() => { stop(); draw(); }));
     addEventListener("resize", draw);
     draw();
   }

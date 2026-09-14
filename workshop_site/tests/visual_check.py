@@ -50,6 +50,13 @@ def main() -> None:
         assert npe_image.size["width"] <= npe_figure.size["width"]
         assert npe_image.size["height"] <= driver.get_window_size()["height"] * .7
         npe_figure.screenshot("/tmp/workshop-npe-framework.png")
+        npe_loss = driver.find_element("id", "npe-loss-explorer")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", npe_loss)
+        loss_before = float(driver.find_element("id", "npe-loss-value").text.split("=")[1])
+        driver.find_element("id", "npe-loss-improve").click()
+        loss_after = float(driver.find_element("id", "npe-loss-value").text.split("=")[1])
+        assert loss_after < loss_before
+        npe_loss.screenshot("/tmp/workshop-npe-loss.png")
         abc_framework = driver.find_element("css selector", ".abc-framework-figure")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", abc_framework)
         abc_image = driver.find_element("css selector", ".abc-framework-figure img")
@@ -66,12 +73,29 @@ def main() -> None:
         prediction_box.screenshot("/tmp/workshop-posterior-predictions.png")
         diversity_lab = driver.find_element("id", "diversity-lab")
         driver.execute_script("arguments[0].scrollIntoView({block:'start'})", diversity_lab)
+        for _ in range(4):
+            driver.find_element("id", "diversity-next-step").click()
+        assert "effective diversity of 3.5" in driver.find_element("id", "diversity-process-note").text
+        assert driver.find_element("css selector", '[data-diversity-process-step="4"]').get_attribute("aria-pressed") == "true"
+        driver.find_element("id", "diversity-process-canvas").screenshot("/tmp/workshop-diversity-process.png")
         driver.find_element("id", "diversity-play").click()
         WebDriverWait(driver, 8).until(lambda d: int(d.find_element("id", "diversity-generation-label").text) >= 20)
         driver.find_element("id", "diversity-play").click()
         assert float(driver.find_element("id", "diversity-effective").text.split("=")[1]) > 1
         assert driver.find_elements("css selector", "#diversity-share-bar i")
         diversity_lab.screenshot("/tmp/workshop-diversity-lab.png")
+        flexible = driver.find_element("css selector", ".flexible-npe-illustration")
+        flexible_image = driver.find_element("css selector", ".flexible-npe-illustration img")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", flexible)
+        WebDriverWait(driver, 10).until(lambda d: flexible_image.get_property("naturalWidth") == 1800)
+        assert flexible_image.size["width"] <= flexible.size["width"]
+        flexible.screenshot("/tmp/workshop-flexible-npe.png")
+        take_home = driver.find_element("css selector", ".take-home-visual")
+        take_home_image = driver.find_element("css selector", ".take-home-visual>img")
+        driver.execute_script("arguments[0].scrollIntoView({block:'center'})", take_home)
+        WebDriverWait(driver, 10).until(lambda d: take_home_image.get_property("naturalWidth") > 0)
+        assert take_home_image.size["width"] <= take_home.size["width"]
+        take_home.screenshot("/tmp/workshop-take-home.png")
         driver.execute_script("window.scrollTo(0, arguments[0].offsetTop - 90)", prediction_box)
         driver.save_screenshot("/tmp/workshop-posterior-predictions-top.png")
         outline_finale = driver.find_element("css selector", ".chapter-walkthrough .story-slide:nth-child(4)")
@@ -133,6 +157,9 @@ def main() -> None:
         effective_size.screenshot("/tmp/workshop-effective-population-size.png")
         chemostat_ne = driver.find_element("id", "chemostat-ne-simulator")
         driver.execute_script("arguments[0].scrollIntoView({block:'center'})", chemostat_ne)
+        endpoint_rects = driver.execute_script("return [...document.querySelectorAll('.ne-slider-endpoints span')].map(e => e.getBoundingClientRect().toJSON())")
+        assert len(endpoint_rects) == 2 and endpoint_rects[0]["right"] < endpoint_rects[1]["left"]
+        assert "Half-order steps" not in chemostat_ne.text
         driver.find_element("id", "chemostat-ne-run").click()
         WebDriverWait(driver, 8).until(lambda d: d.find_element("id", "chemostat-ne-summary").text.startswith("900 of 900"))
         assert "3 · variance match" in driver.find_element("id", "chemostat-ne-calculation").text.lower()
@@ -154,6 +181,11 @@ def main() -> None:
         assert "percentage points" in driver.find_element("id", "evo-order-summary").text
         for station in ("evolution-playground", "dfe-example", "chuong-standing-variation", "zhou-model-playground"):
             element = driver.find_element("id", station); driver.execute_script("arguments[0].scrollIntoView({block:'start'})", element); time.sleep(.4)
+            if station == "dfe-example":
+                before = driver.find_element("id", "dfe-selected-mean").text
+                driver.find_element("id", "dfe-play").click(); time.sleep(.8)
+                driver.find_element("id", "dfe-play").click()
+                assert driver.find_element("id", "dfe-selected-mean").text != before
             if station == "chuong-standing-variation":
                 assert "starts empty" in driver.find_element("id", "chuong-phi-summary").text
                 driver.find_element("id", "chuong-phi-play").click(); time.sleep(.6)
