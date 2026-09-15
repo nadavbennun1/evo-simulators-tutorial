@@ -478,7 +478,7 @@ The targets are the selection coefficient $s$, formation rate $\delta$, and init
 $\varphi$. Distinct parameter combinations can produce similar frequency trajectories.
 
 $$p(\theta\mid x_{{obs}})=
-\frac{{p(x_{{obs}}\mid\theta)p(\theta)}}{{p(x_{{obs}})}}$$
+\frac{{p(\theta)p(x_{{obs}}\mid\theta)}}{{p(x_{{obs}})}}$$
 
 <div class="bayes-components" aria-label="Components of Bayes' rule">
   <article><strong>Prior · $p(\theta)$</strong><p>Our scientific knowledge and beliefs about plausible parameter values before observing these data.</p></article>

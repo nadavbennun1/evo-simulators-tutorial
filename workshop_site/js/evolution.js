@@ -65,9 +65,13 @@
       const orderTrajectories = Array.from({length: reps}, (_, i) => simulate((+el.seed.value || 0) + i, false));
       [[canvas, trajectories], [orderCanvas, orderTrajectories]].forEach(([target, runs], panelIndex) => {
         const f = P.frame(target, 0, 1, 0, duration);
-        runs.forEach((traj, r) => colors.forEach((color, state) => {
-          P.line(f, xs.slice(0, show + 1), traj.slice(0, show + 1).map(x => x[state]), color, r === 0 ? 2 : 0.9, r === 0 ? 0.9 : 0.16);
+        runs.forEach(traj => colors.forEach((color, state) => {
+          P.line(f, xs.slice(0, show + 1), traj.slice(0, show + 1).map(x => x[state]), color, 0.9, 0.16);
         }));
+        colors.forEach((color, state) => {
+          const medianCurve = xs.slice(0, show + 1).map((_, generation) => Workshop.quantile(runs.map(traj => traj[generation][state]), 0.5));
+          P.line(f, xs.slice(0, show + 1), medianCurve, color, 2.2, 0.92);
+        });
         if (panelIndex === 0) ["Ancestral", "GAP1 CNV", "Other beneficial"].forEach((name, i) => P.text(f, name, duration * 0.05, 0.58 - i * 0.075, {color: colors[i], font: "bold 11px system-ui"}));
       });
       const final = trajectories.map(x => x[show]);

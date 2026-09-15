@@ -404,11 +404,14 @@ def test_chapter_one_revision_contract():
     assert "color=C['chuong']" in notebook
     assert "Error loading sheet" not in text and "NoneType" not in text
     assert "evo-presets" in text and "<span>CNV formation log₁₀(δ<sub>C</sub>)</span>" in text
+    assert "const medianCurve" in script and "traj[generation][state]" in script
+    assert "r === 0" not in script
 
 
 def test_sbi_revision_contract():
     text = (SITE / "sbi.html").read_text()
     script = (SITE / "js/sbi.js").read_text()
+    build_source = (SITE / "build_site.py").read_text()
     assert "Run rejection ABC" in text
     assert 'id="abc-quantile"' in text and 'id="abc-sims"' in text
     assert 'id="guess-s"' not in text and 'id="guess-m"' not in text
@@ -426,6 +429,7 @@ def test_sbi_revision_contract():
     assert "In this chapter:" in text
     assert "Tavaré et al. (1997)" in text and "10.1093/genetics/145.2.505" in text
     assert 'class="bayes-components"' in text and "The simulator samples from the likelihood" in text
+    assert r"\frac{{p(\theta)p(x_{{obs}}\mid\theta)}}{{p(x_{{obs}})}}" in build_source
     assert 'id="designing-the-prior"' in text and "Designing a prior" in text
     assert "CNV formation-rate prior" in text and "10⁻¹²" in text and "0.4" in text
     assert "does not create identifiability" in text and "What came from the literature?" in text
