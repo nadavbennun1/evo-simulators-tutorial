@@ -241,7 +241,7 @@
     const chemoCards = $$("#chemostat-ne-calculation article strong");
     const chemostatParameters = Object.freeze({
       inoculum: 1.5e7, dilution: 0.12, maximumGrowth: 0.35, halfSaturation: 0.103,
-      yield: 32445000 * 20, incomingSubstrate: 0.8, hoursPerGeneration: 5.8, tau: 0.1,
+      yield: 32445000 * 20, incomingSubstrate: 0.8, tau: 0.1,
       generations: 1000, burnIn: 100
     });
     let chemoTimer = null, chemoStarted = false, chemoVisible = 0;
@@ -261,7 +261,8 @@
     function prepareChemostat() {
       const params = chemostatParameters, replicateCount = +chemoReplicates.value;
       const R = S.mulberry32(+chemoSeed.value || 0);
-      const stepsPerGeneration = Math.round(params.hoursPerGeneration / params.tau);
+      const generationHours = Math.log(2) / params.dilution;
+      const stepsPerGeneration = Math.round(generationHours / params.tau);
       chemoChanges = []; chemoDiversities = [];
       let censusSum = 0, censusObservations = 0;
 

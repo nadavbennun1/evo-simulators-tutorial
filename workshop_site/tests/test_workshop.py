@@ -352,6 +352,9 @@ def test_chapter_one_revision_contract():
     assert "Chuong chemostat data" in text and "simpler model" in text
     assert "incoming fresh" in text and "mutation flow" in text and "realized <strong>per-capita growth rate</strong>" in text
     assert "summation notation is unnecessary" not in text and "not a mutation rate" in text
+    assert "one doubling, not one hour" in text and "5.78 h" in text
+    assert "rare-event probability per" in text and "<strong>relative growth</strong>" in text
+    assert "generationHours = Math.log(2) / params.dilution" in script and "hoursPerGeneration: 5.8" not in script
     assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
     assert "Lauer et al. (2018)" in text and "journal.pbio.3000069" in text
     assert "Motivation: repeated" in text and "finite populations <strong>sample</strong>" not in text

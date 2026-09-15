@@ -333,13 +333,63 @@ The ODE exposes reactor biology that the Wright–Fisher approximation compresse
 clock and an effective population size.''',
         "4ff32a3e": r'''### Connecting hours to generations
 
-The two descriptions share interpretable parameters:
+A generation is one doubling, not one hour. At chemostat steady state, ancestral cells replace
+the cells removed by dilution, so their realized per-capita growth rate equals the dilution rate:
 
-| Chemostat quantity | Wright–Fisher quantity | Conversion |
-|---|---|---|
-| growth-rate difference | selection coefficient | $s_C=(r_C-r_A)/(r_A\ln2)$ |
-| hourly formation rate | per-generation formation rate | $\delta_C^{gen}=\delta_C^{hr}\ln2/D$ |
-| time in hours | generations | $g=tD/\ln2$ |
+$$\mu_A(S^*)=D.$$
+
+If a population grows as $X(t)=X(0)e^{Dt}$, its doubling time $T_{gen}$ is obtained by setting
+$X(T_{gen})/X(0)=2$:
+
+$$2=e^{DT_{gen}}
+\qquad\Longrightarrow\qquad
+T_{gen}=\frac{\ln 2}{D}.$$
+
+For the experimental dilution rate $D=0.12\ \mathrm{h}^{-1}$,
+
+$$T_{gen}=\frac{\ln2}{0.12}=5.78\ \mathrm{h}\approx5.8\ \mathrm{h}.$$
+
+This clock converts experimental time into generations:
+
+$$g=\frac{t}{T_{gen}}=\frac{tD}{\ln2}.$$
+
+The formation parameter $\delta_C$ is specified per cell division. A rare-event probability per
+generation becomes an hourly event rate by distributing it across the 5.8-hour generation:
+
+$$\delta_C^{hr}\approx\frac{\delta_C^{gen}}{T_{gen}}
+=\delta_C^{gen}\frac{D}{\ln2}.$$
+
+The approximation is excellent for the very small formation probabilities considered here. The
+exact constant-hazard conversion is
+$\delta_C^{hr}=-\ln(1-\delta_C^{gen})/T_{gen}$.
+
+Selection requires a different conversion because it describes **relative growth**, not the
+arrival of a rare event. The paper parameterizes the ancestral and mutant maximum Malthusian
+growth rates as $r_A$ and $r_i$. At the steady-state substrate concentration, every genotype is
+multiplied by the same Monod factor and the ancestor satisfies
+
+$$\frac{S^*}{S^*+k}=\frac{D}{r_A}.$$
+
+The mutant's realized hourly growth-rate advantage is therefore
+
+$$\Delta\mu_i(S^*)=(r_i-r_A)\frac{D}{r_A}.$$
+
+Multiplying that hourly advantage by one chemostat generation gives the accumulated log-relative
+growth advantage used in the paper:
+
+$$s_i=\frac{r_i-r_A}{r_A}\ln2,
+\qquad i\in\{B,C\},$$
+
+because the $D$ in $\Delta\mu_i(S^*)$ cancels the $D$ in
+$T_{gen}=\ln2/D$. In the direction used by the continuous-time simulator, this is
+
+$$r_i=r_A+\frac{s_i r_A}{\ln2}.$$
+
+Thus $\delta$ is divided by the experimental generation duration to become an hourly event rate,
+whereas $s$ sets the difference between genotype-specific intrinsic growth rates. Both connect the
+two clocks, but they are not the same operation. If discrete fitness is written as the multiplier
+$1+s_{WF}$, the exact bridge is $1+s_{WF}=e^{s_i}$; for the effects considered here, the familiar
+$1+s$ notation is a close approximation.
 
 For frequency-only inference, the discrete simulator is usually sufficient. The ODE remains
 valuable when nutrient concentration and reactor transients are themselves part of the question.''',
@@ -929,7 +979,7 @@ $N_e=3.3\times10^8$, about two-thirds of the model's steady-state census.'''
       <div class="ne-simulator-heading"><span>Teaching simulation</span><div><h4>Watch <i>N</i><sub>e</sub> emerge from the chemostat</h4><p>This browser version follows the paper's direction of calculation: chemostat growth and washout generate neutral fluctuations first; their variance is then expressed as an equivalent Wright–Fisher population size. No <i>N</i><sub>e</sub> is used to generate the trajectories.</p></div></div>
       <div class="paper-workflow" aria-label="Avecilla effective population size workflow"><article><b>1</b><span><strong>Make the chemostat model neutral</strong><small>Two alleles, equal rates, <i>p</i> = <i>q</i> = 0.5</small></span></article><i>→</i><article><b>2</b><span><strong>Reach simulated steady state</strong><small>Simulate 1,000 generations; discard 100</small></span></article><i>→</i><article><b>3</b><span><strong>Summarize simulated fluctuations</strong><small>Pool about 900 transitions per trajectory</small></span></article><i>→</i><article><b>4</b><span><strong>Translate variance into Wright–Fisher <i>N</i><sub>e</sub></strong><small>Obtain 3.3 × 10<sup>8</sup></small></span></article></div>
       <div class="ne-simulator-grid"><form class="controls" id="chemostat-ne-controls">
-        <div class="chemostat-model-inputs" aria-label="Fixed chemostat model inputs"><span><small>Dilution rate <i>D</i></small><strong>0.12 h<sup>−1</sup></strong></span><span><small>Maximum growth <i>μ</i><sub>A</sub></small><strong>0.35 h<sup>−1</sup></strong></span><span><small>Incoming substrate <i>S</i><sub>0</sub></small><strong>0.800</strong></span><span><small>Yield <i>Y</i></small><strong>6.49 × 10<sup>8</sup></strong></span></div>
+        <div class="chemostat-model-inputs" aria-label="Fixed chemostat model inputs"><span><small>Dilution rate <i>D</i></small><strong>0.12 h<sup>−1</sup></strong><em><i>T</i><sub>gen</sub> = ln 2 / <i>D</i> = 5.78 h</em></span><span><small>Maximum growth <i>μ</i><sub>A</sub></small><strong>0.35 h<sup>−1</sup></strong></span><span><small>Incoming substrate <i>S</i><sub>0</sub></small><strong>0.800</strong></span><span><small>Yield <i>Y</i></small><strong>6.49 × 10<sup>8</sup></strong></span></div>
         <label><span>Neutral trajectories</span><select id="chemostat-ne-replicates"><option value="4">4</option><option value="10" selected>10 · paper setting</option><option value="20">20</option></select></label>
         <label><span>Seed</span><input id="chemostat-ne-seed" type="number" min="0" max="99999" value="1633"></label>
         <div class="button-row"><button id="chemostat-ne-run" type="button">Run chemostat calibration</button><button type="reset">Reset</button></div>
