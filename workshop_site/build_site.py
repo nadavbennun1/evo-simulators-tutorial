@@ -1213,7 +1213,6 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
                          "status": status, "reason": reason})
         if key == "evolution" and cid == "3282b174":
             blocks.append(avecilla_model_builder_section())
-            blocks.append(effective_population_section())
         for interaction in interactions.get(cid, []):
             if not (key == "evolution" and interaction == "chuong-parameter-challenge"):
                 blocks.append(station_markup(interaction))
@@ -1237,6 +1236,7 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
             name = "Chuong" if cid == "66cce2fa" else "Zhou"
             blocks.append(chapter_illustration("modeler-model-success.png", f"Researchers celebrate the {name} model fit", "", "model-complete-illustration"))
         if key == "evolution" and cid == "d29cac1e":
+            blocks.append(effective_population_section())
             blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate agreement between continuous chemostat and Wright–Fisher simulations", "", "model-complete-illustration"))
         if key == "evolution" and cid == "f37292e6":
             blocks.append(chapter_illustration("modeler-model-success.png", "Researchers celebrate the completed DFE analysis", "", "model-complete-illustration"))
