@@ -425,7 +425,7 @@ The transition direction is now CNV $\rightarrow$ non-CNV at rate $\delta$. If r
 fitness $1+s$, their frequency can rise through formation and selection together:
 
 $$M=\begin{pmatrix}1-\delta&0\\\delta&1\end{pmatrix},\qquad
-E=M\,\mathrm{diag}(1,1+s)$$
+E=\begin{pmatrix}1-\delta&0\\\delta&1+s\end{pmatrix}$$
 
 Because both parameters accelerate loss of the CNV, trajectory shape and repeated measurements
 are essential for separating reversion rate from fitness advantage.''',
@@ -440,7 +440,11 @@ Trisomic cells move to WT at rate $\mu_{Tri}$ or LOH at rate $\mu_{LOH}$; the th
 compete with relative fitnesses $(w_{Tri},1,w_{LOH})$.
 
 $$M=\begin{pmatrix}1-\mu_{Tri}-\mu_{LOH}&0&0\\\mu_{Tri}&1&0\\\mu_{LOH}&0&1\end{pmatrix},
-\qquad G=\mathrm{diag}(w_{Tri},1,w_{LOH})M$$
+\qquad G=\begin{pmatrix}
+w_{Tri}(1-\mu_{Tri}-\mu_{LOH})&0&0\\
+\mu_{Tri}&1&0\\
+w_{LOH}\mu_{LOH}&0&w_{LOH}
+\end{pmatrix}$$
 
 This is the same mathematical model with different genotype labels: define allowed transitions,
 apply fitness, sample drift, and observe the passages the experiment actually measured.''',
@@ -772,12 +776,12 @@ $$x_C^{(s)}=\frac{(1+s)x_C^{(m)}}{x_A^{(m)}+(1+s)x_C^{(m)}},\qquad
 x_A^{(s)}=1-x_C^{(s)}.$$
 <p>When $s>0$, the mutant contributes more than its current frequency would predict.</p></section>
 <section class="equation-level vector-level"><h4>The same reweighting in matrix form</h4>
-$$W=\operatorname{diag}(w_A,w_C),\qquad
+$$W=\begin{pmatrix}w_A&0\\0&w_C\end{pmatrix},\qquad
 x^{(s)}=\frac{Wx^{(m)}}{\mathbf 1^\mathsf{T}Wx^{(m)}}.$$
-<p>The diagonal matrix $W$ multiplies each genotype by its own fitness. The denominator is the sum
+<p>The matrix $W$ multiplies each genotype by its own fitness. The denominator is the sum
 of all weighted contributions and restores frequencies that sum to one.</p></section>
 <section class="equation-level paper-level"><h4>Avecilla: three genotypes</h4>
-$$W_A=\operatorname{diag}(1,1+s_C,1+s_B),\qquad
+$$W_A=\begin{pmatrix}1&0&0\\0&1+s_C&0\\0&0&1+s_B\end{pmatrix},\qquad
 x^{(s)}=\frac{W_Ax^{(m)}}{\mathbf 1^\mathsf{T}W_Ax^{(m)}}.$$
 <p>A positive $s_C$ does not guarantee a CNV sweep. The lineage must first appear, and it competes
 with the other beneficial state.</p>
@@ -854,7 +858,12 @@ def chuong_equation_exercise() -> str:
 $$x^{(m)}=Mx_t,\qquad M=\begin{pmatrix}1-\delta-\mu_{SNV}&0&0&0\\
 \delta&1&0&0\\0&0&1&0\\\mu_{SNV}&0&0&1\end{pmatrix}.$$''')
     selection = math_to_html(r'''<h3>2 · Selection</h3><p>CNV⁺ and CNV⁻ share fitness $1+s$ because both amplify <em>GAP1</em>; the competitor has fitness $1+s_{SNV}$.</p>
-$$W=\operatorname{diag}(1,1+s,1+s,1+s_{SNV}),\qquad
+$$W=\begin{pmatrix}
+1&0&0&0\\
+0&1+s&0&0\\
+0&0&1+s&0\\
+0&0&0&1+s_{SNV}
+\end{pmatrix},\qquad
 x^{(s)}=\frac{Wx^{(m)}}{\mathbf 1^\mathsf{T}Wx^{(m)}}.$$''')
     drift = math_to_html(r'''<h3>3 · Drift</h3><p>A multinomial draw of size $N_e$ creates one stochastic replicate from the expected frequencies.</p>
 $$n_{t+1}\sim\operatorname{Multinomial}(N_e,x^{(s)}),\qquad x_{t+1}=n_{t+1}/N_e.$$''')
@@ -996,84 +1005,20 @@ $N_e=3.3\times10^8$, about two-thirds of the model's steady-state census.'''
       <div class="ne-calculation" id="chemostat-ne-calculation" aria-live="polite"><article><small>1 · model census</small><b><i>N</i><sup>*</sup> = <i>Y</i>(<i>S</i><sub>0</sub> − <i>S</i><sup>*</sup>)</b><strong>—</strong></article><article><small>2 · simulated fluctuation</small><b><i>V</i><sub>chemo</sub> = Var(Δ<i>p</i>)</b><strong>—</strong></article><article><small>3 · equivalent size</small><b><i>N̂</i><sub>e</sub> = mean[<i>p</i>(1 − <i>p</i>)] / <i>V</i><sub>chemo</sub></b><strong>—</strong></article></div>
     </section>'''
 
-    serial_text = fr'''### Serial dilution: derive the harmonic mean from accumulated drift
+    serial_text = fr'''### Serial dilution: the bottleneck sets effective population size
 
-In a batch culture the number of cells changes sharply within every transfer cycle. The allele
-frequency does **not** remain fixed: call its value in generation $g$ by $p_g$. Neutral sampling
-makes $p_{{g+1}}$ fluctuate around $p_g$.
+In serial dilution, population size is smallest immediately after transfer and then doubles until
+the next transfer. Genetic drift is strongest in those first, smallest generations. An arithmetic
+average would therefore give the many cells late in the cycle too much influence.
 
-It is easier to follow the remaining variation
+For generation sizes $N_0,\ldots,N_{{G-1}}$, the constant Wright–Fisher population with the same
+cumulative neutral drift is approximated by their harmonic mean:
 
-$$H_g=p_g(1-p_g),$$
+$$N_e^{{cycle}}\approx\frac{{G}}{{\displaystyle\sum_{{g=0}}^{{G-1}}1/N_g}}.$$
 
-which is largest when both alleles are common and approaches zero when one is lost. If generation
-$g$ has sampling size $N_g$, let $K_g$ be the number of copies of the focal allele drawn into the
-next generation. Conditional on the current frequency $p_g$,
-
-$$K_g\mid p_g\sim\operatorname{{Binomial}}(N_g,p_g),
-\qquad p_{{g+1}}=\frac{{K_g}}{{N_g}}.$$
-
-The phrase **given $p_g$** means that we temporarily hold the current frequency fixed and average
-over every next generation that random sampling could produce. It does not mean that frequency is
-fixed through the experiment. The binomial draw has
-
-$$\operatorname{{E}}[p_{{g+1}}\mid p_g]=p_g,
-\qquad
-\operatorname{{Var}}(p_{{g+1}}\mid p_g)=\frac{{p_g(1-p_g)}}{{N_g}}.$$
-
-We can now calculate how much variation remains after that draw:
-
-<div class="ne-cancellation-box ne-expectation-box">
-
-$$\begin{{aligned}}
-\operatorname{{E}}[H_{{g+1}}\mid p_g]
-&=\operatorname{{E}}[p_{{g+1}}(1-p_{{g+1}})\mid p_g]\\
-&=\operatorname{{E}}[p_{{g+1}}\mid p_g]
--\operatorname{{E}}[p_{{g+1}}^2\mid p_g]\\
-&=p_g-\left(\operatorname{{Var}}(p_{{g+1}}\mid p_g)+p_g^2\right)\\
-&=p_g(1-p_g)\left(1-\frac1{{N_g}}\right)\\
-&=H_g\left(1-\frac1{{N_g}}\right).
-\end{{aligned}}$$
-
-</div>
-
-The factor $1-1/N_g$ is therefore the fraction of the current variation expected to survive one
-round of neutral sampling. Once a particular $p_{{g+1}}$ is realized, it becomes the starting
-frequency for the following generation. Thus $p_g$ may move in every replicate; the equation
-follows the **expected variation that
-remains**, not a frequency held constant. Applying the same step through all $G$ generations gives
-
-$$\operatorname{{E}}[H_G]
-=H_0\prod_{{g=0}}^{{G-1}}\left(1-\frac1{{N_g}}\right).$$
-
-Now define one constant ideal population that loses the same expected variation over the same
-$G$ generations:
-
-$$\operatorname{{E}}[H_G]
-=H_0\left(1-\frac1{{N_e^{{cycle}}}}\right)^G.$$
-
-<div class="ne-cancellation-box">
-<p><strong>Match the two life cycles.</strong> They begin with the same variation, $H_0$, so that
-common starting value divides out:</p>
-
-$$H_0\left(1-\frac1{{N_e^{{cycle}}}}\right)^G
-=H_0\prod_{{g=0}}^{{G-1}}\left(1-\frac1{{N_g}}\right)$$
-
-$$\left(1-\frac1{{N_e^{{cycle}}}}\right)^G
-=\prod_{{g=0}}^{{G-1}}\left(1-\frac1{{N_g}}\right).$$
-</div>
-
-For these large populations, $\log(1-x)\approx-x$. Taking the logarithm of both sides therefore
-turns the product into a sum:
-
-$$-\frac{{G}}{{N_e^{{cycle}}}}
-\approx-\sum_{{g=0}}^{{G-1}}\frac1{{N_g}}
-\qquad\Longrightarrow\qquad
-N_e^{{cycle}}\approx\frac{{G}}{{\sum_{{g=0}}^{{G-1}}1/N_g}}.$$
-
-This is the harmonic mean. It appears because the expected loss of variation accumulates in
-proportion to $1/N_g$, so the small populations immediately after transfer matter much more than
-the large population before the next transfer.
+Each generation contributes in proportion to $1/N_g$, so the bottleneck weighs far more heavily
+than the largest population reached before transfer. A formal treatment using the loss of
+heterozygosity is given by [Motro & Thomson (1982)](https://doi.org/10.1111/j.1558-5646.1982.tb05474.x).
 
 {paper("de")} used 1:64 transfers, corresponding to $G=6$ doublings per cycle. For
 $N_0,\ldots,N_5$ the calculation becomes

@@ -377,7 +377,9 @@ def test_chapter_one_revision_contract():
     assert "3.3 × 10<sup>8</sup>" in text and "Make the chemostat model neutral" in text and "discard 100" in text
     assert "did <strong>not</strong> estimate this quantity in a separate neutral-lineage experiment" in text
     assert "model-generated" in text and "not a match to experimentally" in text and "is not supplied to produce it" in text
-    assert "Binomial" in text and "temporarily hold the current frequency fixed" in text and "fraction of the current variation expected to survive" in text
+    assert "the bottleneck sets effective population size" in text
+    assert "same\ncumulative neutral drift" in text and "Motro &amp; Thomson (1982)" in text
+    assert "temporarily hold the current frequency fixed" not in text and "fraction of the current variation expected to survive" not in text
     assert "function effectivePopulationSimulators()" in script and "diversity / variance" in script and "generations / reciprocalSum" in script
     assert "poissonApprox" in script and "chemostatParameters" in script
     assert "chemostatNeValues" not in script and "selectedChemostatNe" not in script
@@ -488,10 +490,10 @@ def test_presentation_revision_contract():
     assert len(re.findall(r'<pre class="annotated-code(?: |")', evolution)) == 4
     assert evolution.count('class="code-fill-list"') == 1
     assert "Effective population size belongs to the life cycle" in evolution
-    assert "Serial dilution: derive the harmonic mean from accumulated drift" in evolution
-    assert "The allele\nfrequency does <strong>not</strong> remain fixed" in evolution
-    assert 'class="ne-cancellation-box"' in evolution
-    assert "expected variation that" in evolution and "remains" in evolution
+    assert "Serial dilution: the bottleneck sets effective population size" in evolution
+    assert "An arithmetic\naverage" in evolution
+    assert 'class="ne-cancellation-box"' not in evolution
+    assert "A formal treatment using the loss of\nheterozygosity" in evolution
     assert "Why not use one estimator for both experiments?" in evolution
     assert "biomass yield coefficient" in evolution and "converts biomass" in evolution and "production into substrate use" in evolution
     assert "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics." not in evolution
