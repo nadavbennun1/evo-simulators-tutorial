@@ -212,7 +212,7 @@ def test_assessment_is_versioned_private_by_design_and_recomputable():
     assert "One last experiment" in sbi and "Let’s see what changed." in sbi
     assert 'href="../evolution.html"' in page and "<noscript>" in page
     assert all((assessment / "assets" / name).exists() for name in (
-        "nyu-official-seal.svg", "umn-official-logo.svg", "tau-official-logo.png", "lone-wolf.svg"
+        "nyu-official-logo.jpg", "umn-official-logo.svg", "tau-official-logo.png", "lone-wolf.svg"
     ))
     assert all(token in script for token in (
         "question_id", "question_revision", "variant_id", "displayed_order", "response", "duration_ms",

@@ -128,7 +128,7 @@ The home-page primary QR targets the pre assessment. The Chapter 2 final card ta
 
 The university marks are decorative and every venue card also has a text label:
 
-- `assets/nyu-official-seal.svg`: New York University seal, obtained through the Wikimedia Commons file mirror of the official mark;
+- `assets/nyu-official-logo.jpg`: user-provided NYU torch logo;
 - `assets/umn-official-logo.svg`: University of Minnesota official logo, obtained through the Wikimedia Commons file mirror;
 - `assets/tau-official-logo.png`: downloaded from `english.tau.ac.il`, the university’s official English site.
 

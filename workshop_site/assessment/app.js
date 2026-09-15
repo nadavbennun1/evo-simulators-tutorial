@@ -6,7 +6,7 @@
   const config = window.ASSESSMENT_CONFIG;
   const phase = new URLSearchParams(location.search).get("phase") === "post" ? "post" : "pre";
   const venues = [
-    {id: "NYU", label: "NYU", image: "assets/nyu-official-seal.svg", alt: "New York University seal"},
+    {id: "NYU", label: "NYU", image: "assets/nyu-official-logo.jpg", alt: "NYU torch logo"},
     {id: "UMN", label: "UMN", image: "assets/umn-official-logo.svg", alt: "University of Minnesota logo"},
     {id: "TAU", label: "TAU", image: "assets/tau-official-logo.png", alt: "Tel Aviv University logo"},
     {id: "ONLINE", label: "Online", image: "assets/lone-wolf.svg", alt: "Cheerful lone wolf joining online", subtitle: "Self-guided · no live presentation"}
