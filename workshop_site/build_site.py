@@ -448,7 +448,12 @@ w_{LOH}\mu_{LOH}&0&w_{LOH}
 
 This is the same mathematical model with different genotype labels: define allowed transitions,
 apply fitness, sample drift, and observe the passages the experiment actually measured.''',
-        "49b50682": r'''## Summary
+        "49b50682": fr'''## Summary
+
+<figure class="paper-figure summary-model-fits">
+  <img loading="lazy" src="{versioned_asset('assets/notebook/40f8e547-out-0.png')}" alt="Four model-fit comparisons: Avecilla, Chuong, De, and Zhou observed evolutionary trajectories alongside simulations">
+  <figcaption>Observed trajectories and simulations from the four evolutionary models developed in this chapter.</figcaption>
+</figure>
 
 | | Avecilla WF | Avecilla ODE | Chuong&nbsp;WF | De WF | Zhou WF |
 |---|---|---|---|---|---|
@@ -1259,8 +1264,12 @@ def render_notebook(key: str, interactions: dict[str, list[str]]) -> tuple[str, 
         cid = cell.get("id") or f"cell-{index}"
         source = cell.source or ""
         if not source.strip():
-            coverage.append({"index": index, "cell_id": cid, "type": cell.cell_type,
-                             "status": "excluded", "reason": "empty cell"})
+            if key == "evolution" and cid == "40f8e547":
+                coverage.append({"index": index, "cell_id": cid, "type": cell.cell_type,
+                                 "status": "included", "reason": "stored four-model fit figure is integrated into the chapter summary"})
+            else:
+                coverage.append({"index": index, "cell_id": cid, "type": cell.cell_type,
+                                 "status": "excluded", "reason": "empty cell"})
             continue
         if key == "evolution" and cid == "54e9f8de":
             blocks.append(chapter_illustration("modeler-head-scratching.png", "An evolutionary biologist connects a genotype model to observed trajectories", "A plausible mechanism is a hypothesis. The first fit asks whether it can reproduce the data."))

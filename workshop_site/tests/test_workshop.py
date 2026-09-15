@@ -499,6 +499,8 @@ def test_presentation_revision_contract():
     assert "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics." not in evolution
     assert "WF = ODE?" not in evolution and "Infer mutation rate via SBI?" not in evolution
     assert "Appendix: why the quick fits use perturbed parameters" in evolution
+    assert "40f8e547-out-0.png" in evolution and "Observed trajectories and simulations from the four evolutionary models" in evolution
+    assert evolution.index("<h2>Summary</h2>") < evolution.index("40f8e547-out-0.png") < evolution.index("<table>", evolution.index("<h2>Summary</h2>"))
     assert "Results for ALLΔ" not in sbi and "Flexible Zhou NPE" not in sbi
     assert "collective-figure-1.png" in sbi and "collective-figure-4.png" in sbi
     assert "Fig. 1." in sbi and "Fig. 4." in sbi and "CC BY 4.0" not in sbi
