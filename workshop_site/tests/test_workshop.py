@@ -483,6 +483,9 @@ def test_presentation_revision_contract():
     assert evolution.count('class="code-fill-list"') == 1
     assert "Effective population size belongs to the life cycle" in evolution
     assert "Serial dilution: derive the harmonic mean from accumulated drift" in evolution
+    assert "The allele\nfrequency does <strong>not</strong> remain fixed" in evolution
+    assert 'class="ne-cancellation-box"' in evolution
+    assert "expected variation that" in evolution and "remains" in evolution
     assert "Why not use one estimator for both experiments?" in evolution
     assert "biomass yield coefficient" in evolution and "converts biomass" in evolution and "production into substrate use" in evolution
     assert "The continuous and discrete formulations reproduce the same frequency-scale evolutionary dynamics." not in evolution

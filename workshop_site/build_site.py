@@ -989,26 +989,54 @@ $N_e=3.3\times10^8$, about two-thirds of the model's steady-state census.'''
 
     serial_text = fr'''### Serial dilution: derive the harmonic mean from accumulated drift
 
-In a batch culture the number of cells changes sharply within every transfer cycle. A generation
-containing $N_g$ cells contributes approximately
+In a batch culture the number of cells changes sharply within every transfer cycle. The allele
+frequency does **not** remain fixed: call its value in generation $g$ by $p_g$. Neutral sampling
+makes $p_{{g+1}}$ fluctuate around $p_g$.
 
-$$\mathrm{{Var}}_g(p'\mid p)=\frac{{p(1-p)}}{{N_g}}$$
+It is easier to follow the remaining variation
 
-to neutral drift. Variance accumulates across the $G$ generations in a cycle, so the total is
+$$H_g=p_g(1-p_g),$$
 
-$$p(1-p)\sum_{{g=0}}^{{G-1}}\frac1{{N_g}}.$$
+which is largest when both alleles are common and approaches zero when one is lost. If generation
+$g$ has sampling size $N_g$, neutral Wright–Fisher sampling leaves, on average,
 
-Now define one constant ideal population that accumulates the same drift over those same $G$
-generations. Its total contribution would be $G\,p(1-p)/N_e^{{cycle}}$. Equating the two totals and
-cancelling $p(1-p)$ gives
+$$\operatorname{{E}}\!\left[H_{{g+1}}\mid p_g\right]
+=H_g\left(1-\frac1{{N_g}}\right).$$
 
-$$\frac{{G}}{{N_e^{{cycle}}}}=\sum_{{g=0}}^{{G-1}}\frac1{{N_g}}
+Thus $p_g$ may move in every replicate; the equation follows the **expected variation that
+remains**, not a frequency held constant. Applying the same step through all $G$ generations gives
+
+$$\operatorname{{E}}[H_G]
+=H_0\prod_{{g=0}}^{{G-1}}\left(1-\frac1{{N_g}}\right).$$
+
+Now define one constant ideal population that loses the same expected variation over the same
+$G$ generations:
+
+$$\operatorname{{E}}[H_G]
+=H_0\left(1-\frac1{{N_e^{{cycle}}}}\right)^G.$$
+
+<div class="ne-cancellation-box">
+<p><strong>Match the two life cycles.</strong> They begin with the same variation, $H_0$, so that
+common starting value divides out:</p>
+
+$$H_0\left(1-\frac1{{N_e^{{cycle}}}}\right)^G
+=H_0\prod_{{g=0}}^{{G-1}}\left(1-\frac1{{N_g}}\right)$$
+
+$$\left(1-\frac1{{N_e^{{cycle}}}}\right)^G
+=\prod_{{g=0}}^{{G-1}}\left(1-\frac1{{N_g}}\right).$$
+</div>
+
+For these large populations, $\log(1-x)\approx-x$. Taking the logarithm of both sides therefore
+turns the product into a sum:
+
+$$-\frac{{G}}{{N_e^{{cycle}}}}
+\approx-\sum_{{g=0}}^{{G-1}}\frac1{{N_g}}
 \qquad\Longrightarrow\qquad
-N_e^{{cycle}}=\frac{{G}}{{\sum_{{g=0}}^{{G-1}}1/N_g}}.$$
+N_e^{{cycle}}\approx\frac{{G}}{{\sum_{{g=0}}^{{G-1}}1/N_g}}.$$
 
-That is the harmonic mean. It appears because drift accumulates in proportion to $1/N_g$, so the
-small populations immediately after transfer matter much more than the large population before
-the next transfer.
+This is the harmonic mean. It appears because the expected loss of variation accumulates in
+proportion to $1/N_g$, so the small populations immediately after transfer matter much more than
+the large population before the next transfer.
 
 {paper("de")} used 1:64 transfers, corresponding to $G=6$ doublings per cycle. For
 $N_0,\ldots,N_5$ the calculation becomes
