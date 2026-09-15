@@ -355,6 +355,8 @@ def test_chapter_one_revision_contract():
     assert "one doubling, not one hour" in text and "5.78 h" in text
     assert "rare-event probability per" in text and "<strong>relative growth</strong>" in text
     assert "generationHours = Math.log(2) / params.dilution" in script and "hoursPerGeneration: 5.8" not in script
+    assert "GEN_TO_HOURS = np.log(2) / D_AVE" in notebook and "GEN_TO_HOURS = 1.5" not in notebook
+    assert "1 WF generation = 5.78 h" in notebook and "1 WF generation = 1.5 h" not in notebook
     assert "Zhou et al. model (Selmecki lab, UMN)" in text and 'id="model-equivalence"' in text
     assert "Lauer et al. (2018)" in text and "journal.pbio.3000069" in text
     assert "Motivation: repeated" in text and "finite populations <strong>sample</strong>" not in text
