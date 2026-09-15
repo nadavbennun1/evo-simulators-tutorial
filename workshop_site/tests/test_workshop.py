@@ -351,6 +351,7 @@ def test_chapter_one_revision_contract():
     assert text.count('class="annotated-code-layout"') == 3 and "equivalent NumPy expressions are accepted" in text
     assert "Chuong chemostat data" in text and "simpler model" in text
     assert "incoming fresh" in text and "mutation flow" in text and "realized <strong>per-capita growth rate</strong>" in text
+    assert "deterministic, mean-field description" in text and "Gillespie" in text and "expected dynamics" in text
     assert "summation notation is unnecessary" not in text and "not a mutation rate" in text
     assert "one doubling, not one hour" in text and "5.78 h" in text
     assert "rare-event probability per" in text and "<strong>relative growth</strong>" in text
@@ -376,6 +377,7 @@ def test_chapter_one_revision_contract():
     assert "3.3 × 10<sup>8</sup>" in text and "Make the chemostat model neutral" in text and "discard 100" in text
     assert "did <strong>not</strong> estimate this quantity in a separate neutral-lineage experiment" in text
     assert "model-generated" in text and "not a match to experimentally" in text and "is not supplied to produce it" in text
+    assert "Binomial" in text and "temporarily hold the current frequency fixed" in text and "fraction of the current variation expected to survive" in text
     assert "function effectivePopulationSimulators()" in script and "diversity / variance" in script and "generations / reciprocalSum" in script
     assert "poissonApprox" in script and "chemostatParameters" in script
     assert "chemostatNeValues" not in script and "selectedChemostatNe" not in script
@@ -383,7 +385,9 @@ def test_chapter_one_revision_contract():
     assert "The two solid curves should not coincide" in text
     assert 'id="de-joint-model"' in text and "What if the two CNVs are modeled jointly?" in text
     assert "de-epistasis-model.jpg" in text and "de-epistasis-ppc.jpg" in text
-    assert "simpler independent model is" in text and "epistasis" in text
+    assert "independent model reproduces the joint trajectories" in text and "epistasis" in text
+    assert "What does independence predict for fitness?" in text and "GM_12" in text
+    assert "0.922–0.948" in text and "0.921 ± 0.030" in text and "additional epistatic term is therefore not required" in text
     assert text.count("modeler-model-success.png") == 6
     assert "modeler-head-scratching.png" in text
     assert "Order effect preset makes their non-commutativity visible" not in text

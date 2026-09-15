@@ -330,7 +330,16 @@ $\delta_CX_A$ leaves the ancestral state and enters the CNV state, while $\delta
 other-beneficial state.
 
 The ODE exposes reactor biology that the Wright–Fisher approximation compresses into a generation
-clock and an effective population size.''',
+clock and an effective population size.
+
+<aside class="model-scope-note"><strong>What is shown in this lesson.</strong> These equations are
+the deterministic, mean-field description: they show the population and substrate changes expected
+from the current state. The full continuous chemostat model in
+<a href="https://doi.org/10.1371/journal.pbio.3001633">Avecilla et al. (2022)</a> is stochastic.
+It uses Gillespie $\tau$-leaping to sample the numbers of growth, washout, and formation events in
+each short interval, then updates the cells and substrate. The comparison below shows only the
+expected dynamics; the complete stochastic formulation and implementation are provided in the
+paper.</aside>''',
         "4ff32a3e": r'''### Connecting hours to generations
 
 A generation is one doubling, not one hour. At chemostat steady state, ancestral cells replace
@@ -998,12 +1007,40 @@ It is easier to follow the remaining variation
 $$H_g=p_g(1-p_g),$$
 
 which is largest when both alleles are common and approaches zero when one is lost. If generation
-$g$ has sampling size $N_g$, neutral Wright–Fisher sampling leaves, on average,
+$g$ has sampling size $N_g$, let $K_g$ be the number of copies of the focal allele drawn into the
+next generation. Conditional on the current frequency $p_g$,
 
-$$\operatorname{{E}}\!\left[H_{{g+1}}\mid p_g\right]
-=H_g\left(1-\frac1{{N_g}}\right).$$
+$$K_g\mid p_g\sim\operatorname{{Binomial}}(N_g,p_g),
+\qquad p_{{g+1}}=\frac{{K_g}}{{N_g}}.$$
 
-Thus $p_g$ may move in every replicate; the equation follows the **expected variation that
+The phrase **given $p_g$** means that we temporarily hold the current frequency fixed and average
+over every next generation that random sampling could produce. It does not mean that frequency is
+fixed through the experiment. The binomial draw has
+
+$$\operatorname{{E}}[p_{{g+1}}\mid p_g]=p_g,
+\qquad
+\operatorname{{Var}}(p_{{g+1}}\mid p_g)=\frac{{p_g(1-p_g)}}{{N_g}}.$$
+
+We can now calculate how much variation remains after that draw:
+
+<div class="ne-cancellation-box ne-expectation-box">
+
+$$\begin{{aligned}}
+\operatorname{{E}}[H_{{g+1}}\mid p_g]
+&=\operatorname{{E}}[p_{{g+1}}(1-p_{{g+1}})\mid p_g]\\
+&=\operatorname{{E}}[p_{{g+1}}\mid p_g]
+-\operatorname{{E}}[p_{{g+1}}^2\mid p_g]\\
+&=p_g-\left(\operatorname{{Var}}(p_{{g+1}}\mid p_g)+p_g^2\right)\\
+&=p_g(1-p_g)\left(1-\frac1{{N_g}}\right)\\
+&=H_g\left(1-\frac1{{N_g}}\right).
+\end{{aligned}}$$
+
+</div>
+
+The factor $1-1/N_g$ is therefore the fraction of the current variation expected to survive one
+round of neutral sampling. Once a particular $p_{{g+1}}$ is realized, it becomes the starting
+frequency for the following generation. Thus $p_g$ may move in every replicate; the equation
+follows the **expected variation that
 remains**, not a frequency held constant. Applying the same step through all $G$ generations gives
 
 $$\operatorname{{E}}[H_G]
@@ -1084,15 +1121,51 @@ only <em>GAP1</em> reverted, only <em>MEP2</em> reverted, and both reverted. In 
 the rate of losing one CNV and the fitness of the resulting genotype may depend on whether the
 other CNV is still present. That dependence is where epistasis can enter.</p>
 <figure class="paper-figure compact-paper-figure"><img loading="lazy" src="{model}" alt="Four-state joint model for GAP1 and MEP2 CNV reversion"><figcaption>Joint genotype states and the two possible orders of CNV reversion. {paper_html("de")} · Supplementary Fig. S6.</figcaption></figure>
-<p>The simpler null model makes two independence assumptions: joint fitness is the product of the
-single-CNV fitness effects, and each CNV has the same reversion rate whether or not the other CNV
-is present. Posterior predictions from parameters inferred separately for <em>GAP1</em> and
-<em>MEP2</em> reproduced the double-CNV trajectories reasonably well.</p>
+<h3>What does independence predict for fitness?</h3>
+<p>The two reporter trajectories were first treated as independent evolutionary processes. For
+locus $i$, the simulator assigns fitness $1$ to the CNV state and $1+s_i$ to its fitter revertant.
+The inferred $s_i$ therefore measures the revertant's advantage relative to its CNV parent. To
+express the CNV's fitness relative to a fully reverted cell with fitness $1$, invert that ratio:</p>
+
+$$w_{{\mathrm{{CNV}},i}}=\frac1{{1+s_i}}.$$
+
+<p>With no epistasis, the effects of the two amplifications combine multiplicatively. A cell carrying
+both amplifications is therefore predicted to have</p>
+
+$$w_{{G+M}}=w_Gw_M=\frac1{{(1+s_G)(1+s_M)}}.$$
+
+<div class="fitness-derivation">
+<p><strong>Example · GM_12.</strong> The independently inferred estimates were
+$s_G=0.0097$ and $s_M=0.0527$. Without fitting an additional interaction term, they predict</p>
+
+$$\widehat w_{{GM\_12}}
+=\frac1{{(1+0.0097)(1+0.0527)}}=0.941.$$
+
+<p>The paper reported an SBI fitness range of $0.922$-$0.948$ for this strain. The pairwise
+competition assay gave $0.921\pm0.030$ (estimate $\pm2\,\mathrm{{SE}}$), so the independently
+derived prediction and direct measurement overlap.</p>
+</div>
+
+<div class="fitness-table-wrap"><table class="fitness-agreement-table">
+<thead><tr><th>Strain</th><th>Independent SBI prediction</th><th>Competition assay</th></tr></thead>
+<tbody>
+<tr><td>G_4</td><td>0.969–0.980</td><td>0.959 ± 0.030</td></tr>
+<tr><td>GM_12</td><td>0.922–0.948</td><td>0.921 ± 0.030</td></tr>
+<tr><td>GM_13</td><td>0.922–0.953</td><td>0.914 ± 0.031</td></tr>
+<tr><td>GM_14</td><td>0.903–0.921</td><td>0.906 ± 0.027</td></tr>
+<tr><td>GM_15</td><td>0.916–0.944</td><td>0.894 ± 0.026</td></tr>
+</tbody></table></div>
+<p class="table-note">The SBI column is the fitness range shown in De et al.; assay uncertainty is
+twice the regression standard error, matching the paper's figure. G_4 contains only the
+<em>GAP1</em> amplification, while GM_12–GM_15 carry both chromosome amplifications.</p>
+
+<p>The same independent parameter estimates also reproduced the paired <em>GAP1</em> and
+<em>MEP2</em> loss trajectories when inserted into the four-state model.</p>
 <figure class="paper-figure de-ppc-figure"><img loading="lazy" src="{checks}" alt="Posterior predictive checks for strains carrying both GAP1 and MEP2 CNVs"><figcaption>Observed joint trajectories and predictions from the independent-effects model. {paper_html("de")} · Supplementary Fig. S7.</figcaption></figure>
 <aside class="measured-conclusion"><strong>Conclusion.</strong> The data do not prove that epistasis
-is absent; a richer epistatic model is possible. They show that the simpler independent model is
-sufficient at the resolution of these trajectories, so ten extra joint-model parameters are not
-yet justified.</aside>
+is absent; a richer epistatic model is possible. The independently inferred selection effects
+predict the directly assayed fitnesses, and the independent model reproduces the joint trajectories.
+At this resolution, an additional epistatic term is therefore not required.</aside>
 </section>'''
     return math_to_html(source)
 
